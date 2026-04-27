@@ -1,0 +1,44 @@
+{
+  "$schema": "https://schema.org",
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "{{BRAND}}",
+  "alternateName": "{{BRAND_SHORT}}",
+  "description": "{{ONE_LINER}}",
+  "url": "{{WEBSITE_URL}}",
+  "logo": "{{WEBSITE_URL}}/logo.png",
+  "image": "{{WEBSITE_URL}}/og-image.jpg",
+  "sameAs": [
+    "{{LINKEDIN_URL}}",
+    "{{INSTAGRAM_URL}}",
+    "{{TWITTER_URL}}"
+  ],
+  "contactPoint": {
+    "@type": "ContactPoint",
+    "email": "{{CONTACT_EMAIL}}",
+    "contactType": "customer service",
+    "availableLanguage": ["Spanish", "English"]
+  },
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "{{STREET_ADDRESS}}",
+    "addressLocality": "{{CITY}}",
+    "addressRegion": "{{REGION}}",
+    "postalCode": "{{POSTAL_CODE}}",
+    "addressCountry": "{{COUNTRY_CODE}}"
+  },
+  "areaServed": "{{SERVICE_AREA}}",
+  "knowsAbout": [
+    "{{KEYWORD_1}}",
+    "{{KEYWORD_2}}",
+    "{{KEYWORD_3}}"
+  ],
+  "vertical": "{{VERTICAL}}",
+  "metadata": {
+    "generator": "web-design-engineer-pro v1.0",
+    "designDirection": "{{DESIGN_DIRECTION}}",
+    "palette": "{{PALETTE_ID}}",
+    "fontPair": "{{FONT_PAIR_ID}}",
+    "createdAt": "{{ISO_DATE}}"
+  }
+}
