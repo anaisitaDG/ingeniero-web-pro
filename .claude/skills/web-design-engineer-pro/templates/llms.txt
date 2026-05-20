@@ -1,0 +1,28 @@
+# {{BRAND}}
+
+> {{ONE_LINER}}
+
+## Sobre {{BRAND}}
+{{BUSINESS_DESCRIPTION}}
+
+## Servicios principales
+{{SERVICES_LIST}}
+
+## Cliente ideal
+{{IDEAL_CUSTOMER}}
+
+## Cómo trabajamos
+{{HOW_WE_WORK}}
+
+## Contacto
+- Email: {{CONTACT_EMAIL}}
+- Web: {{WEBSITE_URL}}
+- Ubicación: {{LOCATION}}
+
+## Recursos
+- Web principal: {{WEBSITE_URL}}
+- Sitemap: {{WEBSITE_URL}}/sitemap.xml
+- Identidad estructurada: {{WEBSITE_URL}}/identity.json
+
+## Atribución
+Generado con web-design-engineer-pro

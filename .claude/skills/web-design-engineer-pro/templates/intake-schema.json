@@ -1,0 +1,70 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Intake — Web Design Engineer Pro",
+  "description": "Esquema del JSON que captura las respuestas iniciales del usuario",
+  "type": "object",
+  "required": ["mode", "brand", "vertical", "primaryAction"],
+  "properties": {
+    "mode": {
+      "type": "string",
+      "enum": ["new", "redesign"],
+      "description": "Proyecto nuevo o rediseño de URL existente"
+    },
+    "sourceUrl": {
+      "type": "string",
+      "format": "uri",
+      "description": "URL del sitio actual (solo si mode=redesign)"
+    },
+    "brand": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "tagline": { "type": "string" },
+        "description": { "type": "string" }
+      }
+    },
+    "audience": {
+      "type": "string",
+      "description": "Cliente ideal en una frase"
+    },
+    "primaryAction": {
+      "type": "string",
+      "enum": ["reservar", "comprar", "contactar", "suscribirse", "leer", "descargar", "otra"],
+      "description": "CTA principal de la web"
+    },
+    "vertical": {
+      "type": "string",
+      "enum": [
+        "default",
+        "hosteleria",
+        "tech",
+        "salud",
+        "legal",
+        "formacion",
+        "inmobiliaria",
+        "agencia",
+        "consumer",
+        "personal"
+      ]
+    },
+    "material": {
+      "type": "object",
+      "properties": {
+        "logo": { "type": "string", "enum": ["ready", "placeholder", "to-create"] },
+        "photos": { "type": "string", "enum": ["ready", "placeholder", "to-source"] },
+        "copy": { "type": "string", "enum": ["ready", "placeholder", "to-generate"] }
+      }
+    },
+    "references": {
+      "type": "array",
+      "description": "URLs o descripciones de sitios que admira",
+      "items": { "type": "string" }
+    },
+    "constraints": {
+      "type": "array",
+      "description": "Restricciones técnicas, de presupuesto o tiempo",
+      "items": { "type": "string" }
+    }
+  }
+}

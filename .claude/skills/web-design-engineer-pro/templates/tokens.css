@@ -1,0 +1,131 @@
+/* ============================================================
+   tokens.css — Sistema de tokens de diseño
+   Generado por web-design-engineer-pro v1.0
+   Reemplazar los valores {{...}} con los de la dirección visual
+   elegida (ver references/01-direcciones-visuales.md).
+   ============================================================ */
+
+@import "tailwindcss";
+
+@theme {
+  /* Colores base — sustituir por dirección + paleta */
+  --color-bg: {{COLOR_BG}};
+  --color-card: {{COLOR_CARD}};
+  --color-primary: {{COLOR_PRIMARY}};
+  --color-secondary: {{COLOR_SECONDARY}};
+  --color-accent: {{COLOR_ACCENT}};
+  --color-text: {{COLOR_TEXT}};
+  --color-muted: {{COLOR_MUTED}};
+
+  /* Tipografía */
+  --font-display: var(--font-display-google), "Georgia", serif;
+  --font-body: var(--font-body-google), system-ui, sans-serif;
+
+  /* Tamaños base */
+  --font-size-base: {{FONT_SIZE_BASE}};
+  --line-height-body: {{LINE_HEIGHT}};
+
+  /* Layout */
+  --radius: {{RADIUS}};
+  --spacing-unit: {{SPACING_UNIT}};
+  --shadow-card: {{SHADOW}};
+}
+
+:root {
+  /* Re-exportar para compatibilidad con style={{ var(...) }} */
+  --color-bg: {{COLOR_BG}};
+  --color-card: {{COLOR_CARD}};
+  --color-primary: {{COLOR_PRIMARY}};
+  --color-secondary: {{COLOR_SECONDARY}};
+  --color-accent: {{COLOR_ACCENT}};
+  --color-text: {{COLOR_TEXT}};
+  --color-muted: {{COLOR_MUTED}};
+
+  --font-size-sm: calc(var(--font-size-base) * 0.875);
+  --font-size-lg: calc(var(--font-size-base) * 1.125);
+  --font-size-xl: calc(var(--font-size-base) * 1.25);
+  --font-size-2xl: calc(var(--font-size-base) * 1.5);
+  --font-size-3xl: calc(var(--font-size-base) * 2);
+  --font-size-4xl: calc(var(--font-size-base) * 2.75);
+  --font-size-5xl: calc(var(--font-size-base) * 3.75);
+  --font-size-6xl: calc(var(--font-size-base) * 5);
+
+  --space-1: calc(var(--spacing-unit) * 0.5);
+  --space-2: var(--spacing-unit);
+  --space-3: calc(var(--spacing-unit) * 1.5);
+  --space-4: calc(var(--spacing-unit) * 2);
+  --space-6: calc(var(--spacing-unit) * 3);
+  --space-8: calc(var(--spacing-unit) * 4);
+  --space-12: calc(var(--spacing-unit) * 6);
+  --space-16: calc(var(--spacing-unit) * 8);
+  --space-24: calc(var(--spacing-unit) * 12);
+  --space-32: calc(var(--spacing-unit) * 16);
+
+  --radius-sm: calc({{RADIUS}} * 0.5);
+  --radius-lg: calc({{RADIUS}} * 2);
+
+  --transition-fast: 150ms ease-out;
+  --transition-base: 300ms cubic-bezier(0.22, 1, 0.36, 1);
+  --transition-slow: 600ms cubic-bezier(0.22, 1, 0.36, 1);
+
+  --shadow: {{SHADOW}};
+  --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.08);
+}
+
+html {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-body);
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  color: var(--color-text);
+  line-height: 1.15;
+}
+
+a {
+  color: var(--color-accent);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+a:hover { color: var(--color-primary); }
+
+/* Focus visible para teclado — accesibilidad */
+*:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+  border-radius: var(--radius-sm);
+}
+
+/* Selección de texto */
+::selection {
+  background: var(--color-accent);
+  color: var(--color-card);
+}
+
+/* Animaciones globales — fallback de seguridad */
+[data-animate] { will-change: transform, opacity; }
+
+/* Respeto a prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  [data-animate] { opacity: 1 !important; transform: none !important; }
+}
+
+/* Si JS falla, el contenido nunca queda invisible */
+.no-js [data-animate] { opacity: 1 !important; transform: none !important; }
