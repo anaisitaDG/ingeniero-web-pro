@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Preview de estilos · {{BRAND}}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="{{FONTS_HREF}}" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #111;
+      color: #fff;
+      font-family: system-ui, sans-serif;
+    }
+
+    /* Header de la herramienta */
+    .tool-header {
+      background: #000;
+      border-bottom: 1px solid #333;
+      padding: 20px 40px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .tool-header h1 {
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #fff;
+    }
+    .tool-header span {
+      font-size: 13px;
+      color: #888;
+    }
+    .tool-header .chosen-badge {
+      margin-left: auto;
+      background: #22c55e;
+      color: #000;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 4px;
+      display: none;
+    }
+    .tool-header .chosen-badge.visible { display: block; }
+
+    /* Instrucción */
+    .instruction {
+      background: #1a1a1a;
+      border-bottom: 1px solid #333;
+      padding: 16px 40px;
+      font-size: 14px;
+      color: #aaa;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .instruction strong { color: #fff; }
+    .instruction code {
+      background: #2a2a2a;
+      border: 1px solid #444;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 13px;
+      color: #22c55e;
+    }
+
+    /* Hero sections */
+    .hero {
+      position: relative;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 80px;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+    .hero > * { position: relative; z-index: 1; }
+
+    .hero-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 48px;
+      opacity: 0.7;
+    }
+    .hero-meta-badge {
+      padding: 3px 10px;
+      border-radius: 3px;
+      font-size: 10px;
+    }
+
+    .hero h2 {
+      font-size: clamp(52px, 9vw, 120px);
+      font-weight: 700;
+      line-height: 0.95;
+      letter-spacing: -0.03em;
+      max-width: 14ch;
+      margin-bottom: 32px;
+    }
+
+    .hero p.subtitle {
+      font-size: clamp(16px, 1.8vw, 22px);
+      max-width: 50ch;
+      margin-bottom: 48px;
+      line-height: 1.6;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .btn-primary, .btn-secondary {
+      padding: 16px 32px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.2s;
+      border: none;
+      letter-spacing: 0.02em;
+    }
+    .btn-primary:hover { opacity: 0.85; transform: translateY(-1px); }
+    .btn-secondary:hover { opacity: 0.7; }
+
+    /* Pick bar */
+    .pick-bar {
+      border-top: 1px solid rgba(128,128,128,0.2);
+      padding: 24px 80px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+    .pick-info {
+      font-size: 14px;
+      line-height: 1.6;
+      opacity: 0.8;
+    }
+    .pick-info strong { font-size: 16px; font-weight: 700; }
+    .pick-info code {
+      background: rgba(128,128,128,0.15);
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-size: 13px;
+      font-family: monospace;
+    }
+    .pick-btn {
+      background: #fff;
+      color: #000;
+      border: 2px solid #fff;
+      padding: 12px 28px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background 0.2s, color 0.2s;
+      white-space: nowrap;
+      letter-spacing: 0.03em;
+    }
+    .pick-btn:hover {
+      background: #22c55e;
+      border-color: #22c55e;
+    }
+
+    /* Divider */
+    .direction-divider {
+      height: 6px;
+      background: linear-gradient(to right, #333, #555, #333);
+    }
+
+    /* Copied toast */
+    #toast {
+      position: fixed;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: #22c55e;
+      color: #000;
+      font-size: 14px;
+      font-weight: 700;
+      padding: 12px 24px;
+      border-radius: 8px;
+      z-index: 999;
+      transition: transform 0.3s ease;
+      pointer-events: none;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+
+    {{DIRECTION_STYLES}}
+  </style>
+</head>
+<body>
+
+<div class="tool-header">
+  <h1>Previsualizador de estilos</h1>
+  <span>·</span>
+  <span>{{BRAND}}</span>
+  <div class="chosen-badge" id="chosen-badge">✓ Estilo elegido</div>
+</div>
+
+<div class="instruction">
+  <strong>¿Cuál te encaja?</strong>
+  Cada sección usa la misma estructura, solo cambia la estética.
+  Cuando uno te enamore, pulsa <strong>"Elegir este estilo →"</strong>
+  y pégame el código que aparece (algo como <code>STYLE:LDW-D1-F1</code>).
+</div>
+
+{{PREVIEW_SECTIONS}}
+
+<div id="toast"></div>
+
+<script>
+  function pickStyle(code, name) {
+    const full = 'STYLE:' + code;
+
+    // Intentar copiar al portapapeles
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(full).catch(() => {});
+    }
+
+    // Toast
+    const toast = document.getElementById('toast');
+    toast.textContent = '✓ Copiado: ' + full + ' — ' + name;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 3000);
+
+    // Badge en header
+    const badge = document.getElementById('chosen-badge');
+    badge.textContent = '✓ ' + full;
+    badge.classList.add('visible');
+
+    // Highlight de la sección elegida
+    document.querySelectorAll('.pick-btn').forEach(btn => {
+      btn.textContent = btn.getAttribute('data-code') === code
+        ? '✓ Seleccionado'
+        : 'Elegir este estilo →';
+    });
+  }
+
+  // Añadir data-code a cada botón
+  document.querySelectorAll('.pick-btn').forEach(btn => {
+    const onclick = btn.getAttribute('onclick');
+    if (onclick) {
+      const match = onclick.match(/pickStyle\('([^']+)'/);
+      if (match) btn.setAttribute('data-code', match[1]);
+    }
+  });
+</script>
+</body>
+</html>
