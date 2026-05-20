@@ -16,9 +16,9 @@ export function Navbar() {
     <header
       className="fixed top-0 left-0 right-0 z-50 transition-all duration-300"
       style={{
-        background:  scrolled ? "rgba(0,0,0,0.92)" : "transparent",
+        background:  scrolled ? "rgba(255,255,255,0.92)" : "transparent",
         backdropFilter: scrolled ? "blur(12px)" : "none",
-        borderBottom: scrolled ? "1px solid #111" : "1px solid transparent",
+        borderBottom: scrolled ? "1px solid #e5e5e5" : "1px solid transparent",
       }}
     >
       <div className="flex items-center justify-between px-[clamp(24px,6vw,80px)] py-5">
@@ -27,7 +27,7 @@ export function Navbar() {
           href={siteConfig.contact.whatsapp}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-xs font-semibold tracking-widest uppercase px-5 py-2.5 border border-white/20 hover:border-white/60 hover:bg-white hover:text-black transition-all duration-200"
+          className="text-xs font-semibold tracking-widest uppercase px-5 py-2.5 border border-black/20 hover:border-black hover:bg-black hover:text-white transition-all duration-200"
         >
           {siteConfig.cta.primary}
         </a>

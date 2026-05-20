@@ -7,7 +7,7 @@ export function Hero() {
   return (
     <section
       className="relative flex flex-col items-center justify-center min-h-svh text-center px-6"
-      style={{ background: "#000" }}
+      style={{ background: "#ffffff" }}
       aria-label="Hero"
     >
       {/* Logo central */}
@@ -31,13 +31,13 @@ export function Hero() {
           href={siteConfig.contact.whatsapp}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-block bg-white text-black font-bold text-sm tracking-wider uppercase px-8 py-4 hover:bg-[var(--color-accent)] hover:text-white transition-all duration-200"
+          className="inline-block bg-black text-white font-bold text-sm tracking-wider uppercase px-8 py-4 hover:bg-[var(--color-accent)] hover:text-white transition-all duration-200"
         >
           {siteConfig.cta.primary} →
         </a>
         <a
           href="#resultados"
-          className="text-sm font-medium tracking-wider uppercase underline underline-offset-4 text-white/40 hover:text-white transition-colors duration-200"
+          className="text-sm font-medium tracking-wider uppercase underline underline-offset-4 text-black/30 hover:text-black transition-colors duration-200"
         >
           {siteConfig.cta.secondary}
         </a>
@@ -51,7 +51,7 @@ export function Hero() {
         className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
         aria-hidden
       >
-        <div className="w-px h-12 bg-gradient-to-b from-white/0 to-white/20" />
+        <div className="w-px h-12 bg-gradient-to-b from-black/0 to-black/20" />
       </motion.div>
     </section>
   );
