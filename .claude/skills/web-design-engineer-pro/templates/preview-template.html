@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Previsualización — {{BRAND}}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="{{FONTS_HREF}}" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body { background: #111; min-height: 100vh; }
+
+    /* ── Header ── */
+    .page-header {
+      background: #0a0a0a;
+      border-bottom: 1px solid #2a2a2a;
+      padding: 18px 32px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .page-header h1 {
+      font-family: system-ui, sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      color: #fff;
+      letter-spacing: -0.01em;
+    }
+    .page-header p {
+      font-family: system-ui, sans-serif;
+      font-size: 12px;
+      color: #666;
+      margin-top: 2px;
+    }
+
+    /* ── Hero sections ── */
+    .hero {
+      position: relative;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 80px clamp(24px, 8vw, 120px);
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+    .hero > * { position: relative; z-index: 1; }
+
+    .hero-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 52px;
+      flex-wrap: wrap;
+    }
+    .hero-meta-badge {
+      padding: 3px 10px;
+      border-radius: 3px;
+      font-size: 10px;
+      opacity: 0.6;
+    }
+
+    .hero h2 {
+      font-size: clamp(52px, 10vw, 128px);
+      font-weight: 700;
+      line-height: 0.95;
+      letter-spacing: -0.04em;
+      margin-bottom: 28px;
+      max-width: 1000px;
+    }
+
+    .hero p.subtitle {
+      font-size: clamp(16px, 1.8vw, 21px);
+      max-width: 580px;
+      margin-bottom: 52px;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .btn-primary, .btn-secondary {
+      padding: 16px 36px;
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      letter-spacing: -0.01em;
+      transition: opacity 0.15s ease, transform 0.1s ease;
+    }
+    .btn-primary:hover, .btn-secondary:hover { opacity: 0.82; transform: translateY(-1px); }
+    .btn-primary:active, .btn-secondary:active { transform: translateY(0); }
+
+    /* ── Pick bar ── */
+    .pick-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px clamp(24px, 8vw, 120px);
+      border-top: 1px solid rgba(128,128,128,0.15);
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .pick-info {
+      font-family: system-ui, sans-serif;
+      font-size: 13px;
+      line-height: 1.65;
+      opacity: 0.65;
+    }
+    .pick-info strong { opacity: 1; font-size: 14px; }
+    .pick-info code {
+      font-family: 'Courier New', monospace;
+      background: rgba(128,128,128,0.15);
+      padding: 2px 7px;
+      border-radius: 3px;
+      font-size: 12px;
+    }
+    .pick-btn {
+      flex-shrink: 0;
+      background: #fff;
+      color: #111;
+      border: none;
+      padding: 13px 28px;
+      font-size: 13px;
+      font-weight: 700;
+      border-radius: 6px;
+      cursor: pointer;
+      letter-spacing: -0.01em;
+      transition: background 0.15s, transform 0.1s;
+      white-space: nowrap;
+    }
+    .pick-btn:hover { background: #e8e8e8; transform: translateY(-1px); }
+    .pick-btn:active { transform: translateY(0); }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%) translateY(120px);
+      background: #fff;
+      color: #111;
+      padding: 12px 28px;
+      border-radius: 100px;
+      font-family: system-ui, sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+      transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+      z-index: 9999;
+      white-space: nowrap;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* ── Per-direction overrides ── */
+    {{DIRECTION_STYLES}}
+  </style>
+</head>
+<body>
+  <header class="page-header">
+    <div>
+      <h1>Elige el estilo de {{BRAND}}</h1>
+      <p>Desplázate, compara y haz clic en "Elegir este estilo" cuando uno te convenza</p>
+    </div>
+  </header>
+
+  {{PREVIEW_SECTIONS}}
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    function pickStyle(code, name) {
+      var text = 'STYLE:' + code;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function() {
+          showToast('✓ Código copiado: ' + text + ' — Pégalo en el chat');
+        }).catch(function() { fallbackCopy(text); });
+      } else {
+        fallbackCopy(text);
+      }
+    }
+    function fallbackCopy(text) {
+      var el = document.createElement('textarea');
+      el.value = text;
+      el.style.cssText = 'position:fixed;opacity:0;pointer-events:none;';
+      document.body.appendChild(el);
+      el.focus();
+      el.select();
+      try { document.execCommand('copy'); } catch(e) {}
+      document.body.removeChild(el);
+      showToast('✓ Código: ' + text + ' — Pégalo en el chat');
+    }
+    function showToast(msg) {
+      var t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(function() { t.classList.remove('show'); }, 4000);
+    }
+  </script>
+</body>
+</html>

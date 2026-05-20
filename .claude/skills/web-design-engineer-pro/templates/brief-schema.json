@@ -1,0 +1,119 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Brief — Web Design Engineer Pro",
+  "description": "Esquema del brief validado, listo para construir",
+  "type": "object",
+  "required": ["intake", "design", "sections"],
+  "properties": {
+    "intake": {
+      "$ref": "intake-schema.json"
+    },
+    "design": {
+      "type": "object",
+      "required": ["direction", "palette", "fontPair", "code"],
+      "properties": {
+        "direction": {
+          "type": "string",
+          "enum": ["ED", "SM", "LDW", "CB", "UE", "NB", "PG", "RT"]
+        },
+        "palette": {
+          "type": "string",
+          "pattern": "^([DL][1-5]|C[1-9])$",
+          "description": "ID de paleta (D1-D5 dark, L1-L5 light, C1-C9 custom)"
+        },
+        "fontPair": {
+          "type": "string",
+          "pattern": "^F[1-9][0-9]?$",
+          "description": "ID de pareja tipográfica (F1-F10)"
+        },
+        "code": {
+          "type": "string",
+          "pattern": "^[A-Z]{2,3}-([DL][1-5]|C[1-9])-F[1-9][0-9]?$",
+          "description": "Combo final, ej: UE-L1-F4"
+        },
+        "darkMode": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "sections": {
+      "type": "array",
+      "description": "Secciones de la página en orden",
+      "items": {
+        "type": "object",
+        "required": ["id", "type"],
+        "properties": {
+          "id": { "type": "string" },
+          "type": {
+            "type": "string",
+            "enum": [
+              "navbar", "hero", "value-props", "services", "products",
+              "about", "team", "testimonials", "logos", "process",
+              "pricing", "faq", "gallery", "cta", "contact",
+              "map", "newsletter", "blog-list", "footer", "custom"
+            ]
+          },
+          "label": { "type": "string" },
+          "config": { "type": "object" }
+        }
+      }
+    },
+    "features": {
+      "type": "object",
+      "properties": {
+        "contactForm": { "type": "boolean", "default": false },
+        "bookings": { "type": "boolean", "default": false },
+        "payments": { "type": "boolean", "default": false },
+        "newsletter": { "type": "boolean", "default": false },
+        "blog": { "type": "boolean", "default": false },
+        "googleMaps": { "type": "boolean", "default": false },
+        "multiLocale": { "type": "boolean", "default": false },
+        "chatWidget": { "type": "boolean", "default": false },
+        "search": { "type": "boolean", "default": false }
+      }
+    },
+    "modules": {
+      "type": "object",
+      "description": "Módulos de excelencia activados",
+      "properties": {
+        "lenisSmoothScroll": { "type": "boolean", "default": true },
+        "magneticCursor": { "type": "boolean", "default": false },
+        "pageTransitions": { "type": "boolean", "default": false },
+        "scrollStorytelling": { "type": "boolean", "default": false },
+        "kineticTypography": { "type": "boolean", "default": true },
+        "imageParallax": { "type": "boolean", "default": false },
+        "imageOptimization": { "type": "boolean", "default": true },
+        "threeJs": { "type": "boolean", "default": false },
+        "seoTechnical": { "type": "boolean", "default": true }
+      }
+    },
+    "locale": {
+      "type": "object",
+      "properties": {
+        "default": { "type": "string", "default": "es" },
+        "supported": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": ["es"]
+        }
+      }
+    },
+    "deploy": {
+      "type": "object",
+      "properties": {
+        "platform": { "type": "string", "enum": ["vercel", "netlify", "self"], "default": "vercel" },
+        "domain": { "type": "string" },
+        "scheduledAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "createdAt": { "type": "string", "format": "date-time" },
+        "operator": { "type": "string" },
+        "version": { "type": "string", "default": "1.0.0" }
+      }
+    }
+  }
+}
