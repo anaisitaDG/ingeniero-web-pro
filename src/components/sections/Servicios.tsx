@@ -19,43 +19,43 @@ const servicios = [
 
 export function Servicios() {
   return (
-    <section className="section" style={{ borderTop: "1px solid #111" }}>
+    <section className="section" style={{ background: "#ffffff", borderTop: "1px solid #e5e5e5" }}>
       <Reveal>
         <h2
           className="font-black tracking-tight leading-none mb-16"
-          style={{ fontSize: "clamp(36px, 6vw, 80px)" }}
+          style={{ fontSize: "clamp(36px, 6vw, 80px)", color: "#000" }}
         >
           Lo que hacemos
           <br />
-          <span style={{ color: "#444" }}>cuando entramos.</span>
+          <span style={{ color: "#bbb" }}>cuando entramos.</span>
         </h2>
       </Reveal>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px" style={{ background: "#111" }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px" style={{ background: "#e5e5e5" }}>
         {servicios.map((s, i) => {
           const Icon = s.icon;
           return (
             <Reveal key={s.nombre} delay={i * 0.06}>
               <div
-                className="p-8 flex flex-col gap-4 group hover:bg-[#080808] transition-colors duration-200"
-                style={{ background: "#000" }}
+                className="p-8 flex flex-col gap-4 group hover:bg-[#f8f8f8] transition-colors duration-200"
+                style={{ background: "#ffffff" }}
               >
                 <Icon
                   size={20}
                   className="transition-colors duration-200"
-                  style={{ color: "#333" }}
+                  style={{ color: "#bbb" }}
                   aria-hidden
                 />
                 <div>
                   <h3
-                    className="font-bold mb-2 group-hover:text-white transition-colors duration-200"
-                    style={{ fontSize: "clamp(15px, 1.4vw, 19px)", color: "#fff" }}
+                    className="font-bold mb-2 group-hover:text-black transition-colors duration-200"
+                    style={{ fontSize: "clamp(15px, 1.4vw, 19px)", color: "#000" }}
                   >
                     {s.nombre}
                   </h3>
                   <p
                     className="font-light leading-relaxed"
-                    style={{ fontSize: "clamp(13px, 1vw, 15px)", color: "#555" }}
+                    style={{ fontSize: "clamp(13px, 1vw, 15px)", color: "#888" }}
                   >
                     {s.desc}
                   </p>

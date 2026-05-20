@@ -5,18 +5,18 @@ export function CtaFinal() {
   return (
     <section
       className="section flex flex-col items-start"
-      style={{ borderTop: "1px solid #111" }}
+      style={{ background: "#E8522B", borderTop: "none" }}
     >
       <Reveal>
         <p
           className="font-black tracking-tight leading-tight mb-16 max-w-4xl"
-          style={{ fontSize: "clamp(36px, 7vw, 96px)" }}
+          style={{ fontSize: "clamp(36px, 7vw, 96px)", color: "#fff" }}
         >
           Tu competencia también
           <br />
           puede invertir.
           <br />
-          <span style={{ color: "#444" }}>
+          <span style={{ color: "rgba(255,255,255,0.45)" }}>
             No siempre sabe hacerlo mejor.
           </span>
         </p>
@@ -27,7 +27,7 @@ export function CtaFinal() {
           href={siteConfig.contact.whatsapp}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-3 bg-white text-black font-bold text-sm tracking-widest uppercase px-10 py-5 hover:bg-[var(--color-accent)] hover:text-white transition-all duration-200 group"
+          className="inline-flex items-center gap-3 bg-black text-white font-bold text-sm tracking-widest uppercase px-10 py-5 hover:bg-white hover:text-black transition-all duration-200 group"
         >
           {/* WhatsApp icon inline SVG */}
           <svg
