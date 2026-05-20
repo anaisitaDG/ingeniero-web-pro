@@ -1,0 +1,17 @@
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "IMPULSA",
+  "alternateName": "Impulsa Agencia",
+  "description": "Agencia de growth marketing y estrategia. Convertimos marketing desordenado en un sistema de crecimiento claro, medible y rentable.",
+  "url": "https://impulsaagencia.com",
+  "slogan": "Alquimistas del Marketing",
+  "knowsAbout": [
+    "Growth Marketing",
+    "Branding",
+    "Paid Media",
+    "Growth Strategy",
+    "Social Media Marketing",
+    "Marketing Automation"
+  ]
+}
