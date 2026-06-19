@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lovic Athletica Gym — Tu plataforma digital de entrenamiento</title>
+  <meta name="description" content="Propuesta de plataforma personalizada para gestión de clientes, planes de entrenamiento y nutrición. Automatiza tu negocio y ofrece una experiencia premium." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0a0a0a;
+      --bg2:      #111111;
+      --card:     #161616;
+      --border:   #2a2a2a;
+      --accent:   #c9a84c;
+      --accent-l: #e8c97a;
+      --accent-m: #8a6f2e;
+      --text:     #f5f0e8;
+      --muted:    #888880;
+      --white:    #ffffff;
+      --display:  'Cormorant Garamond', Georgia, serif;
+      --body:     'Outfit', system-ui, sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--body);
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+      background: rgba(10,10,10,0.88);
+    }
+    .nav-inner {
+      max-width: 1100px; margin: 0 auto;
+      padding: 1rem 1.5rem;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .logo {
+      font-family: var(--display);
+      color: var(--accent);
+      font-size: 1.3rem; font-weight: 600;
+      letter-spacing: .06em; text-decoration: none;
+    }
+    .btn-primary {
+      background: var(--accent); color: #0a0a0a;
+      font-family: var(--body); font-weight: 700;
+      font-size: .8rem; letter-spacing: .1em; text-transform: uppercase;
+      padding: .55rem 1.25rem; border-radius: 2px;
+      text-decoration: none; transition: opacity .2s;
+    }
+    .btn-primary:hover { opacity: .82; }
+
+    /* ── HERO ── */
+    .hero {
+      position: relative; min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden; padding: 6rem 1.5rem;
+    }
+    .hero-glow {
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse 80% 55% at 50% 0%, rgba(201,168,76,.13) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-grid {
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(201,168,76,.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(201,168,76,.03) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none;
+    }
+    .hero-inner { position: relative; max-width: 900px; text-align: center; }
+    .eyebrow {
+      color: var(--accent); font-size: .75rem;
+      letter-spacing: .28em; font-weight: 600; text-transform: uppercase;
+      margin-bottom: 1.5rem;
+    }
+    h1 {
+      font-family: var(--display);
+      font-size: clamp(2.6rem, 7vw, 5.2rem);
+      font-weight: 300; line-height: 1.05;
+      color: var(--white);
+    }
+    h1 em { color: var(--accent); font-style: italic; }
+    .hero-sub {
+      color: var(--muted); font-size: 1.1rem; line-height: 1.75;
+      max-width: 580px; margin: 1.5rem auto 2.5rem;
+    }
+    .hero-btns { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+    .btn-outline {
+      border: 1px solid var(--accent); color: var(--accent);
+      font-family: var(--body); font-weight: 600;
+      font-size: .85rem; letter-spacing: .08em; text-transform: uppercase;
+      padding: .9rem 2rem; border-radius: 2px;
+      text-decoration: none; transition: background .2s, color .2s;
+    }
+    .btn-outline:hover { background: var(--accent); color: #0a0a0a; }
+    .btn-hero {
+      background: var(--accent); color: #0a0a0a;
+      font-family: var(--body); font-weight: 700;
+      font-size: .85rem; letter-spacing: .1em; text-transform: uppercase;
+      padding: .9rem 2rem; border-radius: 2px;
+      text-decoration: none; display: inline-flex; align-items: center; gap: .5rem;
+      transition: opacity .2s;
+    }
+    .btn-hero:hover { opacity: .85; }
+
+    /* ── SECTIONS ── */
+    section { padding: 6rem 1.5rem; }
+    section.alt { background: var(--bg2); }
+    .container { max-width: 1100px; margin: 0 auto; }
+    .section-label {
+      color: var(--accent); font-size: .72rem;
+      letter-spacing: .28em; font-weight: 600; text-transform: uppercase;
+      text-align: center; margin-bottom: 1rem;
+    }
+    h2 {
+      font-family: var(--display);
+      font-size: clamp(1.9rem, 4.5vw, 3rem);
+      font-weight: 400; text-align: center;
+      color: var(--white); margin-bottom: 3.5rem;
+    }
+    h2.has-sub { margin-bottom: 1rem; }
+    .section-sub {
+      color: var(--muted); text-align: center;
+      font-size: .97rem; margin-bottom: 3.5rem;
+    }
+
+    /* ── PROBLEM TABLE ── */
+    .problem-list { display: flex; flex-direction: column; gap: .9rem; }
+    .problem-row {
+      display: grid; grid-template-columns: 1fr 1fr;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 4px; overflow: hidden;
+    }
+    .problem-bad, .problem-good {
+      display: flex; align-items: center; gap: .75rem;
+      padding: 1rem 1.5rem; font-size: .93rem;
+    }
+    .problem-bad { color: var(--muted); }
+    .problem-good { border-left: 1px solid var(--border); color: var(--text); }
+    .icon-bad { color: #ef4444; flex-shrink: 0; }
+    .icon-good { color: var(--accent); flex-shrink: 0; }
+    @media (max-width: 640px) {
+      .problem-row { grid-template-columns: 1fr; }
+      .problem-good { border-left: none; border-top: 1px solid var(--border); }
+    }
+
+    /* ── FLOW GRID ── */
+    .flow-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.25rem; }
+    @media (max-width: 700px) { .flow-grid { grid-template-columns: 1fr; } }
+    .flow-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 4px; padding: 2rem;
+    }
+    .flow-num {
+      font-family: var(--display); color: var(--accent-m);
+      font-size: 2.8rem; font-weight: 300; line-height: 1;
+      margin-bottom: 1rem;
+    }
+    .flow-title {
+      color: var(--accent); font-size: .88rem; font-weight: 600;
+      letter-spacing: .06em; text-transform: uppercase; margin-bottom: .5rem;
+    }
+    .flow-desc { color: var(--muted); font-size: .92rem; line-height: 1.65; }
+
+    /* ── FEATURE GRID ── */
+    .feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.1rem; }
+    @media (max-width: 900px) { .feature-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 550px) { .feature-grid { grid-template-columns: 1fr; } }
+    .feature-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 4px; padding: 1.6rem;
+    }
+    .feature-icon {
+      width: 42px; height: 42px;
+      background: rgba(201,168,76,.1); border: 1px solid rgba(201,168,76,.25);
+      border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 1rem;
+    }
+    .feature-icon svg { stroke: var(--accent); width: 20px; height: 20px; }
+    .feature-title { color: var(--text); font-weight: 600; font-size: .92rem; margin-bottom: .4rem; }
+    .feature-desc { color: var(--muted); font-size: .85rem; line-height: 1.65; }
+
+    /* ── PHASES ── */
+    .phases-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2rem; }
+    @media (max-width: 700px) { .phases-grid { grid-template-columns: 1fr; } }
+    .phase-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 4px; padding: 2rem; position: relative; overflow: hidden;
+    }
+    .phase-card.featured { border-color: var(--accent); }
+    .phase-bar {
+      position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--accent-m));
+    }
+    .phase-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; }
+    .phase-num { color: var(--accent); font-size: .72rem; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; }
+    .phase-title {
+      font-family: var(--display); color: var(--white);
+      font-size: 1.35rem; font-weight: 400; margin-top: .2rem;
+    }
+    .phase-badge {
+      background: rgba(201,168,76,.1); border: 1px solid rgba(201,168,76,.3);
+      color: var(--accent); font-size: .72rem;
+      padding: .28rem .7rem; border-radius: 2px; font-weight: 500;
+      white-space: nowrap; flex-shrink: 0;
+    }
+    .phase-list { list-style: none; display: flex; flex-direction: column; gap: .6rem; }
+    .phase-item { display: flex; align-items: flex-start; gap: .55rem; }
+    .phase-item svg { stroke: var(--accent); width: 15px; height: 15px; flex-shrink: 0; margin-top: .15rem; }
+    .phase-item span { color: var(--muted); font-size: .88rem; line-height: 1.5; }
+
+    /* ── NUMBERS ── */
+    .numbers-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; text-align: center; }
+    @media (max-width: 600px) { .numbers-grid { grid-template-columns: 1fr; gap: 2.5rem; } }
+    .number-val {
+      font-family: var(--display);
+      font-size: clamp(2.4rem, 5vw, 4rem);
+      font-weight: 300; color: var(--accent); line-height: 1;
+    }
+    .number-label { color: var(--muted); font-size: .88rem; margin-top: .65rem; }
+
+    /* ── CTA ── */
+    .cta-section {
+      background: var(--bg2); position: relative; overflow: hidden;
+      padding: 7rem 1.5rem;
+    }
+    .cta-glow {
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse 60% 80% at 50% 110%, rgba(201,168,76,.09) 0%, transparent 65%);
+      pointer-events: none;
+    }
+    .cta-inner { position: relative; max-width: 720px; margin: 0 auto; text-align: center; }
+    .cta-badge {
+      display: inline-flex; align-items: center; gap: .45rem;
+      background: rgba(201,168,76,.1); border: 1px solid rgba(201,168,76,.3);
+      border-radius: 2px; padding: .35rem .9rem; margin-bottom: 1.75rem;
+    }
+    .cta-badge svg { stroke: var(--accent); width: 14px; height: 14px; }
+    .cta-badge span { color: var(--accent); font-size: .72rem; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; }
+    .cta-section h2 { font-size: clamp(2rem, 5vw, 3.5rem); margin-bottom: 1rem; }
+    .cta-sub { color: var(--muted); font-size: 1rem; line-height: 1.75; margin-bottom: 2.25rem; }
+    .btn-cta {
+      background: var(--accent); color: #0a0a0a;
+      font-family: var(--body); font-weight: 700;
+      font-size: .95rem; letter-spacing: .08em;
+      padding: 1rem 2.5rem; border-radius: 2px;
+      text-decoration: none;
+      display: inline-flex; align-items: center; gap: .6rem;
+      transition: opacity .2s;
+    }
+    .btn-cta:hover { opacity: .85; }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 1.5rem;
+    }
+    .footer-inner {
+      max-width: 1100px; margin: 0 auto;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: .75rem;
+    }
+    .footer-logo { font-family: var(--display); color: var(--accent); font-size: 1.05rem; font-weight: 500; letter-spacing: .08em; }
+    .footer-copy { color: var(--muted); font-size: .8rem; }
+
+    /* ── REVEAL ANIMATION ── */
+    .reveal {
+      opacity: 0; transform: translateY(28px);
+      transition: opacity .7s cubic-bezier(.22,1,.36,1), transform .7s cubic-bezier(.22,1,.36,1);
+    }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+    .reveal-d1 { transition-delay: .07s; }
+    .reveal-d2 { transition-delay: .14s; }
+    .reveal-d3 { transition-delay: .21s; }
+    .reveal-d4 { transition-delay: .28s; }
+    .reveal-d5 { transition-delay: .35s; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .reveal { opacity: 1; transform: none; transition: none; }
+    }
+
+    /* SVG icons inline helper */
+    .svg-icon { display: inline-block; vertical-align: middle; }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <span class="logo">LOVIC ATHLETICA GYM</span>
+    <a href="#contacto" class="btn-primary">Hablemos</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-glow"></div>
+  <div class="hero-grid"></div>
+  <div class="hero-inner">
+    <p class="eyebrow reveal">Propuesta de plataforma digital</p>
+    <h1 class="reveal reveal-d1">
+      Tu negocio de entrenamiento,<br>
+      <em>automatizado.</em>
+    </h1>
+    <p class="hero-sub reveal reveal-d2">
+      Deja de gestionar clientes por WhatsApp y Google Drive. Una plataforma con tu nombre, tus colores y tu marca — donde cada cliente tiene su perfil, su plan y su progreso.
+    </p>
+    <div class="hero-btns reveal reveal-d3">
+      <a href="#como-funciona" class="btn-hero">
+        Ver cómo funciona
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </a>
+      <a href="#contacto" class="btn-outline">Hablemos</a>
+    </div>
+  </div>
+</section>
+
+<!-- EL PROBLEMA -->
+<section class="alt">
+  <div class="container">
+    <p class="section-label reveal">El problema</p>
+    <h2 class="reveal reveal-d1">Herramientas de oficina no son<br>herramientas de negocio</h2>
+    <div class="problem-list">
+
+      <div class="problem-row reveal">
+        <div class="problem-bad">
+          <svg class="icon-bad" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          Formulario de Google Drive
+        </div>
+        <div class="problem-good">
+          <svg class="icon-good" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          Enlace único con perfil automático
+        </div>
+      </div>
+
+      <div class="problem-row reveal reveal-d1">
+        <div class="problem-bad">
+          <svg class="icon-bad" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          Plan en PDF por WhatsApp
+        </div>
+        <div class="problem-good">
+          <svg class="icon-good" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          Plan en su perfil, siempre visible
+        </div>
+      </div>
+
+      <div class="problem-row reveal reveal-d2">
+        <div class="problem-bad">
+          <svg class="icon-bad" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          Seguimiento por mensajes
+        </div>
+        <div class="problem-good">
+          <svg class="icon-good" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          Dashboard de progreso en tiempo real
+        </div>
+      </div>
+
+      <div class="problem-row reveal reveal-d3">
+        <div class="problem-bad">
+          <svg class="icon-bad" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          Sin imagen de marca propia
+        </div>
+        <div class="problem-good">
+          <svg class="icon-good" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          Plataforma con tu nombre y colores
+        </div>
+      </div>
+
+      <div class="problem-row reveal reveal-d4">
+        <div class="problem-bad">
+          <svg class="icon-bad" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          No puedes escalar sin más caos
+        </div>
+        <div class="problem-good">
+          <svg class="icon-good" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          30 clientes sin triplicar tu tiempo
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- CÓMO FUNCIONA -->
+<section id="como-funciona">
+  <div class="container">
+    <p class="section-label reveal">El flujo completo</p>
+    <h2 class="reveal reveal-d1">Cómo funciona tu plataforma</h2>
+    <div class="flow-grid">
+      <div class="flow-card reveal">
+        <div class="flow-num">01</div>
+        <div class="flow-title">Alta del cliente</div>
+        <p class="flow-desc">Tú creas al cliente desde tu panel. El sistema genera y envía automáticamente el enlace de valoración.</p>
+      </div>
+      <div class="flow-card reveal reveal-d1">
+        <div class="flow-num">02</div>
+        <div class="flow-title">Valoración inicial</div>
+        <p class="flow-desc">El cliente rellena el formulario: hábitos, alergias, objetivos, disponibilidad. En segundos, se crea su perfil.</p>
+      </div>
+      <div class="flow-card reveal reveal-d2">
+        <div class="flow-num">03</div>
+        <div class="flow-title">Notificaciones</div>
+        <p class="flow-desc">Ambos reciben email de confirmación. Tú ves la alerta: perfil listo para crear el plan.</p>
+      </div>
+      <div class="flow-card reveal reveal-d3">
+        <div class="flow-num">04</div>
+        <div class="flow-title">Tú creas el plan</div>
+        <p class="flow-desc">Accedes al perfil, cargas rutina semanal, dieta y documentos de análisis corporal.</p>
+      </div>
+      <div class="flow-card reveal reveal-d4">
+        <div class="flow-num">05</div>
+        <div class="flow-title">El cliente entrena</div>
+        <p class="flow-desc">Registra cargas, marca ejercicios, sube fotos, anota su peso. Todo en un lugar.</p>
+      </div>
+      <div class="flow-card reveal reveal-d5">
+        <div class="flow-num">06</div>
+        <div class="flow-title">Tú haces seguimiento</div>
+        <p class="flow-desc">Ves el progreso real de cada cliente en tiempo real, sin preguntar por WhatsApp.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PANEL ENTRENADOR -->
+<section class="alt">
+  <div class="container">
+    <p class="section-label reveal">Panel del entrenador</p>
+    <h2 class="has-sub reveal reveal-d1">Tu centro de control</h2>
+    <p class="section-sub reveal reveal-d2">Todo lo que necesitas para gestionar tu negocio en un solo lugar.</p>
+    <div class="feature-grid">
+
+      <div class="feature-card reveal">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <div class="feature-title">Gestión de clientes</div>
+        <p class="feature-desc">Alta, perfiles y semáforo de actividad. Verde, amarillo, rojo de un vistazo.</p>
+      </div>
+
+      <div class="feature-card reveal reveal-d1">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        </div>
+        <div class="feature-title">Creación de planes</div>
+        <p class="feature-desc">Diseña rutinas y dietas directamente en el perfil de cada cliente.</p>
+      </div>
+
+      <div class="feature-card reveal reveal-d2">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div>
+        <div class="feature-title">Bioimpedancia</div>
+        <p class="feature-desc">Sube capturas de báscula y documentos de análisis corporal.</p>
+      </div>
+
+      <div class="feature-card reveal reveal-d3">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        </div>
+        <div class="feature-title">Alertas automáticas</div>
+        <p class="feature-desc">Notificación cuando un cliente lleva 3+ días sin entrenar.</p>
+      </div>
+
+      <div class="feature-card reveal reveal-d4">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        </div>
+        <div class="feature-title">Métricas del negocio</div>
+        <p class="feature-desc">Altas del mes, retención y porcentaje de cumplimiento de planes.</p>
+      </div>
+
+      <div class="feature-card reveal reveal-d5">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </div>
+        <div class="feature-title">Notas privadas</div>
+        <p class="feature-desc">Anota observaciones sobre el cliente que solo tú puedes ver.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- PANEL CLIENTE -->
+<section>
+  <div class="container">
+    <p class="section-label reveal">Panel del cliente</p>
+    <h2 class="has-sub reveal reveal-d1">Lo que ve tu cliente</h2>
+    <p class="section-sub reveal reveal-d2">Una experiencia que ningún entrenador del gimnasio puede ofrecer.</p>
+    <div class="feature-grid">
+
+      <div class="feature-card reveal">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        </div>
+        <div class="feature-title">Mi rutina de hoy</div>
+        <p class="feature-desc">El cliente ve exactamente qué toca, con series, reps y descanso.</p>
+      </div>
+
+      <div class="feature-card reveal reveal-d1">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        </div>
+        <div class="feature-title">Registro de cargas</div>
+        <p class="feature-desc">Anota el peso usado cada semana por ejercicio. El progreso queda guardado.</p>
+      </div>
+
+      <div class="feature-card reveal reveal-d2">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2l1.578 17.578L12 22l7.422-2.422L21 2z"/><path d="M3 7h18M3 12h18"/></svg>
+        </div>
+        <div class="feature-title">Plan nutricional</div>
+        <p class="feature-desc">Macros, calorías y comidas sugeridas siempre accesibles.</p>
+      </div>
+
+      <div class="feature-card reveal reveal-d3">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        </div>
+        <div class="feature-title">Mi evolución</div>
+        <p class="feature-desc">Gráfica de peso corporal semana a semana. El progreso visible motiva.</p>
+      </div>
+
+      <div class="feature-card reveal reveal-d4">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+        </div>
+        <div class="feature-title">Mis medidas</div>
+        <p class="feature-desc">Registro de medidas corporales y fotos de progreso.</p>
+      </div>
+
+      <div class="feature-card reveal reveal-d5">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        </div>
+        <div class="feature-title">Mis objetivos</div>
+        <p class="feature-desc">El cliente sabe exactamente qué está persiguiendo y por qué.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- FASES -->
+<section class="alt">
+  <div class="container">
+    <p class="section-label reveal">Plan de trabajo</p>
+    <h2 class="reveal reveal-d1">Lo que construimos juntos</h2>
+    <div class="phases-grid">
+
+      <div class="phase-card featured reveal">
+        <div class="phase-bar"></div>
+        <div class="phase-header">
+          <div>
+            <div class="phase-num">Fase 1</div>
+            <div class="phase-title">MVP — Producto listo para usar</div>
+          </div>
+          <span class="phase-badge">6–8 semanas</span>
+        </div>
+        <ul class="phase-list">
+          <li class="phase-item"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span>Registro y login (entrenador + cliente)</span></li>
+          <li class="phase-item"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span>Enlace único de valoración</span></li>
+          <li class="phase-item"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span>Perfil del cliente con todas las pestañas</span></li>
+          <li class="phase-item"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span>Carga de plan de entrenamiento y nutrición</span></li>
+          <li class="phase-item"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span>Registro de peso y cargas por ejercicio</span></li>
+          <li class="phase-item"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span>Emails automáticos de confirmación</span></li>
+        </ul>
+      </div>
+
+      <div class="phase-card reveal reveal-d1">
+        <div class="phase-header">
+          <div>
+            <div class="phase-num">Fase 2</div>
+            <div class="phase-title">Crecimiento</div>
+          </div>
+          <span class="phase-badge">+4–6 semanas</span>
+        </div>
+        <ul class="phase-list">
+          <li class="phase-item"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span>Gráficas de progreso interactivas</span></li>
+          <li class="phase-item"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span>Chat interno entrenador ↔ cliente</span></li>
+          <li class="phase-item"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span>Biblioteca de ejercicios reutilizable</span></li>
+          <li class="phase-item"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span>Plantillas de rutinas para asignar en 2 clics</span></li>
+          <li class="phase-item"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span>Check-in semanal automatizado</span></li>
+          <li class="phase-item"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span>Alertas de inactividad</span></li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- NÚMEROS -->
+<section>
+  <div class="container">
+    <div class="numbers-grid">
+      <div class="reveal">
+        <div class="number-val">60–70%</div>
+        <p class="number-label">Reducción en tiempo de gestión</p>
+      </div>
+      <div class="reveal reveal-d1">
+        <div class="number-val">3×</div>
+        <p class="number-label">Más clientes sin más caos</p>
+      </div>
+      <div class="reveal reveal-d2">
+        <div class="number-val">100%</div>
+        <p class="number-label">Imagen profesional desde el día 1</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<div class="cta-section" id="contacto">
+  <div class="cta-glow"></div>
+  <div class="cta-inner">
+    <div class="reveal">
+      <div class="cta-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        <span>Primer paso sin compromiso</span>
+      </div>
+    </div>
+    <h2 class="reveal reveal-d1">¿Listo para tener una plataforma que trabaje por ti?</h2>
+    <p class="cta-sub reveal reveal-d2">Hablamos sin compromiso. Te explico el proceso, los tiempos y resuelvo todas tus dudas antes de arrancar.</p>
+    <div class="reveal reveal-d3">
+      <a href="mailto:hola@anaismoralesmkt.com" class="btn-cta">
+        Quiero mi plataforma
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <span class="footer-logo">LOVIC ATHLETICA GYM</span>
+    <p class="footer-copy">Propuesta de plataforma digital · 2026</p>
+  </div>
+</footer>
+
+<script>
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+        observer.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.08, rootMargin: '0px 0px -50px 0px' });
+
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+</script>
+
+</body>
+</html>
