@@ -794,22 +794,26 @@
 <script>
   // Checkboxes visuales
   document.querySelectorAll('.check-item').forEach(item => {
-    item.addEventListener('click', () => {
-      item.classList.toggle('selected');
+    item.addEventListener('click', (e) => {
+      e.preventDefault();
       const cb = item.querySelector('input[type="checkbox"]');
       cb.checked = !cb.checked;
+      item.classList.toggle('selected', cb.checked);
     });
   });
 
   // Radio buttons visuales
   document.querySelectorAll('.radio-item').forEach(item => {
-    item.addEventListener('click', () => {
-      const name = item.querySelector('input').name;
+    item.addEventListener('click', (e) => {
+      e.preventDefault();
+      const input = item.querySelector('input');
+      const name = input.name;
       document.querySelectorAll(`.radio-item input[name="${name}"]`).forEach(r => {
+        r.checked = false;
         r.closest('.radio-item').classList.remove('selected');
       });
+      input.checked = true;
       item.classList.add('selected');
-      item.querySelector('input').checked = true;
     });
   });
 
