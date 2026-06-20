@@ -251,6 +251,22 @@
     footer p { color: var(--muted); font-size: .78rem; }
     footer span { color: var(--accent); font-weight: 700; }
 
+    /* ── CAMPO CONDICIONAL ── */
+    .conditional {
+      display: none;
+      margin-top: .9rem;
+      padding: 1rem;
+      background: rgba(196,154,70,.05);
+      border-left: 2px solid var(--accent);
+      border-radius: 0 4px 4px 0;
+      animation: slideDown .25s ease;
+    }
+    .conditional.visible { display: block; }
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       * { transition: none !important; }
     }
@@ -417,6 +433,10 @@
         <label class="radio-item"><input type="radio" name="entrenado_antes" value="Sí" /><span class="radio-dot"></span>Sí</label>
         <label class="radio-item"><input type="radio" name="entrenado_antes" value="No" /><span class="radio-dot"></span>No</label>
       </div>
+      <div class="conditional" id="cond-entrenado">
+        <label style="font-size:.83rem;font-weight:600;display:block;margin-bottom:.45rem">¿Qué tipo de entrenamiento has hecho y por cuánto tiempo?</label>
+        <textarea name="detalle_entrenamiento" placeholder="Ej: Fui al gym 2 años, hacía pesas y cardio..."></textarea>
+      </div>
     </div>
     <div class="field">
       <label>¿Cuántos días entrenas por semana?</label>
@@ -441,6 +461,10 @@
         <label class="radio-item"><input type="radio" name="lesion" value="Sí" /><span class="radio-dot"></span>Sí</label>
         <label class="radio-item"><input type="radio" name="lesion" value="No" /><span class="radio-dot"></span>No</label>
       </div>
+      <div class="conditional" id="cond-lesion">
+        <label style="font-size:.83rem;font-weight:600;display:block;margin-bottom:.45rem">¿Cuál es la lesión y en qué zona del cuerpo?</label>
+        <textarea name="detalle_lesion" placeholder="Ej: Lesión de rodilla derecha hace 6 meses..."></textarea>
+      </div>
     </div>
     <div class="field">
       <label>¿Presentas alguna condición médica?</label>
@@ -450,7 +474,11 @@
         <label class="check-item"><input type="checkbox" name="condicion[]" value="Problemas articulares" /><span class="check-box"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0e0e0e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Problemas articulares</label>
         <label class="check-item"><input type="checkbox" name="condicion[]" value="Problemas hormonales" /><span class="check-box"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0e0e0e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Problemas hormonales</label>
         <label class="check-item"><input type="checkbox" name="condicion[]" value="Ansiedad / estrés" /><span class="check-box"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0e0e0e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Ansiedad / estrés</label>
-        <label class="check-item"><input type="checkbox" name="condicion[]" value="Ninguna" /><span class="check-box"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0e0e0e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Ninguna</label>
+        <label class="check-item"><input type="checkbox" name="condicion[]" value="Ninguna" id="check-ninguna" /><span class="check-box"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0e0e0e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Ninguna</label>
+      </div>
+      <div class="conditional" id="cond-condicion">
+        <label style="font-size:.83rem;font-weight:600;display:block;margin-bottom:.45rem">Cuéntanos más sobre tu condición</label>
+        <textarea name="detalle_condicion" placeholder="Ej: Tengo hipertensión controlada con medicación desde hace 2 años..."></textarea>
       </div>
     </div>
     <div class="field">
@@ -458,6 +486,10 @@
       <div class="radio-group" id="medicamentos-group">
         <label class="radio-item"><input type="radio" name="medicamentos" value="Sí" /><span class="radio-dot"></span>Sí</label>
         <label class="radio-item"><input type="radio" name="medicamentos" value="No" /><span class="radio-dot"></span>No</label>
+      </div>
+      <div class="conditional" id="cond-medicamentos">
+        <label style="font-size:.83rem;font-weight:600;display:block;margin-bottom:.45rem">¿Cuál(es) medicamento(s) tomas?</label>
+        <textarea name="detalle_medicamentos" placeholder="Ej: Metformina 500mg, Losartán 50mg..."></textarea>
       </div>
     </div>
     <div class="field">
@@ -509,6 +541,10 @@
       <div class="radio-group" id="alergias-group">
         <label class="radio-item"><input type="radio" name="alergias" value="Sí" /><span class="radio-dot"></span>Sí</label>
         <label class="radio-item"><input type="radio" name="alergias" value="No" /><span class="radio-dot"></span>No</label>
+      </div>
+      <div class="conditional" id="cond-alergias">
+        <label style="font-size:.83rem;font-weight:600;display:block;margin-bottom:.45rem">¿Cuáles son tus restricciones o alergias?</label>
+        <textarea name="detalle_alergias" placeholder="Ej: Intolerancia a la lactosa, alergia al mariscos..."></textarea>
       </div>
     </div>
     <div class="field">
@@ -659,12 +695,20 @@
           <label class="radio-item"><input type="radio" name="alcohol" value="Sí" /><span class="radio-dot"></span>Sí</label>
           <label class="radio-item"><input type="radio" name="alcohol" value="No" /><span class="radio-dot"></span>No</label>
         </div>
+        <div class="conditional" id="cond-alcohol">
+          <label style="font-size:.83rem;font-weight:600;display:block;margin-bottom:.45rem">¿Con qué frecuencia aproximadamente?</label>
+          <input type="text" name="detalle_alcohol" placeholder="Ej: Los fines de semana, 1-2 veces por semana..." />
+        </div>
       </div>
       <div class="field">
         <label>¿Fumas?</label>
         <div class="radio-group" id="fuma-group">
           <label class="radio-item"><input type="radio" name="fuma" value="Sí" /><span class="radio-dot"></span>Sí</label>
           <label class="radio-item"><input type="radio" name="fuma" value="No" /><span class="radio-dot"></span>No</label>
+        </div>
+        <div class="conditional" id="cond-fuma">
+          <label style="font-size:.83rem;font-weight:600;display:block;margin-bottom:.45rem">¿Cuántos cigarrillos al día aproximadamente?</label>
+          <input type="text" name="detalle_fuma" placeholder="Ej: 5 cigarrillos al día..." />
         </div>
       </div>
     </div>
@@ -804,10 +848,27 @@
       const cb = item.querySelector('input[type="checkbox"]');
       cb.checked = !cb.checked;
       item.classList.toggle('selected', cb.checked);
+
+      // Condición médica: mostrar campo extra si hay algo distinto a Ninguna
+      if (cb.name === 'condicion[]') {
+        const checks = document.querySelectorAll('input[name="condicion[]"]:checked');
+        const hasCondition = Array.from(checks).some(c => c.value !== 'Ninguna');
+        const cond = document.getElementById('cond-condicion');
+        if (cond) cond.classList.toggle('visible', hasCondition);
+      }
     });
   });
 
-  // Radio buttons visuales
+  // Radio buttons visuales + campos condicionales
+  const conditionalRadios = {
+    'entrenado_antes': 'cond-entrenado',
+    'lesion':          'cond-lesion',
+    'medicamentos':    'cond-medicamentos',
+    'alergias':        'cond-alergias',
+    'alcohol':         'cond-alcohol',
+    'fuma':            'cond-fuma',
+  };
+
   document.querySelectorAll('.radio-item').forEach(item => {
     item.addEventListener('click', (e) => {
       e.preventDefault();
@@ -819,6 +880,25 @@
       });
       input.checked = true;
       item.classList.add('selected');
+
+      // Mostrar/ocultar campo condicional
+      if (conditionalRadios[name]) {
+        const cond = document.getElementById(conditionalRadios[name]);
+        if (cond) {
+          const show = input.value === 'Sí';
+          cond.classList.toggle('visible', show);
+        }
+      }
+    });
+  });
+
+  // Condición médica — mostrar si marca algo distinto a "Ninguna"
+  document.querySelectorAll('input[name="condicion[]"]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const checks = document.querySelectorAll('input[name="condicion[]"]:checked');
+      const hasCondition = Array.from(checks).some(c => c.value !== 'Ninguna');
+      const cond = document.getElementById('cond-condicion');
+      if (cond) cond.classList.toggle('visible', hasCondition);
     });
   });
 
