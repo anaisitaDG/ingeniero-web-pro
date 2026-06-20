@@ -310,7 +310,7 @@
 <form id="valoracion-form" action="https://formspree.io/f/mpqevorz" method="POST">
 
   <!-- Campos ocultos para checkboxes -->
-  <input type="hidden" name="_subject" value="Nueva Valoración — Lovic Athletica Gym" />
+  <input type="hidden" name="_subject" id="form-subject" value="Nueva Valoración — Lovic Athletica Gym" />
 
   <!-- 1. INFORMACIÓN PERSONAL -->
   <div class="section-block">
@@ -900,6 +900,14 @@
       const cond = document.getElementById('cond-condicion');
       if (cond) cond.classList.toggle('visible', hasCondition);
     });
+  });
+
+  // Asunto dinámico con nombre
+  document.querySelector('input[name="nombre"]').addEventListener('input', (e) => {
+    const nombre = e.target.value.trim();
+    document.getElementById('form-subject').value = nombre
+      ? `Valoración — ${nombre}`
+      : 'Nueva Valoración — Lovic Athletica Gym';
   });
 
   // Escala 1-10
