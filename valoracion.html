@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Valoración Inicial — Lovic Athletica Gym</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0e0e0e;
+      --bg2:      #161616;
+      --card:     #1c1c1c;
+      --border:   #2e2e2e;
+      --accent:   #C49A46;
+      --accent-d: #8a6b2e;
+      --text:     #f0ece4;
+      --muted:    #888880;
+      --error:    #e05555;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ── */
+    header {
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      padding: 1.25rem 1.5rem;
+      text-align: center;
+      position: sticky; top: 0; z-index: 50;
+      backdrop-filter: blur(10px);
+    }
+    .logo-wrap { display: inline-flex; align-items: center; gap: .6rem; }
+    .logo-icon {
+      width: 36px; height: 36px;
+      background: var(--accent);
+      border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; font-weight: 800; color: #0e0e0e;
+    }
+    .logo-text { font-size: 1.1rem; font-weight: 800; letter-spacing: .12em; color: var(--accent); }
+    .logo-sub { font-size: .65rem; font-weight: 500; letter-spacing: .18em; color: var(--muted); text-transform: uppercase; display: block; text-align: left; }
+
+    /* ── HERO ── */
+    .hero {
+      background: linear-gradient(180deg, rgba(196,154,70,.07) 0%, transparent 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 3.5rem 1.5rem 3rem;
+      text-align: center;
+    }
+    .hero-tag {
+      display: inline-block;
+      background: rgba(196,154,70,.12); border: 1px solid rgba(196,154,70,.3);
+      color: var(--accent); font-size: .72rem; font-weight: 700;
+      letter-spacing: .2em; text-transform: uppercase;
+      padding: .35rem 1rem; border-radius: 2px; margin-bottom: 1.25rem;
+    }
+    .hero h1 {
+      font-size: clamp(1.7rem, 4vw, 2.5rem);
+      font-weight: 800; letter-spacing: -.01em;
+      color: #fff; margin-bottom: .75rem;
+    }
+    .hero h1 span { color: var(--accent); }
+    .hero p {
+      color: var(--muted); font-size: .97rem; line-height: 1.75;
+      max-width: 560px; margin: 0 auto;
+      font-style: italic;
+    }
+
+    /* ── FORM WRAPPER ── */
+    .form-wrap {
+      max-width: 760px; margin: 0 auto;
+      padding: 2.5rem 1.5rem 5rem;
+    }
+
+    /* ── SECTION BLOCK ── */
+    .section-block {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 2rem;
+      margin-bottom: 1.5rem;
+    }
+    .section-title {
+      display: flex; align-items: center; gap: .75rem;
+      margin-bottom: 1.5rem; padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .section-num {
+      width: 28px; height: 28px; flex-shrink: 0;
+      background: rgba(196,154,70,.15); border: 1px solid rgba(196,154,70,.4);
+      border-radius: 3px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .75rem; font-weight: 700; color: var(--accent);
+    }
+    .section-title h2 {
+      font-size: .88rem; font-weight: 700;
+      letter-spacing: .12em; text-transform: uppercase; color: var(--accent);
+    }
+
+    /* ── FIELD ── */
+    .field { margin-bottom: 1.25rem; }
+    .field:last-child { margin-bottom: 0; }
+    .field label {
+      display: block; font-size: .83rem; font-weight: 600;
+      color: var(--text); margin-bottom: .45rem; letter-spacing: .01em;
+    }
+    .field label .req { color: var(--accent); margin-left: 2px; }
+
+    .field input[type="text"],
+    .field input[type="email"],
+    .field input[type="tel"],
+    .field input[type="number"],
+    .field input[type="date"],
+    .field textarea,
+    .field select {
+      width: 100%;
+      background: var(--bg2); border: 1px solid var(--border);
+      color: var(--text); font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: .9rem; padding: .7rem 1rem;
+      border-radius: 4px; outline: none;
+      transition: border-color .2s;
+      appearance: none;
+    }
+    .field input:focus,
+    .field textarea:focus,
+    .field select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(196,154,70,.1);
+    }
+    .field input::placeholder,
+    .field textarea::placeholder { color: var(--muted); }
+    .field textarea { resize: vertical; min-height: 90px; }
+
+    /* grid 2 cols */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+    @media (max-width: 600px) {
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    }
+
+    /* ── CHECKBOX / RADIO GROUPS ── */
+    .check-group, .radio-group {
+      display: flex; flex-wrap: wrap; gap: .6rem;
+    }
+    .check-group.col { flex-direction: column; gap: .5rem; }
+
+    .check-item, .radio-item {
+      display: flex; align-items: center; gap: .55rem;
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 4px; padding: .55rem .9rem;
+      cursor: pointer; transition: border-color .15s, background .15s;
+      font-size: .85rem; color: var(--muted); user-select: none;
+    }
+    .check-item:hover, .radio-item:hover {
+      border-color: var(--accent-d); color: var(--text);
+    }
+    .check-item input, .radio-item input { display: none; }
+    .check-item.selected, .radio-item.selected {
+      border-color: var(--accent);
+      background: rgba(196,154,70,.1);
+      color: var(--text);
+    }
+    .check-box {
+      width: 16px; height: 16px; flex-shrink: 0;
+      border: 1.5px solid var(--border); border-radius: 3px;
+      display: flex; align-items: center; justify-content: center;
+      transition: border-color .15s, background .15s;
+    }
+    .check-item.selected .check-box {
+      background: var(--accent); border-color: var(--accent);
+    }
+    .check-box svg { display: none; }
+    .check-item.selected .check-box svg { display: block; }
+    .radio-dot {
+      width: 16px; height: 16px; flex-shrink: 0;
+      border: 1.5px solid var(--border); border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      transition: border-color .15s;
+    }
+    .radio-item.selected .radio-dot { border-color: var(--accent); }
+    .radio-dot::after {
+      content: ''; width: 8px; height: 8px; border-radius: 50%;
+      background: var(--accent); display: none;
+    }
+    .radio-item.selected .radio-dot::after { display: block; }
+
+    /* ── SCALE 1-10 ── */
+    .scale-group {
+      display: flex; gap: .4rem; flex-wrap: wrap;
+    }
+    .scale-item {
+      width: 42px; height: 42px;
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: .88rem; font-weight: 600; color: var(--muted);
+      transition: all .15s; user-select: none;
+    }
+    .scale-item:hover { border-color: var(--accent-d); color: var(--text); }
+    .scale-item.selected { background: var(--accent); border-color: var(--accent); color: #0e0e0e; }
+
+    /* ── SUBMIT ── */
+    .submit-wrap { text-align: center; margin-top: 2rem; }
+    .btn-submit {
+      background: var(--accent); color: #0e0e0e;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: .95rem; font-weight: 800;
+      letter-spacing: .08em; text-transform: uppercase;
+      padding: 1rem 3rem; border: none; border-radius: 4px;
+      cursor: pointer; transition: opacity .2s;
+      display: inline-flex; align-items: center; gap: .6rem;
+    }
+    .btn-submit:hover { opacity: .85; }
+    .btn-submit:disabled { opacity: .5; cursor: not-allowed; }
+    .submit-note {
+      color: var(--muted); font-size: .78rem; margin-top: .75rem;
+    }
+
+    /* ── SUCCESS ── */
+    #success-msg {
+      display: none;
+      background: rgba(196,154,70,.08); border: 1px solid rgba(196,154,70,.4);
+      border-radius: 6px; padding: 2rem; text-align: center; margin-top: 1.5rem;
+    }
+    #success-msg h3 { color: var(--accent); font-size: 1.1rem; margin-bottom: .5rem; }
+    #success-msg p { color: var(--muted); font-size: .9rem; }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 1.25rem 1.5rem; text-align: center;
+    }
+    footer p { color: var(--muted); font-size: .78rem; }
+    footer span { color: var(--accent); font-weight: 700; }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo-wrap">
+    <div class="logo-icon">L</div>
+    <div>
+      <span class="logo-text">LOVIC</span>
+      <span class="logo-sub">Athletica Gym</span>
+    </div>
+  </div>
+</header>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-tag">✦ Valoración Inicial ✦</div>
+  <h1>Fitness Assessment &<br><span>Athlete Profile</span></h1>
+  <p>"Tu proceso comienza con una valoración diseñada para conocer tu cuerpo, tus objetivos y crear una experiencia de entrenamiento personalizada, segura y efectiva."</p>
+</div>
+
+<!-- FORM -->
+<div class="form-wrap">
+<form id="valoracion-form" action="https://formspree.io/f/mpqevorz" method="POST">
+
+  <!-- Campos ocultos para checkboxes -->
+  <input type="hidden" name="_subject" value="Nueva Valoración — Lovic Athletica Gym" />
+
+  <!-- 1. INFORMACIÓN PERSONAL -->
+  <div class="section-block">
+    <div class="section-title">
+      <div class="section-num">1</div>
+      <h2>Información Personal</h2>
+    </div>
+    <div class="grid-2">
+      <div class="field">
+        <label>Nombre completo <span class="req">*</span></label>
+        <input type="text" name="nombre" required placeholder="Tu nombre completo" />
+      </div>
+      <div class="field">
+        <label>Edad <span class="req">*</span></label>
+        <input type="number" name="edad" required placeholder="Ej: 28" min="10" max="99" />
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="field">
+        <label>Fecha de nacimiento</label>
+        <input type="date" name="fecha_nacimiento" />
+      </div>
+      <div class="field">
+        <label>Ocupación</label>
+        <input type="text" name="ocupacion" placeholder="Tu ocupación" />
+      </div>
+    </div>
+    <div class="grid-3">
+      <div class="field">
+        <label>Estatura (cm)</label>
+        <input type="number" name="estatura" placeholder="Ej: 165" />
+      </div>
+      <div class="field">
+        <label>Peso actual (kg)</label>
+        <input type="number" name="peso" placeholder="Ej: 65" />
+      </div>
+      <div class="field">
+        <label>Ciudad</label>
+        <input type="text" name="ciudad" placeholder="Bogotá" />
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="field">
+        <label>Correo electrónico <span class="req">*</span></label>
+        <input type="email" name="email" required placeholder="tu@correo.com" />
+      </div>
+      <div class="field">
+        <label>Número de contacto <span class="req">*</span></label>
+        <input type="tel" name="telefono" required placeholder="+57 300 000 0000" />
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. OBJETIVO PRINCIPAL -->
+  <div class="section-block">
+    <div class="section-title">
+      <div class="section-num">2</div>
+      <h2>Objetivo Principal</h2>
+    </div>
+    <div class="field">
+      <label>¿Cuál es tu meta principal actualmente? <span class="req">*</span></label>
+      <div class="check-group" id="objetivo-group">
+        <label class="check-item">
+          <input type="checkbox" name="objetivo[]" value="Pérdida de grasa" />
+          <span class="check-box"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0e0e0e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          Pérdida de grasa
+        </label>
+        <label class="check-item">
+          <input type="checkbox" name="objetivo[]" value="Aumento de masa muscular" />
+          <span class="check-box"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0e0e0e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          Aumento de masa muscular
+        </label>
+        <label class="check-item">
+          <input type="checkbox" name="objetivo[]" value="Definición muscular" />
+          <span class="check-box"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0e0e0e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          Definición muscular
+        </label>
+        <label class="check-item">
+          <input type="checkbox" name="objetivo[]" value="Recomposición corporal" />
+          <span class="check-box"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0e0e0e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          Recomposición corporal
+        </label>
+        <label class="check-item">
+          <input type="checkbox" name="objetivo[]" value="Mejorar rendimiento deportivo" />
+          <span class="check-box"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0e0e0e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          Mejorar rendimiento deportivo
+        </label>
+        <label class="check-item">
+          <input type="checkbox" name="objetivo[]" value="Salud y bienestar" />
+          <span class="check-box"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0e0e0e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          Salud y bienestar
+        </label>
+        <label class="check-item">
+          <input type="checkbox" name="objetivo[]" value="Preparación para competencia" />
+          <span class="check-box"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0e0e0e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          Preparación para competencia
+        </label>
+      </div>
+    </div>
+    <div class="field" style="margin-top:1.25rem">
+      <label>¿En cuánto tiempo deseas lograrlo?</label>
+      <div class="radio-group" id="tiempo-group">
+        <label class="radio-item"><input type="radio" name="tiempo_objetivo" value="3 meses" /><span class="radio-dot"></span>3 meses</label>
+        <label class="radio-item"><input type="radio" name="tiempo_objetivo" value="6 meses" /><span class="radio-dot"></span>6 meses</label>
+        <label class="radio-item"><input type="radio" name="tiempo_objetivo" value="1 año" /><span class="radio-dot"></span>1 año</label>
+        <label class="radio-item"><input type="radio" name="tiempo_objetivo" value="Más de 1 año" /><span class="radio-dot"></span>Más de 1 año</label>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. EXPERIENCIA -->
+  <div class="section-block">
+    <div class="section-title">
+      <div class="section-num">3</div>
+      <h2>Experiencia en Entrenamiento</h2>
+    </div>
+    <div class="field">
+      <label>¿Has entrenado anteriormente?</label>
+      <div class="radio-group" id="entreno-group">
+        <label class="radio-item"><input type="radio" name="entrenado_antes" value="Sí" /><span class="radio-dot"></span>Sí</label>
+        <label class="radio-item"><input type="radio" name="entrenado_antes" value="No" /><span class="radio-dot"></span>No</label>
+      </div>
+    </div>
+    <div class="field">
+      <label>¿Cuántos días entrenas por semana?</label>
+      <div class="radio-group" id="dias-group">
+        <label class="radio-item"><input type="radio" name="dias_semana" value="1-2 días" /><span class="radio-dot"></span>1–2 días</label>
+        <label class="radio-item"><input type="radio" name="dias_semana" value="3-4 días" /><span class="radio-dot"></span>3–4 días</label>
+        <label class="radio-item"><input type="radio" name="dias_semana" value="5-6 días" /><span class="radio-dot"></span>5–6 días</label>
+        <label class="radio-item"><input type="radio" name="dias_semana" value="Todos los días" /><span class="radio-dot"></span>Todos los días</label>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. SALUD -->
+  <div class="section-block">
+    <div class="section-title">
+      <div class="section-num">4</div>
+      <h2>Salud y Condición Física</h2>
+    </div>
+    <div class="field">
+      <label>¿Tienes alguna lesión actual o previa?</label>
+      <div class="radio-group" id="lesion-group">
+        <label class="radio-item"><input type="radio" name="lesion" value="Sí" /><span class="radio-dot"></span>Sí</label>
+        <label class="radio-item"><input type="radio" name="lesion" value="No" /><span class="radio-dot"></span>No</label>
+      </div>
+    </div>
+    <div class="field">
+      <label>¿Presentas alguna condición médica?</label>
+      <div class="check-group" id="condicion-group">
+        <label class="check-item"><input type="checkbox" name="condicion[]" value="Hipertensión" /><span class="check-box"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0e0e0e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Hipertensión</label>
+        <label class="check-item"><input type="checkbox" name="condicion[]" value="Diabetes" /><span class="check-box"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0e0e0e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Diabetes</label>
+        <label class="check-item"><input type="checkbox" name="condicion[]" value="Problemas articulares" /><span class="check-box"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0e0e0e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Problemas articulares</label>
+        <label class="check-item"><input type="checkbox" name="condicion[]" value="Problemas hormonales" /><span class="check-box"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0e0e0e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Problemas hormonales</label>
+        <label class="check-item"><input type="checkbox" name="condicion[]" value="Ansiedad / estrés" /><span class="check-box"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0e0e0e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Ansiedad / estrés</label>
+        <label class="check-item"><input type="checkbox" name="condicion[]" value="Ninguna" /><span class="check-box"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0e0e0e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Ninguna</label>
+      </div>
+    </div>
+    <div class="field">
+      <label>¿Tomas medicamentos actualmente?</label>
+      <div class="radio-group" id="medicamentos-group">
+        <label class="radio-item"><input type="radio" name="medicamentos" value="Sí" /><span class="radio-dot"></span>Sí</label>
+        <label class="radio-item"><input type="radio" name="medicamentos" value="No" /><span class="radio-dot"></span>No</label>
+      </div>
+    </div>
+    <div class="field">
+      <label>Nivel de energía actual</label>
+      <div class="radio-group" id="energia-group">
+        <label class="radio-item"><input type="radio" name="energia" value="Muy bajo" /><span class="radio-dot"></span>Muy bajo</label>
+        <label class="radio-item"><input type="radio" name="energia" value="Bajo" /><span class="radio-dot"></span>Bajo</label>
+        <label class="radio-item"><input type="radio" name="energia" value="Medio" /><span class="radio-dot"></span>Medio</label>
+        <label class="radio-item"><input type="radio" name="energia" value="Alto" /><span class="radio-dot"></span>Alto</label>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. HÁBITOS ALIMENTICIOS -->
+  <div class="section-block">
+    <div class="section-title">
+      <div class="section-num">5</div>
+      <h2>Hábitos Alimenticios</h2>
+    </div>
+    <div class="field">
+      <label>¿Cómo consideras tu alimentación actualmente?</label>
+      <div class="radio-group" id="alimentacion-group">
+        <label class="radio-item"><input type="radio" name="calidad_alimentacion" value="Excelente" /><span class="radio-dot"></span>Excelente</label>
+        <label class="radio-item"><input type="radio" name="calidad_alimentacion" value="Buena" /><span class="radio-dot"></span>Buena</label>
+        <label class="radio-item"><input type="radio" name="calidad_alimentacion" value="Regular" /><span class="radio-dot"></span>Regular</label>
+        <label class="radio-item"><input type="radio" name="calidad_alimentacion" value="Mala" /><span class="radio-dot"></span>Mala</label>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="field">
+        <label>¿Cuántas comidas haces al día?</label>
+        <div class="radio-group" id="comidas-group">
+          <label class="radio-item"><input type="radio" name="comidas_dia" value="1-2" /><span class="radio-dot"></span>1–2</label>
+          <label class="radio-item"><input type="radio" name="comidas_dia" value="3" /><span class="radio-dot"></span>3</label>
+          <label class="radio-item"><input type="radio" name="comidas_dia" value="4-5" /><span class="radio-dot"></span>4–5</label>
+          <label class="radio-item"><input type="radio" name="comidas_dia" value="+6" /><span class="radio-dot"></span>+6</label>
+        </div>
+      </div>
+      <div class="field">
+        <label>¿Consumes suficiente agua diariamente?</label>
+        <div class="radio-group" id="agua-group">
+          <label class="radio-item"><input type="radio" name="agua" value="Sí" /><span class="radio-dot"></span>Sí</label>
+          <label class="radio-item"><input type="radio" name="agua" value="No" /><span class="radio-dot"></span>No</label>
+        </div>
+      </div>
+    </div>
+    <div class="field">
+      <label>¿Tienes restricciones alimenticias o alergias?</label>
+      <div class="radio-group" id="alergias-group">
+        <label class="radio-item"><input type="radio" name="alergias" value="Sí" /><span class="radio-dot"></span>Sí</label>
+        <label class="radio-item"><input type="radio" name="alergias" value="No" /><span class="radio-dot"></span>No</label>
+      </div>
+    </div>
+    <div class="field">
+      <label>¿Realizas desayuno diariamente?</label>
+      <div class="radio-group" id="desayuno-group">
+        <label class="radio-item"><input type="radio" name="desayuno" value="Sí" /><span class="radio-dot"></span>Sí</label>
+        <label class="radio-item"><input type="radio" name="desayuno" value="No" /><span class="radio-dot"></span>No</label>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="field">
+        <label>¿A qué hora realizas tu primera comida?</label>
+        <input type="text" name="hora_primera_comida" placeholder="Ej: 8:00 am" />
+      </div>
+      <div class="field">
+        <label>¿A qué hora realizas tu última comida?</label>
+        <input type="text" name="hora_ultima_comida" placeholder="Ej: 8:00 pm" />
+      </div>
+    </div>
+    <div class="field">
+      <label>¿Estás dispuesto(a) a seguir un plan personalizado?</label>
+      <div class="radio-group" id="plan-group">
+        <label class="radio-item"><input type="radio" name="dispuesto_plan" value="Sí" /><span class="radio-dot"></span>Sí</label>
+        <label class="radio-item"><input type="radio" name="dispuesto_plan" value="No" /><span class="radio-dot"></span>No</label>
+      </div>
+    </div>
+  </div>
+
+  <!-- PREFERENCIAS ALIMENTARIAS -->
+  <div class="section-block">
+    <div class="section-title">
+      <div class="section-num">6</div>
+      <h2>Preferencias Alimentarias</h2>
+    </div>
+    <div class="field">
+      <label>Proteínas que consumes con frecuencia</label>
+      <div class="check-group" id="proteinas-group">
+        <label class="check-item"><input type="checkbox" name="proteinas[]" value="Pollo" /><span class="check-box"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0e0e0e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Pollo</label>
+        <label class="check-item"><input type="checkbox" name="proteinas[]" value="Carne de res" /><span class="check-box"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0e0e0e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Carne de res</label>
+        <label class="check-item"><input type="checkbox" name="proteinas[]" value="Pescado" /><span class="check-box"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0e0e0e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Pescado</label>
+        <label class="check-item"><input type="checkbox" name="proteinas[]" value="Atún" /><span class="check-box"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0e0e0e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Atún</label>
+        <label class="check-item"><input type="checkbox" name="proteinas[]" value="Huevos" /><span class="check-box"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0e0e0e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Huevos</label>
+        <label class="check-item"><input type="checkbox" name="proteinas[]" value="Lácteos" /><span class="check-box"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0e0e0e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Lácteos</label>
+      </div>
+    </div>
+    <div class="field">
+      <label>Carbohidratos que consumes con frecuencia</label>
+      <div class="check-group" id="carbos-group">
+        <label class="check-item"><input type="checkbox" name="carbos[]" value="Arroz" /><span class="check-box"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0e0e0e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Arroz</label>
+        <label class="check-item"><input type="checkbox" name="carbos[]" value="Papa" /><span class="check-box"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0e0e0e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Papa</label>
+        <label class="check-item"><input type="checkbox" name="carbos[]" value="Papa criolla" /><span class="check-box"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0e0e0e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Papa criolla</label>
+        <label class="check-item"><input type="checkbox" name="carbos[]" value="Yuca" /><span class="check-box"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0e0e0e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Yuca</label>
+        <label class="check-item"><input type="checkbox" name="carbos[]" value="Avena" /><span class="check-box"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0e0e0e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Avena</label>
+        <label class="check-item"><input type="checkbox" name="carbos[]" value="Pasta" /><span class="check-box"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0e0e0e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Pasta</label>
+        <label class="check-item"><input type="checkbox" name="carbos[]" value="Frutas" /><span class="check-box"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0e0e0e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Frutas</label>
+      </div>
+    </div>
+    <div class="field">
+      <label>Grasas saludables que consumes</label>
+      <div class="check-group" id="grasas-group">
+        <label class="check-item"><input type="checkbox" name="grasas[]" value="Aguacate" /><span class="check-box"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0e0e0e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Aguacate</label>
+        <label class="check-item"><input type="checkbox" name="grasas[]" value="Frutos secos" /><span class="check-box"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0e0e0e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Frutos secos</label>
+        <label class="check-item"><input type="checkbox" name="grasas[]" value="Mantequilla de maní" /><span class="check-box"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0e0e0e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Mantequilla de maní</label>
+        <label class="check-item"><input type="checkbox" name="grasas[]" value="Aceite de oliva" /><span class="check-box"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0e0e0e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Aceite de oliva</label>
+        <label class="check-item"><input type="checkbox" name="grasas[]" value="Semillas" /><span class="check-box"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0e0e0e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Semillas</label>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="field">
+        <label>Porciones de fruta al día</label>
+        <div class="radio-group" id="frutas-group">
+          <label class="radio-item"><input type="radio" name="frutas_dia" value="Ninguna" /><span class="radio-dot"></span>Ninguna</label>
+          <label class="radio-item"><input type="radio" name="frutas_dia" value="1" /><span class="radio-dot"></span>1</label>
+          <label class="radio-item"><input type="radio" name="frutas_dia" value="2" /><span class="radio-dot"></span>2</label>
+          <label class="radio-item"><input type="radio" name="frutas_dia" value="3 o más" /><span class="radio-dot"></span>3+</label>
+        </div>
+      </div>
+      <div class="field">
+        <label>Porciones de verduras al día</label>
+        <div class="radio-group" id="verduras-group">
+          <label class="radio-item"><input type="radio" name="verduras_dia" value="Ninguna" /><span class="radio-dot"></span>Ninguna</label>
+          <label class="radio-item"><input type="radio" name="verduras_dia" value="1" /><span class="radio-dot"></span>1</label>
+          <label class="radio-item"><input type="radio" name="verduras_dia" value="2" /><span class="radio-dot"></span>2</label>
+          <label class="radio-item"><input type="radio" name="verduras_dia" value="3 o más" /><span class="radio-dot"></span>3+</label>
+        </div>
+      </div>
+    </div>
+    <div class="field">
+      <label>¿Con qué frecuencia consumes comida rápida?</label>
+      <div class="radio-group" id="comida-rapida-group">
+        <label class="radio-item"><input type="radio" name="comida_rapida" value="Nunca" /><span class="radio-dot"></span>Nunca</label>
+        <label class="radio-item"><input type="radio" name="comida_rapida" value="1 vez/semana" /><span class="radio-dot"></span>1 vez/semana</label>
+        <label class="radio-item"><input type="radio" name="comida_rapida" value="2-3 veces/semana" /><span class="radio-dot"></span>2–3 veces/semana</label>
+        <label class="radio-item"><input type="radio" name="comida_rapida" value="+3 veces/semana" /><span class="radio-dot"></span>+3 veces/semana</label>
+      </div>
+    </div>
+    <div class="field">
+      <label>¿Con qué frecuencia consumes bebidas azucaradas?</label>
+      <div class="radio-group" id="azucaradas-group">
+        <label class="radio-item"><input type="radio" name="bebidas_azucaradas" value="Nunca" /><span class="radio-dot"></span>Nunca</label>
+        <label class="radio-item"><input type="radio" name="bebidas_azucaradas" value="Ocasionalmente" /><span class="radio-dot"></span>Ocasionalmente</label>
+        <label class="radio-item"><input type="radio" name="bebidas_azucaradas" value="Frecuentemente" /><span class="radio-dot"></span>Frecuentemente</label>
+      </div>
+    </div>
+    <div class="field">
+      <label>¿Cuál es tu mayor antojo?</label>
+      <div class="check-group" id="antojo-group">
+        <label class="check-item"><input type="checkbox" name="antojo[]" value="Dulces" /><span class="check-box"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0e0e0e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Dulces</label>
+        <label class="check-item"><input type="checkbox" name="antojo[]" value="Chocolate" /><span class="check-box"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0e0e0e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Chocolate</label>
+        <label class="check-item"><input type="checkbox" name="antojo[]" value="Panadería" /><span class="check-box"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0e0e0e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Panadería</label>
+        <label class="check-item"><input type="checkbox" name="antojo[]" value="Gaseosas" /><span class="check-box"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0e0e0e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Gaseosas</label>
+        <label class="check-item"><input type="checkbox" name="antojo[]" value="Comida rápida" /><span class="check-box"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0e0e0e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Comida rápida</label>
+      </div>
+    </div>
+    <div class="field">
+      <label>¿Hay alimentos que no te gusten o prefieras evitar?</label>
+      <textarea name="alimentos_evitar" placeholder="Descríbelos aquí..."></textarea>
+    </div>
+  </div>
+
+  <!-- 7. DESCANSO Y ESTILO DE VIDA -->
+  <div class="section-block">
+    <div class="section-title">
+      <div class="section-num">7</div>
+      <h2>Descanso y Estilo de Vida</h2>
+    </div>
+    <div class="field">
+      <label>¿Cuántas horas duermes al día?</label>
+      <div class="radio-group" id="sueno-group">
+        <label class="radio-item"><input type="radio" name="horas_sueno" value="Menos de 5h" /><span class="radio-dot"></span>Menos de 5h</label>
+        <label class="radio-item"><input type="radio" name="horas_sueno" value="6h" /><span class="radio-dot"></span>6h</label>
+        <label class="radio-item"><input type="radio" name="horas_sueno" value="7h" /><span class="radio-dot"></span>7h</label>
+        <label class="radio-item"><input type="radio" name="horas_sueno" value="8h o más" /><span class="radio-dot"></span>8h o más</label>
+      </div>
+    </div>
+    <div class="field">
+      <label>Nivel de estrés actual</label>
+      <div class="radio-group" id="estres-group">
+        <label class="radio-item"><input type="radio" name="estres" value="Bajo" /><span class="radio-dot"></span>Bajo</label>
+        <label class="radio-item"><input type="radio" name="estres" value="Medio" /><span class="radio-dot"></span>Medio</label>
+        <label class="radio-item"><input type="radio" name="estres" value="Alto" /><span class="radio-dot"></span>Alto</label>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="field">
+        <label>¿Consumes alcohol frecuentemente?</label>
+        <div class="radio-group" id="alcohol-group">
+          <label class="radio-item"><input type="radio" name="alcohol" value="Sí" /><span class="radio-dot"></span>Sí</label>
+          <label class="radio-item"><input type="radio" name="alcohol" value="No" /><span class="radio-dot"></span>No</label>
+        </div>
+      </div>
+      <div class="field">
+        <label>¿Fumas?</label>
+        <div class="radio-group" id="fuma-group">
+          <label class="radio-item"><input type="radio" name="fuma" value="Sí" /><span class="radio-dot"></span>Sí</label>
+          <label class="radio-item"><input type="radio" name="fuma" value="No" /><span class="radio-dot"></span>No</label>
+        </div>
+      </div>
+    </div>
+    <div class="field">
+      <label>¿Quién prepara tus comidas?</label>
+      <div class="radio-group" id="prepara-group">
+        <label class="radio-item"><input type="radio" name="prepara_comidas" value="Yo mismo(a)" /><span class="radio-dot"></span>Yo mismo(a)</label>
+        <label class="radio-item"><input type="radio" name="prepara_comidas" value="Familiar" /><span class="radio-dot"></span>Familiar</label>
+        <label class="radio-item"><input type="radio" name="prepara_comidas" value="Restaurante" /><span class="radio-dot"></span>Restaurante</label>
+        <label class="radio-item"><input type="radio" name="prepara_comidas" value="Compro comida preparada" /><span class="radio-dot"></span>Comida preparada</label>
+      </div>
+    </div>
+    <div class="field">
+      <label>¿Cuánto tiempo puedes dedicar a preparar alimentos?</label>
+      <div class="radio-group" id="tiempo-comida-group">
+        <label class="radio-item"><input type="radio" name="tiempo_cocina" value="Menos de 15 min" /><span class="radio-dot"></span>Menos de 15 min</label>
+        <label class="radio-item"><input type="radio" name="tiempo_cocina" value="15-30 min" /><span class="radio-dot"></span>15–30 min</label>
+        <label class="radio-item"><input type="radio" name="tiempo_cocina" value="30-60 min" /><span class="radio-dot"></span>30–60 min</label>
+        <label class="radio-item"><input type="radio" name="tiempo_cocina" value="Más de 1 hora" /><span class="radio-dot"></span>Más de 1 hora</label>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8. MOTIVACIÓN -->
+  <div class="section-block">
+    <div class="section-title">
+      <div class="section-num">8</div>
+      <h2>Motivación y Disciplina</h2>
+    </div>
+    <div class="field">
+      <label>¿Qué te motivó a iniciar este proceso?</label>
+      <textarea name="motivacion" placeholder="Cuéntanos..."></textarea>
+    </div>
+    <div class="field">
+      <label>¿Qué esperas lograr física y mentalmente?</label>
+      <textarea name="expectativas" placeholder="Cuéntanos..."></textarea>
+    </div>
+    <div class="field">
+      <label>¿Qué te ha impedido alcanzar este objetivo anteriormente?</label>
+      <textarea name="obstaculos" placeholder="Cuéntanos..."></textarea>
+    </div>
+    <div class="field">
+      <label>Del 1 al 10, ¿qué tan comprometido(a) estás con tu proceso?</label>
+      <div class="scale-group" id="compromiso-group">
+        <div class="scale-item" data-value="1">1</div>
+        <div class="scale-item" data-value="2">2</div>
+        <div class="scale-item" data-value="3">3</div>
+        <div class="scale-item" data-value="4">4</div>
+        <div class="scale-item" data-value="5">5</div>
+        <div class="scale-item" data-value="6">6</div>
+        <div class="scale-item" data-value="7">7</div>
+        <div class="scale-item" data-value="8">8</div>
+        <div class="scale-item" data-value="9">9</div>
+        <div class="scale-item" data-value="10">10</div>
+      </div>
+      <input type="hidden" name="nivel_compromiso" id="compromiso-val" />
+    </div>
+  </div>
+
+  <!-- 9. EVALUACIÓN FÍSICA -->
+  <div class="section-block">
+    <div class="section-title">
+      <div class="section-num">9</div>
+      <h2>Evaluación Física — Medidas Corporales</h2>
+    </div>
+    <div class="grid-3">
+      <div class="field">
+        <label>Brazo (cm)</label>
+        <input type="text" name="medida_brazo" placeholder="Ej: 30 cm" />
+      </div>
+      <div class="field">
+        <label>Pecho / Espalda (cm)</label>
+        <input type="text" name="medida_pecho" placeholder="Ej: 90 cm" />
+      </div>
+      <div class="field">
+        <label>Cintura (cm)</label>
+        <input type="text" name="medida_cintura" placeholder="Ej: 70 cm" />
+      </div>
+      <div class="field">
+        <label>Cadera (cm)</label>
+        <input type="text" name="medida_cadera" placeholder="Ej: 95 cm" />
+      </div>
+      <div class="field">
+        <label>Pierna (cm)</label>
+        <input type="text" name="medida_pierna" placeholder="Ej: 55 cm" />
+      </div>
+      <div class="field">
+        <label>Pantorrilla (cm)</label>
+        <input type="text" name="medida_pantorrilla" placeholder="Ej: 35 cm" />
+      </div>
+    </div>
+    <div class="field">
+      <label>Antebrazo (cm)</label>
+      <input type="text" name="medida_antebrazo" placeholder="Ej: 25 cm" style="max-width:200px" />
+    </div>
+  </div>
+
+  <!-- 10. OBSERVACIONES -->
+  <div class="section-block">
+    <div class="section-title">
+      <div class="section-num">10</div>
+      <h2>Observaciones Finales</h2>
+    </div>
+    <div class="field">
+      <label>¿Hay algo importante que deba conocer tu entrenadora para diseñar tu plan?</label>
+      <textarea name="observaciones" placeholder="Cualquier información adicional que consideres relevante..." style="min-height:120px"></textarea>
+    </div>
+  </div>
+
+  <!-- SUBMIT -->
+  <div class="submit-wrap">
+    <button type="submit" class="btn-submit" id="submit-btn">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      Enviar mi valoración
+    </button>
+    <p class="submit-note">Tu información es confidencial y solo será vista por tu entrenadora.</p>
+  </div>
+
+  <div id="success-msg">
+    <h3>✦ ¡Valoración enviada con éxito!</h3>
+    <p>Tu entrenadora recibirá tu información y se pondrá en contacto contigo pronto.<br>Bienvenida al proceso Lovic.</p>
+  </div>
+
+</form>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <p><span>LOVIC</span> Athletica Gym · Todos los derechos reservados · 2026</p>
+</footer>
+
+<script>
+  // Checkboxes visuales
+  document.querySelectorAll('.check-item').forEach(item => {
+    item.addEventListener('click', () => {
+      item.classList.toggle('selected');
+      const cb = item.querySelector('input[type="checkbox"]');
+      cb.checked = !cb.checked;
+    });
+  });
+
+  // Radio buttons visuales
+  document.querySelectorAll('.radio-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const name = item.querySelector('input').name;
+      document.querySelectorAll(`.radio-item input[name="${name}"]`).forEach(r => {
+        r.closest('.radio-item').classList.remove('selected');
+      });
+      item.classList.add('selected');
+      item.querySelector('input').checked = true;
+    });
+  });
+
+  // Escala 1-10
+  document.querySelectorAll('#compromiso-group .scale-item').forEach(item => {
+    item.addEventListener('click', () => {
+      document.querySelectorAll('#compromiso-group .scale-item').forEach(s => s.classList.remove('selected'));
+      item.classList.add('selected');
+      document.getElementById('compromiso-val').value = item.dataset.value;
+    });
+  });
+
+  // Submit con Formspree
+  const form = document.getElementById('valoracion-form');
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true;
+    btn.textContent = 'Enviando...';
+
+    try {
+      const res = await fetch(form.action, {
+        method: 'POST',
+        body: new FormData(form),
+        headers: { 'Accept': 'application/json' }
+      });
+      if (res.ok) {
+        form.style.display = 'none';
+        document.getElementById('success-msg').style.display = 'block';
+        document.getElementById('success-msg').scrollIntoView({ behavior: 'smooth' });
+      } else {
+        btn.disabled = false;
+        btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg> Enviar mi valoración';
+        alert('Hubo un error al enviar. Intenta de nuevo.');
+      }
+    } catch {
+      btn.disabled = false;
+      btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg> Enviar mi valoración';
+      alert('Error de conexión. Revisa tu internet e intenta de nuevo.');
+    }
+  });
+</script>
+</body>
+</html>
