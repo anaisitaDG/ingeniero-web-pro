@@ -1,0 +1,244 @@
+import React, { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { api } from '../../services/api';
+
+export default function ClientDetail() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [data, setData]       = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [tab, setTab]         = useState('overview');
+  const [genLoading, setGenLoading] = useState({ routine: false, nutrition: false });
+  const [inviting, setInviting]     = useState(false);
+  const [prompt, setPrompt]         = useState('');
+  const [bioFile, setBioFile]       = useState(null);
+  const [bioUploading, setBioUploading] = useState(false);
+
+  useEffect(() => { load(); }, [id]);
+
+  async function load() {
+    setLoading(true);
+    api.trainer.client(id).then(d => setData(d)).finally(() => setLoading(false));
+  }
+
+  async function genRoutine() {
+    setGenLoading(p => ({ ...p, routine: true }));
+    try {
+      await api.trainer.genRoutine(id, prompt || undefined);
+      await load();
+      setTab('routine');
+    } catch (e) { alert(e.message); }
+    finally { setGenLoading(p => ({ ...p, routine: false })); }
+  }
+
+  async function genNutrition() {
+    setGenLoading(p => ({ ...p, nutrition: true }));
+    try {
+      await api.trainer.genNutrition(id, prompt || undefined);
+      await load();
+      setTab('nutrition');
+    } catch (e) { alert(e.message); }
+    finally { setGenLoading(p => ({ ...p, nutrition: false })); }
+  }
+
+  async function sendInvite() {
+    setInviting(true);
+    try { await api.trainer.invite(id); alert('Invitación enviada'); }
+    catch (e) { alert(e.message); }
+    finally { setInviting(false); }
+  }
+
+  async function uploadBio() {
+    if (!bioFile) return;
+    setBioUploading(true);
+    const fd = new FormData();
+    fd.append('image', bioFile);
+    fd.append('user_id', id);
+    try {
+      const res = await api.bioimpedance.upload(fd, id);
+      if (res.error) throw new Error(res.error);
+      await load();
+      setBioFile(null);
+      setTab('bio');
+      alert('Bioimpedancia guardada');
+    } catch (e) { alert(e.message); }
+    finally { setBioUploading(false); }
+  }
+
+  if (loading) return <div style={{ textAlign: 'center', padding: 64 }}><div className="spinner" style={{ borderTopColor: 'var(--coral)', borderColor: 'var(--border)', width: 36, height: 36 }} /></div>;
+  if (!data) return <div className="empty-state"><div className="icon">❌</div><p>Cliente no encontrado</p></div>;
+
+  const { user, questionnaire: q, measurements, bioimpedance, routine, nutrition_plan, adherence } = data;
+
+  const tabs = [
+    { key: 'overview', label: 'Resumen' },
+    { key: 'routine', label: '💪 Rutina' },
+    { key: 'nutrition', label: '🥗 Nutrición' },
+    { key: 'bio', label: '📊 Bio' },
+  ];
+
+  return (
+    <div>
+      {/* Back + header */}
+      <button className="btn-ghost" onClick={() => navigate('/trainer')} style={{ marginBottom: 16, padding: '8px 0', fontSize: 14 }}>← Volver</button>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+        <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+          <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'var(--coral-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 800, color: 'var(--coral)' }}>
+            {user.name.charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <h1 style={{ fontSize: 22, fontWeight: 800 }}>{user.name}</h1>
+            <p style={{ color: 'var(--muted)', fontSize: 14 }}>{user.email}</p>
+          </div>
+        </div>
+        <button className="btn-primary" onClick={sendInvite} disabled={inviting} style={{ padding: '10px 18px', fontSize: 14, background: 'var(--gold)' }}>
+          {inviting ? <span className="spinner" /> : '✉️ Invitar'}
+        </button>
+      </div>
+
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 24, overflowX: 'auto', paddingBottom: 4 }}>
+        {tabs.map(t => (
+          <button key={t.key} onClick={() => setTab(t.key)} style={{
+            padding: '8px 16px', borderRadius: 10, fontWeight: 700, fontSize: 13, border: 'none', whiteSpace: 'nowrap',
+            background: tab === t.key ? 'var(--coral)' : 'var(--card)',
+            color: tab === t.key ? '#fff' : 'var(--muted)',
+            boxShadow: 'var(--shadow)', cursor: 'pointer',
+          }}>{t.label}</button>
+        ))}
+      </div>
+
+      {/* Overview tab */}
+      {tab === 'overview' && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
+          {/* Quick stats */}
+          <div className="card">
+            <p style={{ fontWeight: 700, marginBottom: 12 }}>📋 Datos básicos</p>
+            <InfoRow label="Edad" value={q?.age} />
+            <InfoRow label="Peso" value={q?.weight_kg && `${q.weight_kg} kg`} />
+            <InfoRow label="Talla" value={q?.height_cm && `${q.height_cm} cm`} />
+            <InfoRow label="Ciudad" value={q?.city} />
+            <InfoRow label="Objetivo" value={parseJson(q?.main_goal)} />
+          </div>
+
+          {adherence && adherence.total_days > 0 && (
+            <div className="card">
+              <p style={{ fontWeight: 700, marginBottom: 12 }}>📈 Adherencia 30 días</p>
+              <InfoRow label="Entrenamientos" value={`${adherence.workout_days}/${adherence.total_days}`} />
+              <InfoRow label="Dieta" value={`${adherence.diet_days}/${adherence.total_days}`} />
+              <InfoRow label="% Workout" value={`${Math.round((adherence.workout_days/adherence.total_days)*100)}%`} />
+            </div>
+          )}
+
+          {measurements[0] && (
+            <div className="card">
+              <p style={{ fontWeight: 700, marginBottom: 12 }}>📏 Última medición</p>
+              <InfoRow label="Peso" value={measurements[0].weight_kg && `${measurements[0].weight_kg} kg`} />
+              <InfoRow label="Cintura" value={measurements[0].waist_cm && `${measurements[0].waist_cm} cm`} />
+              <InfoRow label="Cadera" value={measurements[0].hip_cm && `${measurements[0].hip_cm} cm`} />
+              <InfoRow label="Brazo" value={measurements[0].arm_cm && `${measurements[0].arm_cm} cm`} />
+            </div>
+          )}
+
+          {q && (
+            <div className="card">
+              <p style={{ fontWeight: 700, marginBottom: 12 }}>🏋️ Entrenamiento</p>
+              <InfoRow label="Días/semana" value={q.training_days_week} />
+              <InfoRow label="Experiencia" value={q.trained_before ? 'Sí' : 'No'} />
+              <InfoRow label="Lesiones" value={q.has_injury ? q.injury_detail : 'No'} />
+              <InfoRow label="Nivel energía" value={q.energy_level} />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Routine tab */}
+      {tab === 'routine' && (
+        <div>
+          <div className="card" style={{ marginBottom: 16 }}>
+            <p style={{ fontWeight: 700, marginBottom: 10 }}>Generar rutina con IA</p>
+            <textarea className="input" rows={2} placeholder="Instrucciones adicionales (opcional)..." value={prompt} onChange={e => setPrompt(e.target.value)} style={{ marginBottom: 10, resize: 'vertical' }} />
+            <button className="btn-primary" onClick={genRoutine} disabled={genLoading.routine} style={{ width: '100%', justifyContent: 'center' }}>
+              {genLoading.routine ? <><span className="spinner" /> Generando…</> : '✨ Generar rutina'}
+            </button>
+          </div>
+          {routine ? (
+            <div className="card">
+              <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: 14, lineHeight: 1.7 }}>{routine.content}</pre>
+              <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 10 }}>Generado: {new Date(routine.created_at).toLocaleDateString('es')}</p>
+            </div>
+          ) : (
+            <div className="empty-state"><div className="icon">💪</div><p>Aún no hay rutina generada</p></div>
+          )}
+        </div>
+      )}
+
+      {/* Nutrition tab */}
+      {tab === 'nutrition' && (
+        <div>
+          <div className="card" style={{ marginBottom: 16 }}>
+            <p style={{ fontWeight: 700, marginBottom: 10 }}>Generar plan nutricional con IA</p>
+            <textarea className="input" rows={2} placeholder="Instrucciones adicionales (opcional)..." value={prompt} onChange={e => setPrompt(e.target.value)} style={{ marginBottom: 10, resize: 'vertical' }} />
+            <button className="btn-primary" onClick={genNutrition} disabled={genLoading.nutrition} style={{ width: '100%', justifyContent: 'center', background: 'var(--gold)' }}>
+              {genLoading.nutrition ? <><span className="spinner" /> Generando…</> : '✨ Generar plan nutricional'}
+            </button>
+          </div>
+          {nutrition_plan ? (
+            <div className="card">
+              <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: 14, lineHeight: 1.7 }}>{nutrition_plan.content}</pre>
+              <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 10 }}>Generado: {new Date(nutrition_plan.created_at).toLocaleDateString('es')}</p>
+            </div>
+          ) : (
+            <div className="empty-state"><div className="icon">🥗</div><p>Aún no hay plan nutricional</p></div>
+          )}
+        </div>
+      )}
+
+      {/* Bio tab */}
+      {tab === 'bio' && (
+        <div>
+          <div className="card" style={{ marginBottom: 16 }}>
+            <p style={{ fontWeight: 700, marginBottom: 10 }}>📊 Subir bioimpedancia</p>
+            <input type="file" accept="image/*" onChange={e => setBioFile(e.target.files[0])} style={{ marginBottom: 10 }} />
+            <button className="btn-primary" onClick={uploadBio} disabled={!bioFile || bioUploading} style={{ width: '100%', justifyContent: 'center' }}>
+              {bioUploading ? <><span className="spinner" /> Procesando…</> : 'Subir y analizar'}
+            </button>
+          </div>
+          {bioimpedance.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {bioimpedance.map(b => (
+                <div key={b.id} className="card" style={{ padding: 16 }}>
+                  <p style={{ fontWeight: 700, marginBottom: 10 }}>{new Date(b.logged_at).toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <InfoRow label="Grasa corporal" value={b.body_fat_pct != null ? `${b.body_fat_pct}%` : '—'} />
+                    <InfoRow label="Masa muscular" value={b.muscle_mass_kg != null ? `${b.muscle_mass_kg} kg` : '—'} />
+                    <InfoRow label="Grasa visceral" value={b.visceral_fat ?? '—'} />
+                    <InfoRow label="Metabolismo" value={b.bmr_kcal != null ? `${b.bmr_kcal} kcal` : '—'} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="empty-state"><div className="icon">📊</div><p>No hay registros de bioimpedancia</p></div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function InfoRow({ label, value }) {
+  if (value == null || value === '') return null;
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid var(--border)', fontSize: 14 }}>
+      <span style={{ color: 'var(--muted)' }}>{label}</span>
+      <span style={{ fontWeight: 600 }}>{value}</span>
+    </div>
+  );
+}
+
+function parseJson(v) {
+  try { const a = typeof v === 'string' ? JSON.parse(v) : v; return Array.isArray(a) ? a.join(', ') : v; }
+  catch { return v; }
+}
