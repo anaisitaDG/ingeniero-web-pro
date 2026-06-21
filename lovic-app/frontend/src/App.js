@@ -42,7 +42,7 @@ export default function App() {
             <Route path="clients/:id" element={<ClientDetail />} />
           </Route>
 
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
