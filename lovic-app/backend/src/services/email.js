@@ -1,20 +1,13 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: process.env.SMTP_PORT,
-  secure: false,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
+const FROM = process.env.EMAIL_FROM || 'Lovic Athletica <noreply@lovicgym.com>';
 
 async function sendMagicLink(email, name, token) {
   const url = `${process.env.APP_URL}/auth/verify?token=${token}`;
 
-  await transporter.sendMail({
-    from: process.env.EMAIL_FROM,
+  await resend.emails.send({
+    from: FROM,
     to: email,
     subject: '🔑 Tu enlace de acceso — Lovic Athletica Gym',
     html: `
@@ -41,8 +34,8 @@ async function sendMagicLink(email, name, token) {
 }
 
 async function sendWelcome(email, name) {
-  await transporter.sendMail({
-    from: process.env.EMAIL_FROM,
+  await resend.emails.send({
+    from: FROM,
     to: email,
     subject: '¡Bienvenida a Lovic Athletica Gym! ✨',
     html: `
