@@ -14,6 +14,12 @@ export function AuthProvider({ children }) {
       window.history.replaceState({}, '', window.location.pathname);
     }
 
+    const stored = localStorage.getItem('lovic_token');
+    if (!stored) {
+      setLoading(false);
+      return;
+    }
+
     api.auth.me()
       .then(d => setUser(d.user))
       .catch(() => setUser(null))
