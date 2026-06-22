@@ -3,8 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
 
 const EMPTY_EXERCISE = () => ({ _key: Math.random(), name: '', youtube_url: '', sets: 3, reps: '10', weight_kg: '' });
-const WARMUP_OPTIONS = ['Movilidad articular', 'Trote suave', 'Saltos', 'Sentadillas sin peso', 'Jumping jacks', 'Estiramientos dinámicos'];
-const CARDIO_OPTIONS = ['Cuerda', 'Caminadora', 'Escaleras', 'Elíptica', 'Stepper', 'Bicicleta', 'Remo'];
 const EMPTY_DAY = () => ({ _key: Math.random(), day_name: '', warmup_type: '', warmup_duration: '', cardio_type: '', cardio_duration: '', exercises: [EMPTY_EXERCISE()] });
 
 export default function ClientDetail() {
@@ -389,24 +387,22 @@ export default function ClientDetail() {
 
                 {/* Warmup & Cardio */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
-                  <div>
-                    <label className="label">🔥 Calentamiento (opcional)</label>
-                    <select className="input" value={day.warmup_type} onChange={e => updateDay(di, 'warmup_type', e.target.value)}>
-                      <option value="">Sin calentamiento</option>
-                      {WARMUP_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-                    </select>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <input type="checkbox" id={`warmup-${di}`} checked={!!day.warmup_type}
+                      onChange={e => updateDay(di, 'warmup_type', e.target.checked ? 'si' : '')}
+                      style={{ width: 18, height: 18, cursor: 'pointer' }} />
+                    <label htmlFor={`warmup-${di}`} className="label" style={{ marginBottom: 0, cursor: 'pointer' }}>🔥 Incluir calentamiento</label>
                   </div>
                   <div>
                     <label className="label">Duración (min)</label>
                     <input className="input" type="number" min="1" max="60" placeholder="10" value={day.warmup_duration}
                       onChange={e => updateDay(di, 'warmup_duration', e.target.value)} disabled={!day.warmup_type} />
                   </div>
-                  <div>
-                    <label className="label">🏃 Cardio (opcional)</label>
-                    <select className="input" value={day.cardio_type} onChange={e => updateDay(di, 'cardio_type', e.target.value)}>
-                      <option value="">Sin cardio</option>
-                      {CARDIO_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-                    </select>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <input type="checkbox" id={`cardio-${di}`} checked={!!day.cardio_type}
+                      onChange={e => updateDay(di, 'cardio_type', e.target.checked ? 'si' : '')}
+                      style={{ width: 18, height: 18, cursor: 'pointer' }} />
+                    <label htmlFor={`cardio-${di}`} className="label" style={{ marginBottom: 0, cursor: 'pointer' }}>🏃 Incluir cardio al final</label>
                   </div>
                   <div>
                     <label className="label">Duración (min)</label>

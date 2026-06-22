@@ -94,8 +94,13 @@ export default function MyPlan() {
   );
 }
 
+const WARMUP_OPTIONS = ['Movilidad articular', 'Trote suave', 'Saltos', 'Sentadillas sin peso', 'Jumping jacks', 'Estiramientos dinámicos'];
+const CARDIO_OPTIONS = ['Cuerda', 'Caminadora', 'Escaleras', 'Elíptica', 'Stepper', 'Bicicleta', 'Remo'];
+
 function DayCard({ day, onLogged }) {
   const [open, setOpen] = useState(true);
+  const [warmupChoice, setWarmupChoice] = useState(day.warmup_type || '');
+  const [cardioChoice, setCardioChoice] = useState(day.cardio_type || '');
   return (
     <div className="card" style={{ marginBottom: 14 }}>
       <button onClick={() => setOpen(o => !o)} style={{
@@ -107,27 +112,33 @@ function DayCard({ day, onLogged }) {
       </button>
       {open && (
         <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {day.warmup_type && (
-            <div style={{ background: 'var(--bg)', borderRadius: 12, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 20 }}>🔥</span>
-              <div>
-                <p style={{ fontWeight: 700, fontSize: 13 }}>Calentamiento: {day.warmup_type}</p>
-                {day.warmup_duration && <p style={{ fontSize: 12, color: 'var(--muted)' }}>{day.warmup_duration} min</p>}
-              </div>
-            </div>
-          )}
+          <div style={{ background: 'var(--bg)', borderRadius: 12, padding: '12px 14px' }}>
+            <p style={{ fontWeight: 700, fontSize: 13, marginBottom: 6 }}>🔥 Calentamiento{day.warmup_duration ? ` · ${day.warmup_duration} min` : ''}</p>
+            <select
+              className="input"
+              value={warmupChoice}
+              onChange={e => setWarmupChoice(e.target.value)}
+              style={{ fontSize: 13, padding: '8px 10px' }}
+            >
+              <option value="">Sin calentamiento hoy</option>
+              {WARMUP_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+            </select>
+          </div>
           {day.exercises.map(ex => (
             <ExerciseCard key={ex.id} exercise={ex} onLogged={onLogged} />
           ))}
-          {day.cardio_type && (
-            <div style={{ background: 'var(--bg)', borderRadius: 12, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 20 }}>🏃</span>
-              <div>
-                <p style={{ fontWeight: 700, fontSize: 13 }}>Cardio: {day.cardio_type}</p>
-                {day.cardio_duration && <p style={{ fontSize: 12, color: 'var(--muted)' }}>{day.cardio_duration} min</p>}
-              </div>
-            </div>
-          )}
+          <div style={{ background: 'var(--bg)', borderRadius: 12, padding: '12px 14px' }}>
+            <p style={{ fontWeight: 700, fontSize: 13, marginBottom: 6 }}>🏃 Cardio{day.cardio_duration ? ` · ${day.cardio_duration} min` : ''}</p>
+            <select
+              className="input"
+              value={cardioChoice}
+              onChange={e => setCardioChoice(e.target.value)}
+              style={{ fontSize: 13, padding: '8px 10px' }}
+            >
+              <option value="">Sin cardio hoy</option>
+              {CARDIO_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+            </select>
+          </div>
         </div>
       )}
     </div>
