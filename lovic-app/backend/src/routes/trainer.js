@@ -147,13 +147,13 @@ router.put('/clients/:id/nutrition', async (req, res) => {
     console.log('[nutrition PUT] UPDATE done, running INSERT...');
     const planId = uuidv4();
     await db.query(
-      'INSERT INTO nutrition_plans (id, user_id, content, is_active) VALUES (?, ?, ?, TRUE)',
-      [planId, uid, content.trim()]
+      'INSERT INTO nutrition_plans (id, user_id, plan, content, is_active) VALUES (?, ?, ?, ?, TRUE)',
+      [planId, uid, content.trim(), content.trim()]
     );
     console.log('[nutrition PUT] INSERT done');
     const calories = extractCalorieTarget(content);
     if (calories) await db.query('UPDATE users SET calorie_target=? WHERE id=?', [calories, uid]);
-    res.json({ nutrition_plan: content.trim() });
+    res.json({ nutrition_plan: { content: content.trim(), plan: content.trim() } });
   } catch (e) {
     console.error('[nutrition PUT] ERROR:', e.message);
     res.status(500).json({ error: e.message });
@@ -193,8 +193,8 @@ router.post('/clients/:id/nutrition', async (req, res) => {
   await db.query('UPDATE nutrition_plans SET is_active=FALSE WHERE user_id=?', [uid]);
   const planId = uuidv4();
   await db.query(
-    'INSERT INTO nutrition_plans (id, user_id, content, is_active) VALUES (?, ?, ?, TRUE)',
-    [planId, uid, content]
+    'INSERT INTO nutrition_plans (id, user_id, plan, content, is_active) VALUES (?, ?, ?, ?, TRUE)',
+    [planId, uid, content, content]
   );
 
   const calories = extractCalorieTarget(content);
