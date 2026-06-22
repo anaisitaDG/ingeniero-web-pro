@@ -123,6 +123,7 @@ CREATE TABLE IF NOT EXISTS bioimpedance (
   water_pct       DECIMAL(5,2),
   visceral_fat    INT,
   bone_mass_kg    DECIMAL(5,2),
+  bmr_kcal        INT,
   raw_ocr_text    TEXT,
   notes           TEXT,
   logged_at       DATE          NOT NULL DEFAULT (CURDATE()),
@@ -143,6 +144,20 @@ CREATE TABLE IF NOT EXISTS food_logs (
   logged_at       DATE          NOT NULL DEFAULT (CURDATE()),
   created_at      TIMESTAMP     DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Caché global de comidas parseadas por IA (reduce costos: reutiliza resultados)
+CREATE TABLE IF NOT EXISTS food_cache (
+  id             VARCHAR(36)  PRIMARY KEY DEFAULT (UUID()),
+  input_key      VARCHAR(255) NOT NULL UNIQUE,
+  parsed_items   JSON,
+  total_calories INT          DEFAULT 0,
+  protein_g      DECIMAL(6,2) DEFAULT 0,
+  carbs_g        DECIMAL(6,2) DEFAULT 0,
+  fat_g          DECIMAL(6,2) DEFAULT 0,
+  meal_type      ENUM('breakfast','lunch','dinner','snack') DEFAULT 'snack',
+  hit_count      INT          DEFAULT 1,
+  created_at     TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS routines (

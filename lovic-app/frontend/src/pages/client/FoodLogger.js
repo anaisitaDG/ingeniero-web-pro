@@ -19,7 +19,7 @@ function defaultMeal() {
 export default function FoodLogger() {
   const [logs, setLogs]             = useState([]);
   const [daily, setDaily]           = useState(null);
-  const [recommendation, setRec]    = useState('');
+  const [status, setStatus]         = useState(null);
   const [input, setInput]           = useState('');
   const [mealType, setMealType]     = useState(defaultMeal());
   const [loading, setLoading]       = useState(false);
@@ -33,7 +33,7 @@ export default function FoodLogger() {
       const d = await api.food.today();
       setLogs(d.logs);
       setDaily(d.daily);
-      setRec(d.recommendation);
+      setStatus(d.status);
     } finally {
       setFetching(false);
     }
@@ -107,22 +107,28 @@ export default function FoodLogger() {
       {/* Daily summary */}
       {daily && (
         <div className="card" style={{ marginBottom: 16 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
             <span style={{ fontWeight: 700 }}>{daily.consumed} kcal consumidas</span>
-            <span style={{ color: 'var(--muted)', fontSize: 14 }}>Meta: {daily.target}</span>
+            {status && (
+              <span className="pill" style={{ background: status.color, color: '#fff', fontWeight: 700 }}>
+                {status.label}
+              </span>
+            )}
           </div>
           <div style={{ height: 8, background: 'var(--border)', borderRadius: 8, overflow: 'hidden' }}>
             <div style={{ height: '100%', width: `${pct}%`, background: pct >= 100 ? '#E05252' : 'var(--coral)', borderRadius: 8 }} />
           </div>
-          <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: 6 }}>{daily.remaining} kcal restantes</p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
+            <span style={{ fontSize: 13, color: 'var(--muted)' }}>{daily.remaining} kcal restantes</span>
+            <span style={{ fontSize: 13, color: 'var(--muted)' }}>Meta: {daily.target}</span>
+          </div>
         </div>
       )}
 
-      {/* AI recommendation */}
-      {recommendation && (
-        <div style={{ background: 'var(--gold-light)', borderRadius: 14, padding: '14px 16px', marginBottom: 20, borderLeft: '4px solid var(--gold)' }}>
-          <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--gold)', marginBottom: 4 }}>💡 Recomendación</p>
-          <p style={{ fontSize: 14, lineHeight: 1.5 }}>{recommendation}</p>
+      {/* Deficit message */}
+      {status && (
+        <div style={{ background: 'var(--gold-light)', borderRadius: 14, padding: '14px 16px', marginBottom: 20, borderLeft: `4px solid ${status.color}` }}>
+          <p style={{ fontSize: 14, lineHeight: 1.5 }}>{status.message}</p>
         </div>
       )}
 

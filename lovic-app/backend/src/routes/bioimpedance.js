@@ -38,7 +38,7 @@ router.post('/upload', upload.single('image'), async (req, res) => {
 
   await db.query(
     `INSERT INTO bioimpedance
-       (id, user_id, image_path, body_fat_pct, muscle_mass_kg, visceral_fat, bmr_kcal, raw_data)
+       (id, user_id, image_url, body_fat_pct, muscle_mass_kg, visceral_fat, bmr_kcal, raw_ocr_text)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       uuidv4(), targetUserId, imagePath,

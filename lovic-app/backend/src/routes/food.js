@@ -12,7 +12,36 @@ router.post('/log', async (req, res) => {
   const { input_text, meal_type } = req.body;
   if (!input_text?.trim()) return res.status(400).json({ error: 'Texto requerido' });
 
-  const parsed = await parseFood(input_text, req.user.fitness_goal);
+  // Clave normalizada para el caché: minúsculas, sin espacios extra
+  const inputKey = input_text.trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 255);
+
+  let parsed;
+  const [cached] = await db.query('SELECT * FROM food_cache WHERE input_key = ?', [inputKey]);
+
+  if (cached.length) {
+    // Comida ya conocida → reutiliza, no llama a la IA
+    const c = cached[0];
+    parsed = {
+      items: typeof c.parsed_items === 'string' ? JSON.parse(c.parsed_items) : (c.parsed_items || []),
+      total_calories: c.total_calories,
+      protein_g: c.protein_g,
+      carbs_g: c.carbs_g,
+      fat_g: c.fat_g,
+      meal_type: c.meal_type,
+    };
+    await db.query('UPDATE food_cache SET hit_count = hit_count + 1 WHERE id = ?', [c.id]);
+  } else {
+    // Comida nueva → la IA la analiza y se guarda en caché
+    parsed = await parseFood(input_text, req.user.fitness_goal);
+    await db.query(
+      `INSERT INTO food_cache (id, input_key, parsed_items, total_calories, protein_g, carbs_g, fat_g, meal_type)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        uuidv4(), inputKey, JSON.stringify(parsed.items),
+        parsed.total_calories, parsed.protein_g, parsed.carbs_g, parsed.fat_g, parsed.meal_type,
+      ]
+    );
+  }
 
   const VALID = ['breakfast', 'lunch', 'dinner', 'snack'];
   const finalMealType = VALID.includes(meal_type) ? meal_type : parsed.meal_type;
@@ -62,14 +91,22 @@ router.get('/today', async (req, res) => {
   const target    = req.user.calorie_target || 2000;
   const remaining = Math.max(target - total, 0);
 
-  const recommendation = await getFoodRecommendation(remaining, req.user.fitness_goal, total);
-
   res.json({
     logs,
     daily: { target, consumed: total, remaining },
-    recommendation,
+    status: deficitStatus(total, target),
   });
 });
+
+// Estado calórico basado en reglas (sin IA)
+function deficitStatus(consumed, target) {
+  const ratio = target > 0 ? consumed / target : 0;
+  if (ratio >= 1.05) return { level: 'surplus',  label: 'Superávit calórico',  color: '#E05252', message: 'Te pasaste de tu meta de hoy. Mañana es un nuevo día.' };
+  if (ratio >= 0.90) return { level: 'on_target', label: 'En tu meta',          color: '#2D7A2D', message: '¡Perfecto! Estás justo en tu objetivo del día.' };
+  if (ratio >= 0.65) return { level: 'mild',      label: 'Déficit ligero',      color: '#7A9A2D', message: 'Vas bien. Te queda margen para una comida más.' };
+  if (ratio >= 0.40) return { level: 'moderate',  label: 'Déficit moderado',    color: '#C99A1E', message: 'Aún te faltan calorías. Asegúrate de comer suficiente.' };
+  return                     { level: 'extreme',   label: 'Déficit extremo',     color: '#E05252', message: 'Has comido muy poco. Es importante alimentarte bien.' };
+}
 
 // GET /food/history?days=7
 router.get('/history', async (req, res) => {
