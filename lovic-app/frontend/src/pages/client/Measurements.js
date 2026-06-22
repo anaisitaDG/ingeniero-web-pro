@@ -22,7 +22,7 @@ export default function Measurements() {
   const [saving, setSaving]     = useState(false);
   const [open, setOpen]         = useState(false);
   const [bioList, setBioList]   = useState([]);
-  const [bioFile, setBioFile]   = useState(null);
+  const [bioFiles, setBioFiles] = useState([]);
   const [bioUploading, setBioUploading] = useState(false);
 
   useEffect(() => { load(); }, []);
@@ -139,22 +139,24 @@ export default function Measurements() {
       <div style={{ marginTop: 32 }}>
         <p className="page-title" style={{ fontSize: 18, marginBottom: 16 }}>Bioimpedancia 📊</p>
         <div className="card" style={{ marginBottom: 16 }}>
-          <p style={{ fontWeight: 700, marginBottom: 10 }}>Subir foto de bioimpedancia</p>
-          <input type="file" accept="image/*" onChange={e => setBioFile(e.target.files[0])} style={{ marginBottom: 10 }} />
+          <p style={{ fontWeight: 700, marginBottom: 10 }}>Subir fotos de bioimpedancia</p>
+          <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>Selecciona hasta 2 fotos del reporte (pantalla 1 y 2)</p>
+          <input type="file" accept="image/*" multiple onChange={e => setBioFiles(Array.from(e.target.files))} style={{ marginBottom: 10 }} />
+          {bioFiles.length > 0 && <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>{bioFiles.length} foto(s) seleccionada(s)</p>}
           <button className="btn-primary" onClick={async () => {
-            if (!bioFile) return;
+            if (!bioFiles.length) return;
             setBioUploading(true);
             const fd = new FormData();
-            fd.append('image', bioFile);
+            bioFiles.forEach(f => fd.append('image', f));
             fd.append('user_id', user.id);
             try {
               const res = await api.bioimpedance.upload(fd, user.id);
               if (res.error) throw new Error(res.error);
-              setBioFile(null);
+              setBioFiles([]);
               load();
             } catch (e) { alert(e.message); }
             finally { setBioUploading(false); }
-          }} disabled={!bioFile || bioUploading} style={{ width: '100%', justifyContent: 'center' }}>
+          }} disabled={!bioFiles.length || bioUploading} style={{ width: '100%', justifyContent: 'center' }}>
             {bioUploading ? <><span className="spinner" /> Procesando…</> : 'Subir y analizar'}
           </button>
         </div>

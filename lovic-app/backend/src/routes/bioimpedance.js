@@ -23,9 +23,9 @@ const upload = multer({
 
 router.use(requireAuth);
 
-// POST /bioimpedance/upload
-router.post('/upload', upload.single('image'), async (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'Imagen requerida' });
+// POST /bioimpedance/upload — acepta 1 o 2 imágenes, guarda un solo registro combinado
+router.post('/upload', upload.array('image', 2), async (req, res) => {
+  if (!req.files?.length) return res.status(400).json({ error: 'Imagen requerida' });
 
   const targetUserId = req.body.user_id || req.user.id;
 
@@ -33,21 +33,30 @@ router.post('/upload', upload.single('image'), async (req, res) => {
     return res.status(403).json({ error: 'Sin permiso' });
   }
 
-  const imagePath = req.file.path;
-  const parsed = await parseBioimpedance(imagePath);
+  // Parsear todas las imágenes y combinar resultados (prevalece el valor no-nulo)
+  const results = await Promise.all(req.files.map(f => parseBioimpedance(f.path)));
+  const merged = results.reduce((acc, r) => ({
+    body_fat_pct:   acc.body_fat_pct   ?? r.body_fat_pct,
+    muscle_mass_kg: acc.muscle_mass_kg ?? r.muscle_mass_kg,
+    visceral_fat:   acc.visceral_fat   ?? r.visceral_fat,
+    bmr_kcal:       acc.bmr_kcal       ?? r.bmr_kcal,
+    raw:            { ...acc.raw, ...r.raw },
+  }), { body_fat_pct: null, muscle_mass_kg: null, visceral_fat: null, bmr_kcal: null, raw: {} });
+
+  const imagePaths = req.files.map(f => f.path).join(',');
 
   await db.query(
     `INSERT INTO bioimpedance
        (id, user_id, image_url, body_fat_pct, muscle_mass_kg, visceral_fat, bmr_kcal, raw_ocr_text)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     [
-      uuidv4(), targetUserId, imagePath,
-      parsed.body_fat_pct, parsed.muscle_mass_kg, parsed.visceral_fat,
-      parsed.bmr_kcal, JSON.stringify(parsed.raw),
+      uuidv4(), targetUserId, imagePaths,
+      merged.body_fat_pct, merged.muscle_mass_kg, merged.visceral_fat,
+      merged.bmr_kcal, JSON.stringify(merged.raw),
     ]
   );
 
-  res.json({ parsed });
+  res.json({ parsed: merged });
 });
 
 // GET /bioimpedance — historial del usuario autenticado

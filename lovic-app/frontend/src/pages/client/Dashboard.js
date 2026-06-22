@@ -95,10 +95,10 @@ export default function Dashboard() {
         <div className="card" style={{ marginBottom: 16 }}>
           <p className="label" style={{ marginBottom: 12 }}>Última bioimpedancia</p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <StatBox label="Grasa corporal" value={`${bio.body_fat_pct}%`} icon="📊" />
-            <StatBox label="Masa muscular" value={`${bio.muscle_mass_kg} kg`} icon="💪" />
-            <StatBox label="Grasa visceral" value={bio.visceral_fat} icon="🫀" />
-            <StatBox label="Metabolismo" value={`${bio.bmr_kcal} kcal`} icon="🔥" />
+            {bio.body_fat_pct != null && <StatBox label="Grasa corporal" value={`${bio.body_fat_pct}%`} icon="📊" />}
+            {bio.muscle_mass_kg != null && <StatBox label="Masa muscular" value={`${bio.muscle_mass_kg} kg`} icon="💪" />}
+            {bio.visceral_fat != null && <StatBox label="Grasa visceral" value={bio.visceral_fat} icon="🫀" />}
+            {bio.bmr_kcal != null && <StatBox label="Metabolismo" value={`${bio.bmr_kcal} kcal`} icon="🔥" />}
           </div>
         </div>
       )}
