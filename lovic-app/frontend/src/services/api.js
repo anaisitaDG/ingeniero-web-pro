@@ -45,8 +45,8 @@ export const api = {
     postTracking:(body)  => request('/dashboard/tracking', { method: 'POST', body: JSON.stringify(body) }),
   },
   food: {
-    log:    (input_text, meal_type) => request('/food/log', { method: 'POST', body: JSON.stringify({ input_text, meal_type }) }),
-    today:  ()           => request('/food/today'),
+    log:    (input_text, meal_type) => request('/food/log', { method: 'POST', body: JSON.stringify({ input_text, meal_type, date: new Date().toLocaleDateString('en-CA') }) }),
+    today:  ()           => request(`/food/today?date=${new Date().toLocaleDateString('en-CA')}`),
     history:(days = 7)   => request(`/food/history?days=${days}`),
     remove: (id)         => request(`/food/log/${id}`, { method: 'DELETE' }),
   },

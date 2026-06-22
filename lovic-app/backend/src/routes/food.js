@@ -46,14 +46,15 @@ router.post('/log', async (req, res) => {
   const VALID = ['breakfast', 'lunch', 'dinner', 'snack'];
   const finalMealType = VALID.includes(meal_type) ? meal_type : parsed.meal_type;
 
+  const today = req.body.date || new Date().toISOString().slice(0, 10);
   await db.query(
     `INSERT INTO food_logs (id, user_id, input_text, parsed_items, calories, protein_g, carbs_g, fat_g, meal_type, logged_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, DATE(CONVERT_TZ(NOW(), 'UTC', 'America/Bogota')))`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       uuidv4(), req.user.id, input_text,
       JSON.stringify(parsed.items),
       parsed.total_calories, parsed.protein_g, parsed.carbs_g, parsed.fat_g,
-      finalMealType,
+      finalMealType, today,
     ]
   );
 
@@ -77,15 +78,16 @@ router.post('/log', async (req, res) => {
 
 // GET /food/today
 router.get('/today', async (req, res) => {
+  const today = req.query.date || new Date().toISOString().slice(0, 10);
   const [logs] = await db.query(
-    `SELECT * FROM food_logs WHERE user_id = ? AND logged_at = DATE(CONVERT_TZ(NOW(), 'UTC', 'America/Bogota')) ORDER BY created_at DESC`,
-    [req.user.id]
+    `SELECT * FROM food_logs WHERE user_id = ? AND logged_at = ? ORDER BY created_at DESC`,
+    [req.user.id, today]
   );
 
   const [[{ total }]] = await db.query(
     `SELECT COALESCE(SUM(calories), 0) AS total FROM food_logs
-     WHERE user_id = ? AND logged_at = DATE(CONVERT_TZ(NOW(), 'UTC', 'America/Bogota'))`,
-    [req.user.id]
+     WHERE user_id = ? AND logged_at = ?`,
+    [req.user.id, today]
   );
 
   const target    = req.user.calorie_target || 2000;
