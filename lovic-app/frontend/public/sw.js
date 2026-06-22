@@ -1,5 +1,7 @@
-const CACHE = 'lovic-v1';
+const CACHE = 'lovic-v2';
 const OFFLINE = ['/'];
+
+const API_PATHS = ['/auth/', '/food/', '/dashboard/', '/measurements/', '/bioimpedance/', '/questionnaire/', '/trainer/'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(OFFLINE)));
@@ -15,7 +17,10 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
-  if (e.request.url.includes('/api/') || e.request.url.includes(':4000')) return;
+
+  const url = new URL(e.request.url);
+  if (url.port === '4000') return;
+  if (API_PATHS.some(p => url.pathname.startsWith(p))) return;
 
   e.respondWith(
     fetch(e.request)
