@@ -110,7 +110,8 @@ router.get('/verify', async (req, res) => {
 
   await db.query('UPDATE magic_links SET used = TRUE WHERE id = ?', [link.id]);
 
-  const jwt_token = jwt.sign({ sub: link.user_id }, process.env.JWT_SECRET, {
+  const [[tokenUser]] = await db.query('SELECT role FROM users WHERE id=?', [link.user_id]);
+  const jwt_token = jwt.sign({ sub: link.user_id, role: tokenUser?.role }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN,
   });
 
