@@ -9,10 +9,13 @@ router.use(requireAuth);
 
 // POST /food/log
 router.post('/log', async (req, res) => {
-  const { input_text } = req.body;
+  const { input_text, meal_type } = req.body;
   if (!input_text?.trim()) return res.status(400).json({ error: 'Texto requerido' });
 
   const parsed = await parseFood(input_text, req.user.fitness_goal);
+
+  const VALID = ['breakfast', 'lunch', 'dinner', 'snack'];
+  const finalMealType = VALID.includes(meal_type) ? meal_type : parsed.meal_type;
 
   await db.query(
     `INSERT INTO food_logs (id, user_id, input_text, parsed_items, calories, protein_g, carbs_g, fat_g, meal_type)
@@ -21,7 +24,7 @@ router.post('/log', async (req, res) => {
       uuidv4(), req.user.id, input_text,
       JSON.stringify(parsed.items),
       parsed.total_calories, parsed.protein_g, parsed.carbs_g, parsed.fat_g,
-      parsed.meal_type,
+      finalMealType,
     ]
   );
 

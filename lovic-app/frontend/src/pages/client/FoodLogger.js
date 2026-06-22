@@ -1,11 +1,27 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../../services/api';
 
+const MEALS = [
+  { key: 'breakfast', label: 'Desayuno', icon: '🌅' },
+  { key: 'lunch',     label: 'Almuerzo', icon: '☀️' },
+  { key: 'dinner',    label: 'Cena',     icon: '🌙' },
+  { key: 'snack',     label: 'Merienda', icon: '🍎' },
+];
+
+function defaultMeal() {
+  const h = new Date().getHours();
+  if (h < 11) return 'breakfast';
+  if (h < 15) return 'lunch';
+  if (h < 19) return 'snack';
+  return 'dinner';
+}
+
 export default function FoodLogger() {
   const [logs, setLogs]             = useState([]);
   const [daily, setDaily]           = useState(null);
   const [recommendation, setRec]    = useState('');
   const [input, setInput]           = useState('');
+  const [mealType, setMealType]     = useState(defaultMeal());
   const [loading, setLoading]       = useState(false);
   const [fetching, setFetching]     = useState(true);
 
@@ -28,7 +44,7 @@ export default function FoodLogger() {
     if (!input.trim()) return;
     setLoading(true);
     try {
-      const res = await api.food.log(input.trim());
+      const res = await api.food.log(input.trim(), mealType);
       setInput('');
       setDaily(res.daily);
       await fetchToday();
@@ -54,6 +70,25 @@ export default function FoodLogger() {
 
       {/* Log input */}
       <form onSubmit={handleLog} style={{ marginBottom: 20 }}>
+        <label className="label">Tipo de comida</label>
+        <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap' }}>
+          {MEALS.map(m => (
+            <button
+              key={m.key}
+              type="button"
+              onClick={() => setMealType(m.key)}
+              style={{
+                flex: 1, minWidth: 70, padding: '8px 6px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                fontWeight: 700, fontSize: 13,
+                background: mealType === m.key ? 'var(--coral)' : 'var(--card)',
+                color: mealType === m.key ? '#fff' : 'var(--muted)',
+                boxShadow: 'var(--shadow)',
+              }}
+            >
+              {m.icon}<br />{m.label}
+            </button>
+          ))}
+        </div>
         <label className="label">¿Qué comiste?</label>
         <div style={{ display: 'flex', gap: 10 }}>
           <input
