@@ -60,8 +60,8 @@ export default function MyPlan() {
               onClick={markComplete}
               disabled={completing || todayDone}
               style={{
-                width: '100%', padding: '14px', borderRadius: 14, border: 'none', cursor: todayDone ? 'default' : 'pointer',
-                fontWeight: 800, fontSize: 16, marginTop: 8, marginBottom: 16,
+                display: 'block', margin: '8px auto 16px', padding: '10px 24px', borderRadius: 20, border: 'none',
+                cursor: todayDone ? 'default' : 'pointer', fontWeight: 700, fontSize: 14,
                 background: todayDone ? '#d1fae5' : 'var(--coral)', color: todayDone ? '#065f46' : '#fff',
                 transition: 'all 0.2s',
               }}
