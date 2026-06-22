@@ -100,13 +100,13 @@ router.post('/onboarding', async (req, res) => {
 // GET /auth/verify?token=xxx
 router.get('/verify', async (req, res) => {
   const { token } = req.query;
-  if (!token) return res.status(400).json({ error: 'Token requerido' });
+  if (!token) return res.redirect(`${process.env.APP_URL}/login?error=token-requerido`);
 
   const [[link]] = await db.query(
     'SELECT * FROM magic_links WHERE token = ? AND used = FALSE AND expires_at > NOW()',
     [token]
   );
-  if (!link) return res.status(401).json({ error: 'Enlace inválido o expirado' });
+  if (!link) return res.redirect(`${process.env.APP_URL}/login?error=link-expirado`);
 
   await db.query('UPDATE magic_links SET used = TRUE WHERE id = ?', [link.id]);
 
