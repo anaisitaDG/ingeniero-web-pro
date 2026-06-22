@@ -33,13 +33,13 @@ router.post('/upload', upload.array('image', 4), async (req, res) => {
     return res.status(403).json({ error: 'Sin permiso' });
   }
 
-  // Parsear todas las imágenes y combinar resultados (prevalece el valor no-nulo)
+  // Parsear todas las imágenes y combinar: el último valor no-nulo prevalece
   const results = await Promise.all(req.files.map(f => parseBioimpedance(f.path)));
   const merged = results.reduce((acc, r) => ({
-    body_fat_pct:   acc.body_fat_pct   ?? r.body_fat_pct,
-    muscle_mass_kg: acc.muscle_mass_kg ?? r.muscle_mass_kg,
-    visceral_fat:   acc.visceral_fat   ?? r.visceral_fat,
-    bmr_kcal:       acc.bmr_kcal       ?? r.bmr_kcal,
+    body_fat_pct:   r.body_fat_pct   ?? acc.body_fat_pct,
+    muscle_mass_kg: r.muscle_mass_kg ?? acc.muscle_mass_kg,
+    visceral_fat:   r.visceral_fat   ?? acc.visceral_fat,
+    bmr_kcal:       r.bmr_kcal       ?? acc.bmr_kcal,
     raw:            { ...acc.raw, ...r.raw },
   }), { body_fat_pct: null, muscle_mass_kg: null, visceral_fat: null, bmr_kcal: null, raw: {} });
 
