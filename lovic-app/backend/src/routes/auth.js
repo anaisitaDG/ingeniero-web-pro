@@ -115,7 +115,7 @@ router.get('/verify', async (req, res) => {
   });
 
   // En producción redirige al frontend con el token
-  res.redirect(`${process.env.APP_URL}/auth/callback?token=${jwt_token}`);
+  res.redirect(`${process.env.APP_URL}/?token=${jwt_token}`);
 });
 
 // GET /auth/me

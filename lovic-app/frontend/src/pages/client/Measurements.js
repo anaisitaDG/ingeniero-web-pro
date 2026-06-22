@@ -31,7 +31,7 @@ export default function Measurements() {
     const d = await api.measurements.list(10);
     setRows(d.measurements);
     const b = await api.bioimpedance.list();
-    setBioList(b.records || []);
+    setBioList(b.bioimpedance || []);
   }
 
   async function handleSubmit(e) {
