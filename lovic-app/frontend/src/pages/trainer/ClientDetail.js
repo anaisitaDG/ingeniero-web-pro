@@ -532,7 +532,12 @@ function InfoRow({ label, value }) {
   );
 }
 
+const GOAL_LABELS = { fat_loss: 'Pérdida de grasa', muscle_gain: 'Ganar músculo', maintenance: 'Mantenimiento', health: 'Salud general' };
+
 function parseJson(v) {
-  try { const a = typeof v === 'string' ? JSON.parse(v) : v; return Array.isArray(a) ? a.join(', ') : v; }
-  catch { return v; }
+  try {
+    const a = typeof v === 'string' ? JSON.parse(v) : v;
+    if (Array.isArray(a)) return a.map(k => GOAL_LABELS[k] || k).join(', ');
+    return GOAL_LABELS[v] || v;
+  } catch { return v; }
 }

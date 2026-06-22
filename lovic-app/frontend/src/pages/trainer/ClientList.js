@@ -19,9 +19,13 @@ export default function ClientList() {
     c.email.toLowerCase().includes(search.toLowerCase())
   );
 
+  const GOAL_LABELS = { fat_loss: 'Pérdida de grasa', muscle_gain: 'Ganar músculo', maintenance: 'Mantenimiento', health: 'Salud general' };
   const goals = (g) => {
-    try { const a = typeof g === 'string' ? JSON.parse(g) : g; return Array.isArray(a) ? a.join(', ') : g; }
-    catch { return g; }
+    try {
+      const a = typeof g === 'string' ? JSON.parse(g) : g;
+      const arr = Array.isArray(a) ? a : [a];
+      return arr.map(k => GOAL_LABELS[k] || k).join(', ');
+    } catch { return g; }
   };
 
   return (
