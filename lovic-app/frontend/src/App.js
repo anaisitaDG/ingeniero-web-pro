@@ -18,7 +18,7 @@ function ProtectedRoute({ children, trainerOnly = false, skipOnboarding = false 
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}><div className="spinner" style={{ borderTopColor: 'var(--coral)', borderColor: 'var(--border)' }} /></div>;
   if (!user) return <Navigate to="/login" replace />;
   if (trainerOnly && user.role !== 'trainer') return <Navigate to="/" replace />;
-  if (!skipOnboarding && user.role === 'client' && !user.has_questionnaire) {
+  if (!skipOnboarding && user.role === 'client' && Number(user.has_questionnaire) === 0) {
     return <Navigate to="/onboarding" replace />;
   }
   return children;
