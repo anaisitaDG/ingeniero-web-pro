@@ -53,11 +53,23 @@ router.post('/', async (req, res) => {
     q.nutritional_notes,
   ]);
 
-  // Update calorie_target and fitness_goal on users table if provided
-  if (q.fitness_goal || q.calorie_target) {
+  // Calculate calorie target from biometrics if not provided
+  let calorie_target = q.calorie_target || null;
+  if (!calorie_target && q.weight_kg && q.height_cm && q.age) {
+    // Mifflin-St Jeor neutral BMR (no gender)
+    const bmr = 10 * parseFloat(q.weight_kg) + 6.25 * parseFloat(q.height_cm) - 5 * parseFloat(q.age) + 5;
+    const tdee = Math.round(bmr * 1.55); // moderate activity
+    const goal = q.fitness_goal || 'maintenance';
+    if (goal === 'fat_loss')    calorie_target = tdee - 400;
+    else if (goal === 'muscle_gain') calorie_target = tdee + 300;
+    else                             calorie_target = tdee;
+  }
+
+  // Update calorie_target and fitness_goal on users table
+  if (q.fitness_goal || calorie_target) {
     await db.query(
       'UPDATE users SET fitness_goal = COALESCE(?, fitness_goal), calorie_target = COALESCE(?, calorie_target) WHERE id = ?',
-      [q.fitness_goal || null, q.calorie_target || null, uid]
+      [q.fitness_goal || null, calorie_target, uid]
     );
   }
 

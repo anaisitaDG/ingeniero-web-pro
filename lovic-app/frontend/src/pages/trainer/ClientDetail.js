@@ -72,6 +72,7 @@ export default function ClientDetail() {
 
   const tabs = [
     { key: 'overview', label: 'Resumen' },
+    { key: 'profile', label: '📋 Perfil' },
     { key: 'routine', label: '💪 Rutina' },
     { key: 'nutrition', label: '🥗 Nutrición' },
     { key: 'bio', label: '📊 Bio' },
@@ -151,6 +152,72 @@ export default function ClientDetail() {
             </div>
           )}
         </div>
+      )}
+
+      {/* Profile tab */}
+      {tab === 'profile' && (
+        q ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
+            <div className="card">
+              <p style={{ fontWeight: 700, marginBottom: 12 }}>👤 Datos personales</p>
+              <InfoRow label="Edad" value={q.age} />
+              <InfoRow label="Ciudad" value={q.city} />
+              <InfoRow label="Teléfono" value={q.phone} />
+              <InfoRow label="Peso" value={q.weight_kg && `${q.weight_kg} kg`} />
+              <InfoRow label="Talla" value={q.height_cm && `${q.height_cm} cm`} />
+              <InfoRow label="Ocupación" value={q.occupation} />
+            </div>
+            <div className="card">
+              <p style={{ fontWeight: 700, marginBottom: 12 }}>🎯 Objetivos</p>
+              <InfoRow label="Objetivo" value={parseJson(q.main_goal)} />
+              <InfoRow label="Plazo" value={q.goal_timeframe} />
+              <InfoRow label="Motivación" value={q.motivation} />
+              <InfoRow label="Compromiso" value={q.commitment_level && `${q.commitment_level}/10`} />
+              <InfoRow label="Expectativas" value={q.expectations} />
+              <InfoRow label="Obstáculos" value={q.obstacles} />
+            </div>
+            <div className="card">
+              <p style={{ fontWeight: 700, marginBottom: 12 }}>🏋️ Entrenamiento</p>
+              <InfoRow label="Días/semana" value={q.training_days_week} />
+              <InfoRow label="Experiencia previa" value={q.trained_before ? 'Sí' : 'No'} />
+              <InfoRow label="Detalle" value={q.training_detail} />
+              <InfoRow label="Nivel de energía" value={q.energy_level} />
+            </div>
+            <div className="card">
+              <p style={{ fontWeight: 700, marginBottom: 12 }}>🏥 Salud</p>
+              <InfoRow label="Lesiones" value={q.has_injury ? (q.injury_detail || 'Sí') : 'No'} />
+              <InfoRow label="Condiciones médicas" value={parseJson(q.medical_conditions) || (q.medical_detail ? q.medical_detail : null)} />
+              <InfoRow label="Medicamentos" value={q.takes_medication ? (q.medication_detail || 'Sí') : 'No'} />
+              <InfoRow label="Nivel de estrés" value={q.stress_level && `${q.stress_level}/10`} />
+              <InfoRow label="Horas de sueño" value={q.sleep_hours} />
+              <InfoRow label="Fuma" value={q.smokes != null ? (q.smokes ? (q.smoke_detail || 'Sí') : 'No') : null} />
+              <InfoRow label="Alcohol" value={q.drinks_alcohol != null ? (q.drinks_alcohol ? (q.alcohol_detail || 'Sí') : 'No') : null} />
+            </div>
+            <div className="card">
+              <p style={{ fontWeight: 700, marginBottom: 12 }}>🥗 Alimentación</p>
+              <InfoRow label="Calidad dieta" value={q.diet_quality && `${q.diet_quality}/10`} />
+              <InfoRow label="Comidas al día" value={q.meals_per_day} />
+              <InfoRow label="Toma agua" value={q.drinks_water != null ? (q.drinks_water ? 'Sí' : 'No') : null} />
+              <InfoRow label="Alergias" value={q.has_allergies ? (q.allergy_detail || 'Sí') : 'No'} />
+              <InfoRow label="Alimentos a evitar" value={q.foods_to_avoid} />
+              <InfoRow label="Tiempo de cocción" value={q.cooking_time} />
+              <InfoRow label="¿Quién cocina?" value={q.meal_preparer} />
+            </div>
+            <div className="card">
+              <p style={{ fontWeight: 700, marginBottom: 12 }}>📏 Medidas iniciales</p>
+              <InfoRow label="Brazo" value={q.arm_cm && `${q.arm_cm} cm`} />
+              <InfoRow label="Pecho" value={q.chest_cm && `${q.chest_cm} cm`} />
+              <InfoRow label="Cintura" value={q.waist_cm && `${q.waist_cm} cm`} />
+              <InfoRow label="Cadera" value={q.hip_cm && `${q.hip_cm} cm`} />
+              <InfoRow label="Muslo" value={q.thigh_cm && `${q.thigh_cm} cm`} />
+              <InfoRow label="Pantorrilla" value={q.calf_cm && `${q.calf_cm} cm`} />
+              <InfoRow label="Antebrazo" value={q.forearm_cm && `${q.forearm_cm} cm`} />
+              <InfoRow label="Notas" value={q.nutritional_notes} />
+            </div>
+          </div>
+        ) : (
+          <div className="empty-state"><div className="icon">📋</div><p>Este cliente aún no ha completado el cuestionario</p></div>
+        )
       )}
 
       {/* Routine tab */}
