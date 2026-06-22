@@ -65,6 +65,9 @@ export const api = {
       }).then(r => r.json());
     },
   },
+  questionnaire: {
+    save: (data) => request('/questionnaire', { method: 'POST', body: JSON.stringify(data) }),
+  },
   trainer: {
     clients:       ()     => request('/trainer/clients'),
     client:        (id)   => request(`/trainer/clients/${id}`),

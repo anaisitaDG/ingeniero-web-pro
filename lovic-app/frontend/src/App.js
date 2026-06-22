@@ -8,15 +8,19 @@ import Dashboard from './pages/client/Dashboard';
 import FoodLogger from './pages/client/FoodLogger';
 import Measurements from './pages/client/Measurements';
 import MyPlan from './pages/client/MyPlan';
+import Onboarding from './pages/client/Onboarding';
 import TrainerLayout from './pages/trainer/TrainerLayout';
 import ClientList from './pages/trainer/ClientList';
 import ClientDetail from './pages/trainer/ClientDetail';
 
-function ProtectedRoute({ children, trainerOnly = false }) {
+function ProtectedRoute({ children, trainerOnly = false, skipOnboarding = false }) {
   const { user, loading } = useAuth();
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}><div className="spinner" style={{ borderTopColor: 'var(--coral)', borderColor: 'var(--border)' }} /></div>;
   if (!user) return <Navigate to="/login" replace />;
   if (trainerOnly && user.role !== 'trainer') return <Navigate to="/" replace />;
+  if (!skipOnboarding && user.role === 'client' && !user.has_questionnaire) {
+    return <Navigate to="/onboarding" replace />;
+  }
   return children;
 }
 
@@ -35,6 +39,9 @@ export default function App() {
             <Route path="measurements" element={<Measurements />} />
             <Route path="plan" element={<MyPlan />} />
           </Route>
+
+          {/* Onboarding — ProtectedRoute sin redirect para evitar loop */}
+          <Route path="/onboarding" element={<ProtectedRoute skipOnboarding><Onboarding /></ProtectedRoute>} />
 
           {/* Trainer routes */}
           <Route path="/trainer" element={<ProtectedRoute trainerOnly><TrainerLayout /></ProtectedRoute>}>

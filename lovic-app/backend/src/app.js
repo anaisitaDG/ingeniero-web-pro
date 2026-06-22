@@ -30,6 +30,7 @@ app.use('/dashboard',     require('./routes/dashboard'));
 app.use('/measurements',  require('./routes/measurements'));
 app.use('/bioimpedance',  require('./routes/bioimpedance'));
 app.use('/trainer',       require('./routes/trainer'));
+app.use('/questionnaire', require('./routes/questionnaire'));
 
 // Health
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }));

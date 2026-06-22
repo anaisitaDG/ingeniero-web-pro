@@ -11,7 +11,9 @@ async function requireAuth(req, res, next) {
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
     const [[user]] = await db.query(
-      'SELECT id, email, name, role, calorie_target, fitness_goal FROM users WHERE id = ?',
+      `SELECT u.id, u.email, u.name, u.role, u.calorie_target, u.fitness_goal,
+              (SELECT COUNT(*) FROM questionnaire_data q WHERE q.user_id = u.id) > 0 AS has_questionnaire
+       FROM users u WHERE u.id = ?`,
       [payload.sub]
     );
     if (!user) return res.status(401).json({ error: 'Usuario no encontrado' });
