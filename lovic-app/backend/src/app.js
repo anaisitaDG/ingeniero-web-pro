@@ -62,6 +62,16 @@ const db = require('./database/db');
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
     await db.query(`
+      CREATE TABLE IF NOT EXISTS nutrition_plans (
+        id VARCHAR(36) PRIMARY KEY,
+        user_id VARCHAR(36) NOT NULL,
+        content TEXT NOT NULL,
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_user (user_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+    await db.query(`
       CREATE TABLE IF NOT EXISTS workout_logs (
         id VARCHAR(36) PRIMARY KEY,
         exercise_id VARCHAR(36) NOT NULL,
