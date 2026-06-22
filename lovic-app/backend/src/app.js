@@ -17,6 +17,11 @@ const db = require('./database/db');
 (async () => {
   try {
     await db.query(`ALTER TABLE daily_tracking ADD COLUMN IF NOT EXISTS water_glasses TINYINT DEFAULT 0`);
+    await db.query(`ALTER TABLE daily_tracking ADD COLUMN IF NOT EXISTS workout_done TINYINT DEFAULT 0`).catch(() => {});
+    await db.query(`ALTER TABLE workout_days ADD COLUMN IF NOT EXISTS warmup_type VARCHAR(100) DEFAULT NULL`).catch(() => {});
+    await db.query(`ALTER TABLE workout_days ADD COLUMN IF NOT EXISTS warmup_duration INT DEFAULT NULL`).catch(() => {});
+    await db.query(`ALTER TABLE workout_days ADD COLUMN IF NOT EXISTS cardio_type VARCHAR(100) DEFAULT NULL`).catch(() => {});
+    await db.query(`ALTER TABLE workout_days ADD COLUMN IF NOT EXISTS cardio_duration INT DEFAULT NULL`).catch(() => {});
     await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS protein_target_g SMALLINT DEFAULT NULL`);
     await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS carbs_target_g SMALLINT DEFAULT NULL`);
     await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS fat_target_g SMALLINT DEFAULT NULL`);

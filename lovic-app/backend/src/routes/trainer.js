@@ -106,8 +106,9 @@ router.put('/clients/:id/workout', async (req, res) => {
   for (let di = 0; di < days.length; di++) {
     const day = days[di];
     const dayId = uuidv4();
-    await db.query('INSERT INTO workout_days (id, plan_id, day_name, day_order) VALUES (?, ?, ?, ?)',
-      [dayId, planId, day.day_name, di]);
+    await db.query(
+      'INSERT INTO workout_days (id, plan_id, day_name, day_order, warmup_type, warmup_duration, cardio_type, cardio_duration) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [dayId, planId, day.day_name, di, day.warmup_type || null, day.warmup_duration || null, day.cardio_type || null, day.cardio_duration || null]);
     const exercises = day.exercises || [];
     for (let ei = 0; ei < exercises.length; ei++) {
       const ex = exercises[ei];

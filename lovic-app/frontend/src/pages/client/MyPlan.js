@@ -6,15 +6,27 @@ export default function MyPlan() {
   const [plan, setPlan]       = useState(null);
   const [nutrition, setNutrition] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [todayDone, setTodayDone] = useState(false);
+  const [completing, setCompleting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [wRes, dRes] = await Promise.all([api.workout.plan(), api.dashboard.get()]);
+      const [wRes, dRes, doneRes] = await Promise.all([api.workout.plan(), api.dashboard.get(), api.workout.todayDone()]);
       setPlan(wRes.plan);
       setNutrition(dRes.nutrition_plan);
+      setTodayDone(doneRes.done);
     } finally { setLoading(false); }
   }, []);
+
+  async function markComplete() {
+    setCompleting(true);
+    try {
+      await api.workout.complete();
+      setTodayDone(true);
+    } catch (e) { alert(e.message); }
+    finally { setCompleting(false); }
+  }
 
   useEffect(() => { load(); }, [load]);
 
@@ -44,6 +56,18 @@ export default function MyPlan() {
             {plan.days.map(day => (
               <DayCard key={day.id} day={day} onLogged={load} />
             ))}
+            <button
+              onClick={markComplete}
+              disabled={completing || todayDone}
+              style={{
+                width: '100%', padding: '14px', borderRadius: 14, border: 'none', cursor: todayDone ? 'default' : 'pointer',
+                fontWeight: 800, fontSize: 16, marginTop: 8, marginBottom: 16,
+                background: todayDone ? '#d1fae5' : 'var(--coral)', color: todayDone ? '#065f46' : '#fff',
+                transition: 'all 0.2s',
+              }}
+            >
+              {completing ? '⏳ Guardando…' : todayDone ? '✅ Rutina completada hoy' : '🏁 Completé mi rutina hoy'}
+            </button>
           </div>
         ) : (
           <div className="empty-state">
@@ -83,9 +107,27 @@ function DayCard({ day, onLogged }) {
       </button>
       {open && (
         <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {day.warmup_type && (
+            <div style={{ background: 'var(--bg)', borderRadius: 12, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 20 }}>🔥</span>
+              <div>
+                <p style={{ fontWeight: 700, fontSize: 13 }}>Calentamiento: {day.warmup_type}</p>
+                {day.warmup_duration && <p style={{ fontSize: 12, color: 'var(--muted)' }}>{day.warmup_duration} min</p>}
+              </div>
+            </div>
+          )}
           {day.exercises.map(ex => (
             <ExerciseCard key={ex.id} exercise={ex} onLogged={onLogged} />
           ))}
+          {day.cardio_type && (
+            <div style={{ background: 'var(--bg)', borderRadius: 12, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 20 }}>🏃</span>
+              <div>
+                <p style={{ fontWeight: 700, fontSize: 13 }}>Cardio: {day.cardio_type}</p>
+                {day.cardio_duration && <p style={{ fontSize: 12, color: 'var(--muted)' }}>{day.cardio_duration} min</p>}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

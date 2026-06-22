@@ -37,6 +37,30 @@ router.get('/plan', async (req, res) => {
   res.json({ plan: { ...plan, days } });
 });
 
+// POST /workout/complete — cliente marca rutina del día como completada
+router.post('/complete', async (req, res) => {
+  const uid = req.user.id;
+  const today = new Date().toLocaleDateString('en-CA');
+  await db.query(
+    `INSERT INTO daily_tracking (id, user_id, tracked_date, workout_done)
+     VALUES (?, ?, ?, 1)
+     ON DUPLICATE KEY UPDATE workout_done = 1`,
+    [uuidv4(), uid, today]
+  );
+  res.json({ message: 'Rutina marcada como completada' });
+});
+
+// GET /workout/today-done — check si ya completó rutina hoy
+router.get('/today-done', async (req, res) => {
+  const uid = req.user.id;
+  const today = new Date().toLocaleDateString('en-CA');
+  const [[row]] = await db.query(
+    'SELECT workout_done FROM daily_tracking WHERE user_id=? AND tracked_date=?',
+    [uid, today]
+  );
+  res.json({ done: !!(row?.workout_done) });
+});
+
 // POST /workout/log — cliente registra sets de un ejercicio
 router.post('/log', async (req, res) => {
   const uid = req.user.id;

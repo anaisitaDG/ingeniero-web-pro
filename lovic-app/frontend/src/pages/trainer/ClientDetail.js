@@ -3,7 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
 
 const EMPTY_EXERCISE = () => ({ _key: Math.random(), name: '', youtube_url: '', sets: 3, reps: '10', weight_kg: '' });
-const EMPTY_DAY = () => ({ _key: Math.random(), day_name: '', exercises: [EMPTY_EXERCISE()] });
+const WARMUP_OPTIONS = ['Movilidad articular', 'Trote suave', 'Saltos', 'Sentadillas sin peso', 'Jumping jacks', 'Estiramientos dinámicos'];
+const CARDIO_OPTIONS = ['Cuerda', 'Caminadora', 'Escaleras', 'Elíptica', 'Stepper', 'Bicicleta', 'Remo'];
+const EMPTY_DAY = () => ({ _key: Math.random(), day_name: '', warmup_type: '', warmup_duration: '', cardio_type: '', cardio_duration: '', exercises: [EMPTY_EXERCISE()] });
 
 export default function ClientDetail() {
   const { id } = useParams();
@@ -52,6 +54,10 @@ export default function ClientDetail() {
         setWorkoutDays(res.plan.days.map(d => ({
           _key: Math.random(),
           day_name: d.day_name,
+          warmup_type: d.warmup_type || '',
+          warmup_duration: d.warmup_duration || '',
+          cardio_type: d.cardio_type || '',
+          cardio_duration: d.cardio_duration || '',
           exercises: d.exercises.map(e => ({
             _key: Math.random(),
             name: e.name,
@@ -87,6 +93,10 @@ export default function ClientDetail() {
       .filter(d => d.day_name.trim())
       .map(d => ({
         day_name: d.day_name,
+        warmup_type: d.warmup_type || null,
+        warmup_duration: d.warmup_duration ? Number(d.warmup_duration) : null,
+        cardio_type: d.cardio_type || null,
+        cardio_duration: d.cardio_duration ? Number(d.cardio_duration) : null,
         exercises: d.exercises
           .filter(e => e.name.trim())
           .map(e => ({
@@ -375,6 +385,34 @@ export default function ClientDetail() {
                     {day.suggesting ? <span className="spinner" style={{ width: 14, height: 14 }} /> : '✨'}
                   </button>
                   <button onClick={() => removeDay(di)} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: 'var(--muted)', padding: '4px 8px' }}>✕</button>
+                </div>
+
+                {/* Warmup & Cardio */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
+                  <div>
+                    <label className="label">🔥 Calentamiento (opcional)</label>
+                    <select className="input" value={day.warmup_type} onChange={e => updateDay(di, 'warmup_type', e.target.value)}>
+                      <option value="">Sin calentamiento</option>
+                      {WARMUP_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="label">Duración (min)</label>
+                    <input className="input" type="number" min="1" max="60" placeholder="10" value={day.warmup_duration}
+                      onChange={e => updateDay(di, 'warmup_duration', e.target.value)} disabled={!day.warmup_type} />
+                  </div>
+                  <div>
+                    <label className="label">🏃 Cardio (opcional)</label>
+                    <select className="input" value={day.cardio_type} onChange={e => updateDay(di, 'cardio_type', e.target.value)}>
+                      <option value="">Sin cardio</option>
+                      {CARDIO_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="label">Duración (min)</label>
+                    <input className="input" type="number" min="1" max="120" placeholder="20" value={day.cardio_duration}
+                      onChange={e => updateDay(di, 'cardio_duration', e.target.value)} disabled={!day.cardio_type} />
+                  </div>
                 </div>
 
                 {/* Exercises */}

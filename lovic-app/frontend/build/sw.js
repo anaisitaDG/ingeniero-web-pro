@@ -1,4 +1,4 @@
-const CACHE = 'lovic-v6';
+const CACHE = 'lovic-v5';
 
 const API_PATHS = ['/auth/', '/food/', '/dashboard/', '/measurements/', '/bioimpedance/', '/questionnaire/', '/trainer/', '/profile', '/progress-photos', '/workout'];
 
