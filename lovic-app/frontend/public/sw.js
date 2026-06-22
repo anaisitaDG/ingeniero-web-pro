@@ -1,6 +1,6 @@
-const CACHE = 'lovic-v3';
+const CACHE = 'lovic-v4';
 
-const API_PATHS = ['/auth/', '/food/', '/dashboard/', '/measurements/', '/bioimpedance/', '/questionnaire/', '/trainer/', '/profile', '/progress-photos'];
+const API_PATHS = ['/auth/', '/food/', '/dashboard/', '/measurements/', '/bioimpedance/', '/questionnaire/', '/trainer/', '/profile', '/progress-photos', '/workout'];
 
 self.addEventListener('install', e => {
   self.skipWaiting();
