@@ -60,8 +60,8 @@ router.post('/log', async (req, res) => {
 
   const [[{ total }]] = await db.query(
     `SELECT COALESCE(SUM(calories), 0) AS total FROM food_logs
-     WHERE user_id = ? AND logged_at = CURDATE()`,
-    [req.user.id]
+     WHERE user_id = ? AND logged_at = ?`,
+    [req.user.id, today]
   );
 
   const remaining = (req.user.calorie_target || 2000) - total;
