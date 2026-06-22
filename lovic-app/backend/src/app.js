@@ -12,6 +12,26 @@ const app = express();
 const uploadPath = process.env.UPLOAD_PATH || 'uploads/';
 if (!fs.existsSync(uploadPath)) fs.mkdirSync(uploadPath, { recursive: true });
 
+// DB migrations — run once on startup
+const db = require('./database/db');
+(async () => {
+  try {
+    await db.query(`ALTER TABLE daily_tracking ADD COLUMN IF NOT EXISTS water_glasses TINYINT DEFAULT 0`);
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS progress_photos (
+        id VARCHAR(36) PRIMARY KEY,
+        user_id VARCHAR(36) NOT NULL,
+        image_url VARCHAR(500) NOT NULL,
+        note VARCHAR(255) DEFAULT '',
+        taken_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_user (user_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+  } catch (e) {
+    console.error('Migration error:', e.message);
+  }
+})();
+
 // Security
 app.use(helmet());
 app.use(cors({
@@ -31,7 +51,8 @@ app.use('/measurements',  require('./routes/measurements'));
 app.use('/bioimpedance',  require('./routes/bioimpedance'));
 app.use('/trainer',       require('./routes/trainer'));
 app.use('/questionnaire', require('./routes/questionnaire'));
-app.use('/profile',       require('./routes/profile'));
+app.use('/profile',         require('./routes/profile'));
+app.use('/progress-photos', require('./routes/progressPhotos'));
 
 // Health
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }));

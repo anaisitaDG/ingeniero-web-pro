@@ -9,6 +9,7 @@ import FoodLogger from './pages/client/FoodLogger';
 import Measurements from './pages/client/Measurements';
 import MyPlan from './pages/client/MyPlan';
 import Profile from './pages/client/Profile';
+import ProgressPhotos from './pages/client/ProgressPhotos';
 import Onboarding from './pages/client/Onboarding';
 import TrainerLayout from './pages/trainer/TrainerLayout';
 import ClientList from './pages/trainer/ClientList';
@@ -40,6 +41,7 @@ export default function App() {
             <Route path="measurements" element={<Measurements />} />
             <Route path="plan" element={<MyPlan />} />
             <Route path="profile" element={<Profile />} />
+            <Route path="photos" element={<ProgressPhotos />} />
           </Route>
 
           {/* Onboarding — ProtectedRoute sin redirect para evitar loop */}

@@ -71,6 +71,18 @@ export const api = {
   profile: {
     update: (data) => request('/profile', { method: 'PUT', body: JSON.stringify(data) }),
   },
+  progressPhotos: {
+    list:   ()         => request('/progress-photos'),
+    remove: (id)       => request(`/progress-photos/${id}`, { method: 'DELETE' }),
+    upload: (formData) => {
+      const token = getToken();
+      return fetch(`${BASE}/progress-photos/upload`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      }).then(r => r.json());
+    },
+  },
   trainer: {
     clients:       ()     => request('/trainer/clients'),
     client:        (id)   => request(`/trainer/clients/${id}`),
