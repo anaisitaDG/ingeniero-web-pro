@@ -61,6 +61,8 @@ const db = require('./database/db');
         FOREIGN KEY (day_id) REFERENCES workout_days(id) ON DELETE CASCADE
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
+    await db.query(`ALTER TABLE nutrition_plans ADD COLUMN IF NOT EXISTS content TEXT`).catch(() => {});
+    await db.query(`ALTER TABLE nutrition_plans ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE`).catch(() => {});
     await db.query(`
       CREATE TABLE IF NOT EXISTS nutrition_plans (
         id VARCHAR(36) PRIMARY KEY,
