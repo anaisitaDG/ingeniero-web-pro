@@ -222,7 +222,7 @@ router.put('/clients/:id/targets', async (req, res) => {
   res.json({ message: 'Metas actualizadas' });
 });
 
-// POST /trainer/clients/:id/invite — envía magic link de acceso
+// POST /trainer/clients/:id/invite — envía magic link de acceso (plan listo)
 router.post('/clients/:id/invite', async (req, res) => {
   const [[user]] = await db.query('SELECT * FROM users WHERE id=? AND role="client"', [req.params.id]);
   if (!user) return res.status(404).json({ error: 'Cliente no encontrado' });
@@ -231,9 +231,32 @@ router.post('/clients/:id/invite', async (req, res) => {
   const token = uuidv4();
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
   await db.query('INSERT INTO magic_links (user_id, token, expires_at) VALUES (?, ?, ?)', [user.id, token, expiresAt]);
-  await sendMagicLink(user.email, user.name, token);
+  await sendMagicLink(user.email, user.name, token, 'access');
 
   res.json({ message: 'Invitación enviada' });
+});
+
+// POST /trainer/invite-new — crea cliente nuevo y envía valoración/onboarding
+router.post('/invite-new', async (req, res) => {
+  const { email, name } = req.body;
+  if (!email || !name) return res.status(400).json({ error: 'Email y nombre requeridos' });
+
+  const [[existing]] = await db.query('SELECT id FROM users WHERE email=?', [email]);
+  let userId;
+  if (existing) {
+    userId = existing.id;
+  } else {
+    userId = uuidv4();
+    await db.query('INSERT INTO users (id, email, name, role) VALUES (?, ?, ?, "client")', [userId, email, name]);
+  }
+
+  const { sendMagicLink } = require('../services/email');
+  const token = uuidv4();
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  await db.query('INSERT INTO magic_links (user_id, token, expires_at) VALUES (?, ?, ?)', [userId, token, expiresAt]);
+  await sendMagicLink(email, name, token, 'onboarding');
+
+  res.json({ message: 'Valoración enviada', userId });
 });
 
 function extractCalorieTarget(content) {

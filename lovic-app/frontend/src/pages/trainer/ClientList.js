@@ -6,6 +6,11 @@ export default function ClientList() {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch]   = useState('');
+  const [showInvite, setShowInvite] = useState(false);
+  const [inviteName, setInviteName] = useState('');
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteSending, setInviteSending] = useState(false);
+  const [inviteDone, setInviteDone] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -13,6 +18,20 @@ export default function ClientList() {
       .then(d => setClients(d.clients))
       .finally(() => setLoading(false));
   }, []);
+
+  async function sendInvite() {
+    if (!inviteName.trim() || !inviteEmail.trim()) return;
+    setInviteSending(true);
+    try {
+      await api.trainer.inviteNew(inviteEmail.trim(), inviteName.trim());
+      setInviteDone(true);
+      setInviteName('');
+      setInviteEmail('');
+      setTimeout(() => { setInviteDone(false); setShowInvite(false); }, 3000);
+      api.trainer.clients().then(d => setClients(d.clients));
+    } catch (e) { alert(e.message); }
+    finally { setInviteSending(false); }
+  }
 
   const filtered = clients.filter(c =>
     c.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -35,7 +54,35 @@ export default function ClientList() {
           <h1 className="page-title">Clientes 👥</h1>
           <p style={{ color: 'var(--muted)', fontSize: 14 }}>{clients.length} en total</p>
         </div>
+        <button onClick={() => setShowInvite(v => !v)} className="btn-primary" style={{ flexShrink: 0 }}>
+          + Enviar valoración
+        </button>
       </div>
+
+      {showInvite && (
+        <div className="card" style={{ marginBottom: 20, background: 'var(--coral-light)', border: '1.5px solid var(--coral)' }}>
+          <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 14, color: 'var(--coral)' }}>📋 Enviar valoración a cliente nuevo</p>
+          {inviteDone ? (
+            <p style={{ color: '#065f46', fontWeight: 700, textAlign: 'center', padding: '12px 0' }}>✅ ¡Valoración enviada! El cliente recibirá el correo en breve.</p>
+          ) : (
+            <>
+              <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+                <input className="input" placeholder="Nombre del cliente" value={inviteName}
+                  onChange={e => setInviteName(e.target.value)} style={{ flex: 1 }} />
+                <input className="input" placeholder="Email" type="email" value={inviteEmail}
+                  onChange={e => setInviteEmail(e.target.value)} style={{ flex: 1 }} />
+              </div>
+              <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12 }}>
+                Se creará su perfil y recibirá un correo con acceso a la plataforma para completar su formulario de onboarding.
+              </p>
+              <button className="btn-primary" onClick={sendInvite} disabled={inviteSending || !inviteName || !inviteEmail}
+                style={{ width: '100%', justifyContent: 'center' }}>
+                {inviteSending ? '⏳ Enviando…' : '📧 Enviar valoración'}
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       <input
         className="input"

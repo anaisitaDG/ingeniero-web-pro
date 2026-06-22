@@ -102,6 +102,7 @@ export const api = {
     saveWorkout:     (id, days)  => request(`/trainer/clients/${id}/workout`, { method: 'PUT', body: JSON.stringify({ days }) }),
     suggestDayName:  (exercises) => request('/trainer/suggest-day-name', { method: 'POST', body: JSON.stringify({ exercises }) }),
     invite:        (id)   => request(`/trainer/clients/${id}/invite`, { method: 'POST' }),
+    inviteNew:     (email, name) => request('/trainer/invite-new', { method: 'POST', body: JSON.stringify({ email, name }) }),
     setTargets:    (id, body) => request(`/trainer/clients/${id}/targets`, { method: 'PUT', body: JSON.stringify(body) }),
   },
 };
