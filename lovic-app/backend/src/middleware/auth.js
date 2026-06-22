@@ -39,6 +39,12 @@ async function requireAuth(req, res, next) {
     );
     if (!user) return res.status(401).json({ error: 'Usuario no encontrado' });
 
+    // Skip calorie/macro calculations for trainers
+    if (user.role === 'trainer') {
+      req.user = user;
+      return next();
+    }
+
     // If calorie_target not set, calculate from questionnaire data
     if (!user.calorie_target) {
       const [[q]] = await db.query(
