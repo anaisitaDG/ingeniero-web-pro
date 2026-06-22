@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
+import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 const EMPTY_EXERCISE = () => ({ _key: Math.random(), name: '', youtube_url: '', sets: 3, reps: '10', weight_kg: '' });
 const EMPTY_DAY = () => ({ _key: Math.random(), day_name: '', warmup_type: '', warmup_duration: '', cardio_type: '', cardio_duration: '', exercises: [EMPTY_EXERCISE()] });
@@ -28,6 +29,13 @@ export default function ClientDetail() {
   const [nutritionMode, setNutritionMode]     = useState('manual');
   const [genNutritionLoading, setGenNutritionLoading] = useState(false);
   const [aiPrompt, setAiPrompt] = useState('');
+
+  // New tabs state
+  const [progress, setProgress]         = useState(null);
+  const [adherenceDetail, setAdherence] = useState(null);
+  const [workoutLogs, setWorkoutLogs]   = useState(null);
+  const [notes, setNotes]               = useState('');
+  const [savingNotes, setSavingNotes]   = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -71,6 +79,12 @@ export default function ClientDetail() {
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { if (tab === 'routine') loadWorkout(); }, [tab, loadWorkout]);
+  useEffect(() => {
+    if (tab === 'progreso' && !progress) api.trainer.getProgress(id).then(setProgress);
+    if (tab === 'adherencia' && !adherenceDetail) api.trainer.getAdherence(id).then(d => setAdherence(d.days));
+    if (tab === 'logs' && !workoutLogs) api.trainer.getWorkoutLogs(id).then(d => setWorkoutLogs(d.exercises));
+    if (tab === 'notas' && notes === '') api.trainer.getNotes(id).then(d => setNotes(d.notes || ''));
+  }, [tab]); // eslint-disable-line
 
   async function saveTargets() {
     setSavingTargets(true);
@@ -189,11 +203,15 @@ export default function ClientDetail() {
   const { user, questionnaire: q, measurements, bioimpedance, nutrition_plan, adherence } = data;
 
   const tabs = [
-    { key: 'overview',  label: 'Resumen' },
-    { key: 'profile',   label: '📋 Perfil' },
-    { key: 'routine',   label: '💪 Rutina' },
-    { key: 'nutrition', label: '🥗 Nutrición' },
-    { key: 'bio',       label: '📊 Bio' },
+    { key: 'overview',   label: 'Resumen' },
+    { key: 'profile',    label: '📋 Perfil' },
+    { key: 'routine',    label: '💪 Rutina' },
+    { key: 'nutrition',  label: '🥗 Nutrición' },
+    { key: 'bio',        label: '📊 Bio' },
+    { key: 'progreso',   label: '📈 Progreso' },
+    { key: 'adherencia', label: '🗓 Adherencia' },
+    { key: 'logs',       label: '🏋️ Registros' },
+    { key: 'notas',      label: '📓 Notas' },
   ];
 
   return (
@@ -524,6 +542,155 @@ export default function ClientDetail() {
       )}
 
       {/* Bio */}
+      {/* PROGRESO */}
+      {tab === 'progreso' && (
+        <div>
+          {!progress ? <div style={{ textAlign: 'center', padding: 48 }}><div className="spinner" style={{ borderTopColor: 'var(--coral)', borderColor: 'var(--border)', width: 28, height: 28 }} /></div> : (
+            <>
+              {progress.measurements.length > 1 && (() => {
+                const chartData = [...progress.measurements].reverse().map(r => ({
+                  date: new Date(r.logged_at).toLocaleDateString('es', { day: 'numeric', month: 'short' }),
+                  peso: r.weight_kg, cintura: r.waist_cm, cadera: r.hip_cm,
+                }));
+                return (
+                  <div className="card" style={{ marginBottom: 16 }}>
+                    <p style={{ fontWeight: 700, marginBottom: 12 }}>📉 Peso (kg)</p>
+                    <ResponsiveContainer width="100%" height={120}>
+                      <LineChart data={chartData}>
+                        <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'var(--muted)' }} axisLine={false} tickLine={false} />
+                        <Tooltip formatter={v => [`${v} kg`, 'Peso']} contentStyle={{ borderRadius: 10, border: 'none' }} />
+                        <Line type="monotone" dataKey="peso" stroke="var(--coral)" strokeWidth={2.5} dot={{ r: 3, fill: 'var(--coral)' }} connectNulls />
+                      </LineChart>
+                    </ResponsiveContainer>
+                    {chartData.some(d => d.cintura) && <>
+                      <p style={{ fontWeight: 700, margin: '12px 0 8px' }}>📐 Cintura/Cadera (cm)</p>
+                      <ResponsiveContainer width="100%" height={100}>
+                        <LineChart data={chartData}>
+                          <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'var(--muted)' }} axisLine={false} tickLine={false} />
+                          <Tooltip contentStyle={{ borderRadius: 10, border: 'none' }} />
+                          <Line type="monotone" dataKey="cintura" stroke="#2D6EA0" strokeWidth={2} dot={false} connectNulls />
+                          <Line type="monotone" dataKey="cadera" stroke="#C99A1E" strokeWidth={2} dot={false} connectNulls />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </>}
+                  </div>
+                );
+              })()}
+              {progress.photos.length > 0 ? (
+                <div className="card">
+                  <p style={{ fontWeight: 700, marginBottom: 12 }}>📸 Fotos de progreso</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                    {progress.photos.map(p => (
+                      <div key={p.id}>
+                        <img src={p.image_url} alt="" style={{ width: '100%', aspectRatio: '3/4', objectFit: 'cover', borderRadius: 10 }} />
+                        <p style={{ fontSize: 10, color: 'var(--muted)', textAlign: 'center', marginTop: 4 }}>
+                          {new Date(p.taken_at).toLocaleDateString('es', { day: 'numeric', month: 'short' })}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="empty-state"><div className="icon">📸</div><p>La cliente aún no ha subido fotos de progreso</p></div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ADHERENCIA */}
+      {tab === 'adherencia' && (
+        <div>
+          {!adherenceDetail ? <div style={{ textAlign: 'center', padding: 48 }}><div className="spinner" style={{ borderTopColor: 'var(--coral)', borderColor: 'var(--border)', width: 28, height: 28 }} /></div> : (
+            adherenceDetail.length === 0 ? (
+              <div className="empty-state"><div className="icon">🗓</div><p>Sin registros de adherencia aún</p></div>
+            ) : (
+              <div className="card">
+                <p style={{ fontWeight: 700, marginBottom: 16 }}>Últimos 60 días</p>
+                <div style={{ display: 'flex', gap: 16, marginBottom: 12 }}>
+                  <span style={{ fontSize: 12 }}>💪 Entrenamiento</span>
+                  <span style={{ fontSize: 12 }}>🥗 Dieta</span>
+                  <span style={{ fontSize: 12 }}>💧 Agua</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {adherenceDetail.map(row => {
+                    const d = row.tracked_date instanceof Date ? row.tracked_date.toISOString().slice(0,10) : String(row.tracked_date).slice(0,10);
+                    return (
+                      <div key={d} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
+                        <span style={{ fontSize: 12, color: 'var(--muted)', width: 80, flexShrink: 0 }}>
+                          {new Date(d).toLocaleDateString('es', { weekday: 'short', day: 'numeric', month: 'short' })}
+                        </span>
+                        <span style={{ fontSize: 16 }}>{row.workout_done ? '✅' : '⬜'}</span>
+                        <span style={{ fontSize: 16 }}>{row.diet_followed ? '✅' : '⬜'}</span>
+                        <span style={{ fontSize: 13, color: '#4A90D9', fontWeight: 600 }}>
+                          {row.water_glasses > 0 ? `💧${row.water_glasses}` : ''}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )
+          )}
+        </div>
+      )}
+
+      {/* LOGS DE EJERCICIOS */}
+      {tab === 'logs' && (
+        <div>
+          {!workoutLogs ? <div style={{ textAlign: 'center', padding: 48 }}><div className="spinner" style={{ borderTopColor: 'var(--coral)', borderColor: 'var(--border)', width: 28, height: 28 }} /></div> : (
+            workoutLogs.length === 0 ? (
+              <div className="empty-state"><div className="icon">🏋️</div><p>La cliente aún no ha registrado ningún ejercicio</p></div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {workoutLogs.map(ex => (
+                  <div key={ex.name} className="card">
+                    <p style={{ fontWeight: 700, marginBottom: 2 }}>{ex.name}</p>
+                    <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>{ex.day_name}</p>
+                    {ex.sessions.map(s => (
+                      <div key={s.date} style={{ marginBottom: 8 }}>
+                        <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--coral)', marginBottom: 4 }}>
+                          {new Date(s.date).toLocaleDateString('es', { weekday: 'short', day: 'numeric', month: 'short' })}
+                        </p>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                          {s.sets.map((set, i) => (
+                            <span key={i} style={{ fontSize: 12, background: 'var(--bg)', padding: '3px 8px', borderRadius: 6, color: 'var(--text)' }}>
+                              S{set.set}: {set.weight ?? '—'}kg × {set.reps ?? '—'}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )
+          )}
+        </div>
+      )}
+
+      {/* NOTAS */}
+      {tab === 'notas' && (
+        <div className="card">
+          <p style={{ fontWeight: 700, marginBottom: 12 }}>📓 Notas privadas</p>
+          <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>Solo tú puedes ver estas notas. La cliente no tiene acceso.</p>
+          <textarea
+            className="input"
+            rows={14}
+            placeholder="Observaciones, seguimiento, recordatorios sobre esta cliente..."
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
+            style={{ resize: 'vertical', marginBottom: 12, fontFamily: 'inherit', lineHeight: 1.6 }}
+          />
+          <button className="btn-primary" onClick={async () => {
+            setSavingNotes(true);
+            try { await api.trainer.saveNotes(id, notes); } finally { setSavingNotes(false); }
+          }} disabled={savingNotes} style={{ width: '100%', justifyContent: 'center' }}>
+            {savingNotes ? <span className="spinner" /> : '💾 Guardar notas'}
+          </button>
+        </div>
+      )}
+
       {tab === 'bio' && (
         <div>
           <div className="card" style={{ marginBottom: 16 }}>

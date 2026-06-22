@@ -236,6 +236,69 @@ router.post('/clients/:id/invite', async (req, res) => {
   res.json({ message: 'Invitación enviada' });
 });
 
+// GET /trainer/clients/:id/progress — fotos + historial de medidas
+router.get('/clients/:id/progress', async (req, res) => {
+  const uid = req.params.id;
+  const [measurements] = await db.query(
+    'SELECT * FROM measurements WHERE user_id=? ORDER BY logged_at DESC LIMIT 30', [uid]
+  );
+  const [photos] = await db.query(
+    'SELECT * FROM progress_photos WHERE user_id=? ORDER BY taken_at DESC LIMIT 20', [uid]
+  );
+  res.json({ measurements, photos });
+});
+
+// GET /trainer/clients/:id/adherence-detail — día a día últimos 60 días
+router.get('/clients/:id/adherence-detail', async (req, res) => {
+  const uid = req.params.id;
+  const [rows] = await db.query(
+    `SELECT tracked_date, workout_done, diet_followed, water_glasses
+     FROM daily_tracking WHERE user_id=? AND tracked_date >= DATE_SUB(CURDATE(), INTERVAL 60 DAY)
+     ORDER BY tracked_date DESC`, [uid]
+  );
+  res.json({ days: rows });
+});
+
+// GET /trainer/clients/:id/workout-logs — logs de ejercicios agrupados por ejercicio
+router.get('/clients/:id/workout-logs', async (req, res) => {
+  const uid = req.params.id;
+  const [logs] = await db.query(
+    `SELECT wl.logged_date, wl.set_number, wl.weight_kg, wl.reps_done,
+            we.name as exercise_name, wd.day_name
+     FROM workout_logs wl
+     JOIN workout_exercises we ON we.id = wl.exercise_id
+     JOIN workout_days wd ON wd.id = we.day_id
+     WHERE wl.user_id=?
+     ORDER BY we.name, wl.logged_date DESC, wl.set_number ASC
+     LIMIT 300`, [uid]
+  );
+  // Group by exercise
+  const byEx = {};
+  for (const row of logs) {
+    if (!byEx[row.exercise_name]) byEx[row.exercise_name] = { name: row.exercise_name, day_name: row.day_name, sessions: {} };
+    const d = row.logged_date instanceof Date ? row.logged_date.toISOString().slice(0,10) : String(row.logged_date).slice(0,10);
+    if (!byEx[row.exercise_name].sessions[d]) byEx[row.exercise_name].sessions[d] = [];
+    byEx[row.exercise_name].sessions[d].push({ set: row.set_number, weight: row.weight_kg, reps: row.reps_done });
+  }
+  const exercises = Object.values(byEx).map(ex => ({
+    ...ex,
+    sessions: Object.entries(ex.sessions).map(([date, sets]) => ({ date, sets })).slice(0, 5),
+  }));
+  res.json({ exercises });
+});
+
+// GET/PUT /trainer/clients/:id/notes — notas privadas del entrenador
+router.get('/clients/:id/notes', async (req, res) => {
+  const [[user]] = await db.query('SELECT trainer_notes FROM users WHERE id=?', [req.params.id]);
+  res.json({ notes: user?.trainer_notes || '' });
+});
+
+router.put('/clients/:id/notes', async (req, res) => {
+  const { notes } = req.body;
+  await db.query('UPDATE users SET trainer_notes=? WHERE id=?', [notes || '', req.params.id]);
+  res.json({ message: 'Notas guardadas' });
+});
+
 // POST /trainer/invite-new — crea cliente nuevo y envía valoración/onboarding
 router.post('/invite-new', async (req, res) => {
   const { email, name } = req.body;

@@ -22,6 +22,7 @@ const db = require('./database/db');
     await db.query(`ALTER TABLE workout_days ADD COLUMN IF NOT EXISTS warmup_duration INT DEFAULT NULL`).catch(() => {});
     await db.query(`ALTER TABLE workout_days ADD COLUMN IF NOT EXISTS cardio_type VARCHAR(100) DEFAULT NULL`).catch(() => {});
     await db.query(`ALTER TABLE workout_days ADD COLUMN IF NOT EXISTS cardio_duration INT DEFAULT NULL`).catch(() => {});
+    await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS trainer_notes TEXT DEFAULT NULL`).catch(() => {});
     await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS protein_target_g SMALLINT DEFAULT NULL`);
     await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS carbs_target_g SMALLINT DEFAULT NULL`);
     await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS fat_target_g SMALLINT DEFAULT NULL`);
