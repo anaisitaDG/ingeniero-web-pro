@@ -140,7 +140,7 @@ export default function Measurements() {
         <p className="page-title" style={{ fontSize: 18, marginBottom: 16 }}>Bioimpedancia 📊</p>
         <div className="card" style={{ marginBottom: 16 }}>
           <p style={{ fontWeight: 700, marginBottom: 10 }}>Subir fotos de bioimpedancia</p>
-          <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>Selecciona hasta 2 fotos del reporte (pantalla 1 y 2)</p>
+          <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>Selecciona hasta 4 fotos del reporte</p>
           <input type="file" accept="image/*" multiple onChange={e => setBioFiles(Array.from(e.target.files))} style={{ marginBottom: 10 }} />
           {bioFiles.length > 0 && <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>{bioFiles.length} foto(s) seleccionada(s)</p>}
           <button className="btn-primary" onClick={async () => {

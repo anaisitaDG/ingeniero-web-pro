@@ -24,7 +24,7 @@ const upload = multer({
 router.use(requireAuth);
 
 // POST /bioimpedance/upload — acepta 1 o 2 imágenes, guarda un solo registro combinado
-router.post('/upload', upload.array('image', 2), async (req, res) => {
+router.post('/upload', upload.array('image', 4), async (req, res) => {
   if (!req.files?.length) return res.status(400).json({ error: 'Imagen requerida' });
 
   const targetUserId = req.body.user_id || req.user.id;
