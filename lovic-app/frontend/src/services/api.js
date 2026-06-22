@@ -68,6 +68,9 @@ export const api = {
   questionnaire: {
     save: (data) => request('/questionnaire', { method: 'POST', body: JSON.stringify(data) }),
   },
+  profile: {
+    update: (data) => request('/profile', { method: 'PUT', body: JSON.stringify(data) }),
+  },
   trainer: {
     clients:       ()     => request('/trainer/clients'),
     client:        (id)   => request(`/trainer/clients/${id}`),

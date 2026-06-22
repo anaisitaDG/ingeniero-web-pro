@@ -7,6 +7,7 @@ const navItems = [
   { to: '/food',         label: 'Comida',   icon: '🥗' },
   { to: '/measurements', label: 'Medidas',  icon: '📏' },
   { to: '/plan',         label: 'Mi Plan',  icon: '💪' },
+  { to: '/profile',      label: 'Perfil',   icon: '👤' },
 ];
 
 export default function ClientLayout() {

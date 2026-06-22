@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
@@ -21,6 +22,7 @@ export default function Measurements() {
   const [form, setForm]         = useState(EMPTY);
   const [saving, setSaving]     = useState(false);
   const [open, setOpen]         = useState(false);
+  const [tab, setTab]           = useState('current');
   const [bioList, setBioList]   = useState([]);
   const [bioFiles, setBioFiles] = useState([]);
   const [bioUploading, setBioUploading] = useState(false);
@@ -28,7 +30,7 @@ export default function Measurements() {
   useEffect(() => { load(); }, []);
 
   async function load() {
-    const d = await api.measurements.list(10);
+    const d = await api.measurements.list(20);
     setRows(d.measurements);
     const b = await api.bioimpedance.list();
     setBioList(b.bioimpedance || []);
@@ -55,6 +57,12 @@ export default function Measurements() {
   const latest = rows[0];
   const prev   = rows[1];
 
+  // Build chart data per field from all rows (oldest first)
+  const chartData = [...rows].reverse().map(r => ({
+    date: new Date(r.logged_at).toLocaleDateString('es', { day: 'numeric', month: 'short' }),
+    ...FIELDS.reduce((acc, f) => ({ ...acc, [f.key]: r[f.key] ?? null }), {}),
+  }));
+
   return (
     <div>
       <div className="page-header">
@@ -64,7 +72,20 @@ export default function Measurements() {
         </button>
       </div>
 
-      {open && (
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20, background: 'var(--border)', padding: 4, borderRadius: 12 }}>
+        {[{ key: 'current', label: '📊 Actual' }, { key: 'progress', label: '📈 Progreso' }, { key: 'bio', label: '🔬 Bioimpedancia' }].map(t => (
+          <button key={t.key} onClick={() => setTab(t.key)} style={{
+            flex: 1, padding: '9px 4px', borderRadius: 10, fontWeight: 700, fontSize: 13, border: 'none',
+            background: tab === t.key ? 'var(--card)' : 'transparent',
+            color: tab === t.key ? 'var(--coral)' : 'var(--muted)',
+            boxShadow: tab === t.key ? '0 1px 4px rgba(0,0,0,0.1)' : 'none',
+            cursor: 'pointer',
+          }}>{t.label}</button>
+        ))}
+      </div>
+
+      {tab === 'current' && open && (
         <form onSubmit={handleSubmit} className="card" style={{ marginBottom: 20 }}>
           <p style={{ fontWeight: 700, marginBottom: 16 }}>Nueva medición</p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
@@ -97,46 +118,78 @@ export default function Measurements() {
         </form>
       )}
 
-      {/* Latest vs previous */}
-      {latest && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
-          {FIELDS.filter(f => latest[f.key] != null).map(f => (
-            <MeasureCard key={f.key} field={f} latest={latest} prev={prev} />
-          ))}
-        </div>
-      )}
-
-      {/* History */}
-      {rows.length > 1 && (
+      {/* TAB: Actual */}
+      {tab === 'current' && (
         <>
-          <p className="label" style={{ marginBottom: 10 }}>Historial</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {rows.slice(1).map(row => (
-              <div key={row.id} className="card" style={{ padding: '12px 16px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <span style={{ fontWeight: 700 }}>{new Date(row.logged_at).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                  {row.weight_kg && <span className="pill pill-coral">{row.weight_kg} kg</span>}
-                </div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  {FIELDS.slice(1).filter(f => row[f.key]).map(f => (
-                    <span key={f.key} style={{ fontSize: 12, color: 'var(--muted)' }}>{f.label}: <strong>{row[f.key]}{f.unit}</strong></span>
-                  ))}
-                </div>
+          {latest ? (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
+              {FIELDS.filter(f => latest[f.key] != null).map(f => (
+                <MeasureCard key={f.key} field={f} latest={latest} prev={prev} />
+              ))}
+            </div>
+          ) : (
+            <div className="empty-state"><div className="icon">📏</div><p>Aún no hay medidas registradas</p></div>
+          )}
+
+          {rows.length > 1 && (
+            <>
+              <p className="label" style={{ marginBottom: 10 }}>Historial</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {rows.slice(1).map(row => (
+                  <div key={row.id} className="card" style={{ padding: '12px 16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <span style={{ fontWeight: 700 }}>{new Date(row.logged_at).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                      {row.weight_kg && <span className="pill pill-coral">{row.weight_kg} kg</span>}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      {FIELDS.slice(1).filter(f => row[f.key]).map(f => (
+                        <span key={f.key} style={{ fontSize: 12, color: 'var(--muted)' }}>{f.label}: <strong>{row[f.key]}{f.unit}</strong></span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </>
+          )}
         </>
       )}
 
-      {rows.length === 0 && (
-        <div className="empty-state">
-          <div className="icon">📏</div>
-          <p>Aún no hay medidas registradas</p>
-        </div>
+      {/* TAB: Progreso */}
+      {tab === 'progress' && (
+        chartData.length < 2 ? (
+          <div className="empty-state"><div className="icon">📈</div><p>Necesitas al menos 2 registros para ver el progreso</p></div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {FIELDS.filter(f => chartData.some(d => d[f.key] != null)).map(f => (
+              <div key={f.key} className="card">
+                <p style={{ fontWeight: 700, marginBottom: 4 }}>{f.icon} {f.label}</p>
+                {(() => {
+                  const first = chartData.find(d => d[f.key] != null)?.[f.key];
+                  const last  = [...chartData].reverse().find(d => d[f.key] != null)?.[f.key];
+                  const diff  = first != null && last != null ? (last - first).toFixed(1) : null;
+                  const isWeight = f.key === 'weight_kg';
+                  const good = diff != null ? (isWeight ? diff < 0 : diff > 0) : null;
+                  return diff != null && (
+                    <p style={{ fontSize: 12, color: good ? '#2D7A2D' : diff == 0 ? 'var(--muted)' : '#E05252', marginBottom: 8 }}>
+                      {diff > 0 ? '+' : ''}{diff} {f.unit} desde el primer registro
+                    </p>
+                  );
+                })()}
+                <ResponsiveContainer width="100%" height={100}>
+                  <LineChart data={chartData.filter(d => d[f.key] != null)}>
+                    <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'var(--muted)' }} axisLine={false} tickLine={false} />
+                    <Tooltip formatter={v => [`${v} ${f.unit}`, f.label]} contentStyle={{ borderRadius: 10, border: 'none', boxShadow: '0 2px 12px rgba(0,0,0,0.1)' }} />
+                    <Line type="monotone" dataKey={f.key} stroke="var(--coral)" strokeWidth={2.5} dot={{ r: 3, fill: 'var(--coral)' }} connectNulls />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            ))}
+          </div>
+        )
       )}
 
-      {/* Bioimpedancia */}
-      <div style={{ marginTop: 32 }}>
+      {/* TAB: Bioimpedancia */}
+      {tab === 'bio' && <div style={{ marginTop: 4 }}>
         <p className="page-title" style={{ fontSize: 18, marginBottom: 16 }}>Bioimpedancia 📊</p>
         <div className="card" style={{ marginBottom: 16 }}>
           <p style={{ fontWeight: 700, marginBottom: 10 }}>Subir fotos de bioimpedancia</p>
@@ -186,7 +239,7 @@ export default function Measurements() {
         ) : (
           <div className="empty-state"><div className="icon">📊</div><p>No hay registros de bioimpedancia</p></div>
         )}
-      </div>
+      </div>}
     </div>
   );
 }
