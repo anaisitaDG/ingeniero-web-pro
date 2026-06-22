@@ -3,7 +3,7 @@ const router  = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const db      = require('../database/db');
 const { requireAuth } = require('../middleware/auth');
-const { generateRoutine, generateNutritionPlan } = require('../services/ai');
+const { generateRoutine, generateNutritionPlan, suggestDayName } = require('../services/ai');
 
 router.use(requireAuth);
 
@@ -61,6 +61,16 @@ router.get('/clients/:id', async (req, res) => {
   );
 
   res.json({ user, questionnaire, measurements, bioimpedance, routine, nutrition_plan: nutrition, adherence: adherence[0] });
+});
+
+// POST /trainer/suggest-day-name — sugiere nombre de día según ejercicios
+router.post('/suggest-day-name', async (req, res) => {
+  const { exercises } = req.body;
+  if (!Array.isArray(exercises) || exercises.length === 0) return res.status(400).json({ error: 'exercises requerido' });
+  const names = exercises.filter(Boolean);
+  if (names.length === 0) return res.status(400).json({ error: 'Sin ejercicios' });
+  const name = await suggestDayName(names);
+  res.json({ name });
 });
 
 // GET /trainer/clients/:id/workout — obtiene plan estructurado

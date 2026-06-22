@@ -153,4 +153,19 @@ Si no encuentras un valor, usa null. Solo devuelve el JSON.`,
   return JSON.parse(jsonMatch[0]);
 }
 
-module.exports = { parseFood, getFoodRecommendation, generateRoutine, generateNutritionPlan, parseBioimpedance };
+async function suggestDayName(exerciseNames) {
+  const message = await client.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 30,
+    messages: [{
+      role: 'user',
+      content: `Dado estos ejercicios: ${exerciseNames.join(', ')}
+Responde SOLO con el nombre del grupo muscular trabajado (máximo 3 palabras, en español).
+Ejemplos: "Pierna", "Pecho y Tríceps", "Espalda y Bíceps", "Hombros", "Abdomen y Core", "Full Body", "Cardio".
+Solo el nombre, sin puntuación ni explicación.`,
+    }],
+  });
+  return message.content[0].text.trim().replace(/[."]/g, '');
+}
+
+module.exports = { parseFood, getFoodRecommendation, generateRoutine, generateNutritionPlan, parseBioimpedance, suggestDayName };

@@ -152,6 +152,16 @@ export default function ClientDetail() {
   function updateDay(idx, field, val) {
     setWorkoutDays(d => d.map((day, i) => i === idx ? { ...day, [field]: val } : day));
   }
+  async function suggestName(dayIdx) {
+    const names = workoutDays[dayIdx].exercises.map(e => e.name).filter(Boolean);
+    if (names.length === 0) return alert('Agrega ejercicios primero');
+    updateDay(dayIdx, 'suggesting', true);
+    try {
+      const res = await api.trainer.suggestDayName(names);
+      updateDay(dayIdx, 'day_name', res.name);
+    } catch(e) { alert(e.message); }
+    finally { updateDay(dayIdx, 'suggesting', false); }
+  }
   function addExercise(dayIdx) {
     setWorkoutDays(d => d.map((day, i) => i === dayIdx ? { ...day, exercises: [...day.exercises, EMPTY_EXERCISE()] } : day));
   }
@@ -350,7 +360,7 @@ export default function ClientDetail() {
             {workoutDays.map((day, di) => (
               <div key={day._key} className="card" style={{ marginBottom: 16 }}>
                 {/* Day header */}
-                <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 14 }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 14 }}>
                   <input
                     className="input"
                     placeholder="Nombre del día (ej: Lunes — Pecho)"
@@ -358,6 +368,12 @@ export default function ClientDetail() {
                     onChange={e => updateDay(di, 'day_name', e.target.value)}
                     style={{ flex: 1, fontWeight: 700 }}
                   />
+                  <button onClick={() => suggestName(di)} disabled={day.suggesting} title="Sugerir nombre con IA" style={{
+                    background: 'var(--coral-light)', border: 'none', borderRadius: 8, cursor: 'pointer',
+                    padding: '8px 10px', fontSize: 13, fontWeight: 700, color: 'var(--coral)', flexShrink: 0,
+                  }}>
+                    {day.suggesting ? <span className="spinner" style={{ width: 14, height: 14 }} /> : '✨'}
+                  </button>
                   <button onClick={() => removeDay(di)} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: 'var(--muted)', padding: '4px 8px' }}>✕</button>
                 </div>
 
