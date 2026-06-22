@@ -9,8 +9,13 @@ export default function ClientDetail() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab]         = useState('overview');
   const [genLoading, setGenLoading] = useState({ routine: false, nutrition: false });
+  const [savingManual, setSavingManual] = useState({ routine: false, nutrition: false });
   const [inviting, setInviting]     = useState(false);
   const [prompt, setPrompt]         = useState('');
+  const [routineMode, setRoutineMode]     = useState('manual');
+  const [nutritionMode, setNutritionMode] = useState('manual');
+  const [manualRoutine, setManualRoutine]     = useState('');
+  const [manualNutrition, setManualNutrition] = useState('');
   const [bioFile, setBioFile]       = useState(null);
   const [bioUploading, setBioUploading] = useState(false);
   const [targets, setTargets]       = useState({ calorie_target: '', protein_target_g: '', carbs_target_g: '', fat_target_g: '' });
@@ -22,6 +27,8 @@ export default function ClientDetail() {
     setLoading(true);
     api.trainer.client(id).then(d => {
       setData(d);
+      if (d.routine?.content) setManualRoutine(d.routine.content);
+      if (d.nutrition_plan?.content) setManualNutrition(d.nutrition_plan.content);
       setTargets({
         calorie_target:   d.user?.calorie_target   || '',
         protein_target_g: d.user?.protein_target_g || '',
@@ -43,6 +50,20 @@ export default function ClientDetail() {
       alert('Metas guardadas');
     } catch(e) { alert(e.message); }
     finally { setSavingTargets(false); }
+  }
+
+  async function saveManualRoutine() {
+    setSavingManual(p => ({ ...p, routine: true }));
+    try { await api.trainer.saveRoutine(id, manualRoutine); await load(); alert('Rutina guardada'); }
+    catch (e) { alert(e.message); }
+    finally { setSavingManual(p => ({ ...p, routine: false })); }
+  }
+
+  async function saveManualNutrition() {
+    setSavingManual(p => ({ ...p, nutrition: true }));
+    try { await api.trainer.saveNutrition(id, manualNutrition); await load(); alert('Plan guardado'); }
+    catch (e) { alert(e.message); }
+    finally { setSavingManual(p => ({ ...p, nutrition: false })); }
   }
 
   async function genRoutine() {
@@ -270,19 +291,45 @@ export default function ClientDetail() {
       {/* Routine tab */}
       {tab === 'routine' && (
         <div>
-          <div className="card" style={{ marginBottom: 16 }}>
-            <p style={{ fontWeight: 700, marginBottom: 10 }}>Generar rutina con IA</p>
-            <textarea className="input" rows={2} placeholder="Instrucciones adicionales (opcional)..." value={prompt} onChange={e => setPrompt(e.target.value)} style={{ marginBottom: 10, resize: 'vertical' }} />
-            <button className="btn-primary" onClick={genRoutine} disabled={genLoading.routine} style={{ width: '100%', justifyContent: 'center' }}>
-              {genLoading.routine ? <><span className="spinner" /> Generando…</> : '✨ Generar rutina'}
-            </button>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+            {[['manual', '✏️ Editar manualmente'], ['ai', '✨ Generar con IA']].map(([key, label]) => (
+              <button key={key} onClick={() => setRoutineMode(key)} style={{
+                flex: 1, padding: '10px', borderRadius: 10, fontWeight: 700, fontSize: 13, border: 'none', cursor: 'pointer',
+                background: routineMode === key ? 'var(--coral)' : 'var(--card)',
+                color: routineMode === key ? '#fff' : 'var(--muted)',
+                boxShadow: 'var(--shadow)',
+              }}>{label}</button>
+            ))}
           </div>
-          {routine ? (
+
+          {routineMode === 'manual' && (
+            <div className="card" style={{ marginBottom: 16 }}>
+              <p style={{ fontWeight: 700, marginBottom: 10 }}>✏️ Plan de entrenamiento</p>
+              <textarea className="input" rows={16} placeholder={"Lunes — Pecho & Tríceps\n• Press banca 4x10\n• Aperturas 3x12\n\nMartes — Espalda & Bíceps\n..."} value={manualRoutine} onChange={e => setManualRoutine(e.target.value)} style={{ marginBottom: 10, resize: 'vertical', fontFamily: 'monospace', fontSize: 13 }} />
+              <button className="btn-primary" onClick={saveManualRoutine} disabled={savingManual.routine || !manualRoutine.trim()} style={{ width: '100%', justifyContent: 'center' }}>
+                {savingManual.routine ? <><span className="spinner" /> Guardando…</> : '💾 Guardar rutina'}
+              </button>
+            </div>
+          )}
+
+          {routineMode === 'ai' && (
+            <div className="card" style={{ marginBottom: 16 }}>
+              <p style={{ fontWeight: 700, marginBottom: 10 }}>Generar rutina con IA</p>
+              <textarea className="input" rows={2} placeholder="Instrucciones adicionales (opcional)..." value={prompt} onChange={e => setPrompt(e.target.value)} style={{ marginBottom: 10, resize: 'vertical' }} />
+              <button className="btn-primary" onClick={genRoutine} disabled={genLoading.routine} style={{ width: '100%', justifyContent: 'center' }}>
+                {genLoading.routine ? <><span className="spinner" /> Generando…</> : '✨ Generar rutina'}
+              </button>
+            </div>
+          )}
+
+          {routine && routineMode === 'ai' && (
             <div className="card">
               <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: 14, lineHeight: 1.7 }}>{routine.content}</pre>
-              <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 10 }}>Generado: {new Date(routine.created_at).toLocaleDateString('es')}</p>
+              <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 10 }}>Guardado: {new Date(routine.created_at).toLocaleDateString('es')}</p>
             </div>
-          ) : (
+          )}
+
+          {!routine && routineMode === 'ai' && (
             <div className="empty-state"><div className="icon">💪</div><p>Aún no hay rutina generada</p></div>
           )}
         </div>
@@ -291,19 +338,45 @@ export default function ClientDetail() {
       {/* Nutrition tab */}
       {tab === 'nutrition' && (
         <div>
-          <div className="card" style={{ marginBottom: 16 }}>
-            <p style={{ fontWeight: 700, marginBottom: 10 }}>Generar plan nutricional con IA</p>
-            <textarea className="input" rows={2} placeholder="Instrucciones adicionales (opcional)..." value={prompt} onChange={e => setPrompt(e.target.value)} style={{ marginBottom: 10, resize: 'vertical' }} />
-            <button className="btn-primary" onClick={genNutrition} disabled={genLoading.nutrition} style={{ width: '100%', justifyContent: 'center', background: 'var(--gold)' }}>
-              {genLoading.nutrition ? <><span className="spinner" /> Generando…</> : '✨ Generar plan nutricional'}
-            </button>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+            {[['manual', '✏️ Editar manualmente'], ['ai', '✨ Generar con IA']].map(([key, label]) => (
+              <button key={key} onClick={() => setNutritionMode(key)} style={{
+                flex: 1, padding: '10px', borderRadius: 10, fontWeight: 700, fontSize: 13, border: 'none', cursor: 'pointer',
+                background: nutritionMode === key ? 'var(--gold)' : 'var(--card)',
+                color: nutritionMode === key ? '#fff' : 'var(--muted)',
+                boxShadow: 'var(--shadow)',
+              }}>{label}</button>
+            ))}
           </div>
-          {nutrition_plan ? (
+
+          {nutritionMode === 'manual' && (
+            <div className="card" style={{ marginBottom: 16 }}>
+              <p style={{ fontWeight: 700, marginBottom: 10 }}>✏️ Plan de alimentación</p>
+              <textarea className="input" rows={16} placeholder={"Lunes\nDesayuno: Avena con frutas — 350 kcal\nAlmuerzo: Pollo con arroz — 550 kcal\nMerienda: Yogur griego — 150 kcal\nCena: Ensalada con atún — 400 kcal\n\nMartes\n..."} value={manualNutrition} onChange={e => setManualNutrition(e.target.value)} style={{ marginBottom: 10, resize: 'vertical', fontFamily: 'monospace', fontSize: 13 }} />
+              <button className="btn-primary" onClick={saveManualNutrition} disabled={savingManual.nutrition || !manualNutrition.trim()} style={{ width: '100%', justifyContent: 'center', background: 'var(--gold)' }}>
+                {savingManual.nutrition ? <><span className="spinner" /> Guardando…</> : '💾 Guardar plan'}
+              </button>
+            </div>
+          )}
+
+          {nutritionMode === 'ai' && (
+            <div className="card" style={{ marginBottom: 16 }}>
+              <p style={{ fontWeight: 700, marginBottom: 10 }}>Generar plan nutricional con IA</p>
+              <textarea className="input" rows={2} placeholder="Instrucciones adicionales (opcional)..." value={prompt} onChange={e => setPrompt(e.target.value)} style={{ marginBottom: 10, resize: 'vertical' }} />
+              <button className="btn-primary" onClick={genNutrition} disabled={genLoading.nutrition} style={{ width: '100%', justifyContent: 'center', background: 'var(--gold)' }}>
+                {genLoading.nutrition ? <><span className="spinner" /> Generando…</> : '✨ Generar plan nutricional'}
+              </button>
+            </div>
+          )}
+
+          {nutrition_plan && nutritionMode === 'ai' && (
             <div className="card">
               <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: 14, lineHeight: 1.7 }}>{nutrition_plan.content}</pre>
-              <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 10 }}>Generado: {new Date(nutrition_plan.created_at).toLocaleDateString('es')}</p>
+              <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 10 }}>Guardado: {new Date(nutrition_plan.created_at).toLocaleDateString('es')}</p>
             </div>
-          ) : (
+          )}
+
+          {!nutrition_plan && nutritionMode === 'ai' && (
             <div className="empty-state"><div className="icon">🥗</div><p>Aún no hay plan nutricional</p></div>
           )}
         </div>

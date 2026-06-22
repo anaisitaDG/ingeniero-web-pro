@@ -63,6 +63,37 @@ router.get('/clients/:id', async (req, res) => {
   res.json({ user, questionnaire, measurements, bioimpedance, routine, nutrition_plan: nutrition, adherence: adherence[0] });
 });
 
+// PUT /trainer/clients/:id/routine — guarda rutina manual
+router.put('/clients/:id/routine', async (req, res) => {
+  const uid = req.params.id;
+  const { content } = req.body;
+  if (!content || !content.trim()) return res.status(400).json({ error: 'Contenido requerido' });
+
+  await db.query('UPDATE routines SET is_active=FALSE WHERE user_id=?', [uid]);
+  await db.query(
+    'INSERT INTO routines (id, user_id, content, is_active) VALUES (?, ?, ?, TRUE)',
+    [uuidv4(), uid, content.trim()]
+  );
+  res.json({ routine: content.trim() });
+});
+
+// PUT /trainer/clients/:id/nutrition — guarda plan nutricional manual
+router.put('/clients/:id/nutrition', async (req, res) => {
+  const uid = req.params.id;
+  const { content } = req.body;
+  if (!content || !content.trim()) return res.status(400).json({ error: 'Contenido requerido' });
+
+  await db.query('UPDATE nutrition_plans SET is_active=FALSE WHERE user_id=?', [uid]);
+  const planId = uuidv4();
+  await db.query(
+    'INSERT INTO nutrition_plans (id, user_id, content, is_active) VALUES (?, ?, ?, TRUE)',
+    [planId, uid, content.trim()]
+  );
+  const calories = extractCalorieTarget(content);
+  if (calories) await db.query('UPDATE users SET calorie_target=? WHERE id=?', [calories, uid]);
+  res.json({ nutrition_plan: content.trim() });
+});
+
 // POST /trainer/clients/:id/routine — genera rutina con IA
 router.post('/clients/:id/routine', async (req, res) => {
   const uid = req.params.id;

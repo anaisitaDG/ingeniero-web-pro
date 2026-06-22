@@ -88,6 +88,8 @@ export const api = {
     client:        (id)   => request(`/trainer/clients/${id}`),
     genRoutine:    (id, override_prompt) => request(`/trainer/clients/${id}/routine`, { method: 'POST', body: JSON.stringify({ override_prompt }) }),
     genNutrition:  (id, override_prompt) => request(`/trainer/clients/${id}/nutrition`, { method: 'POST', body: JSON.stringify({ override_prompt }) }),
+    saveRoutine:   (id, content) => request(`/trainer/clients/${id}/routine`, { method: 'PUT', body: JSON.stringify({ content }) }),
+    saveNutrition: (id, content) => request(`/trainer/clients/${id}/nutrition`, { method: 'PUT', body: JSON.stringify({ content }) }),
     invite:        (id)   => request(`/trainer/clients/${id}/invite`, { method: 'POST' }),
     setTargets:    (id, body) => request(`/trainer/clients/${id}/targets`, { method: 'PUT', body: JSON.stringify(body) }),
   },
