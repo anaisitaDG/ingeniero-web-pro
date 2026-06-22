@@ -148,7 +148,7 @@ router.put('/clients/:id/nutrition', async (req, res) => {
     const planId = uuidv4();
     await db.query(
       'INSERT INTO nutrition_plans (id, user_id, plan, content, is_active) VALUES (?, ?, ?, ?, TRUE)',
-      [planId, uid, content.trim(), content.trim()]
+      [planId, uid, JSON.stringify({ text: content.trim() }), content.trim()]
     );
     console.log('[nutrition PUT] INSERT done');
     const calories = extractCalorieTarget(content);
@@ -194,7 +194,7 @@ router.post('/clients/:id/nutrition', async (req, res) => {
   const planId = uuidv4();
   await db.query(
     'INSERT INTO nutrition_plans (id, user_id, plan, content, is_active) VALUES (?, ?, ?, ?, TRUE)',
-    [planId, uid, content, content]
+    [planId, uid, JSON.stringify({ text: content }), content]
   );
 
   const calories = extractCalorieTarget(content);
