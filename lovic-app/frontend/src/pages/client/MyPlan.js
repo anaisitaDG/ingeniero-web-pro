@@ -97,10 +97,48 @@ export default function MyPlan() {
 const WARMUP_OPTIONS = ['Movilidad articular', 'Trote suave', 'Saltos', 'Sentadillas sin peso', 'Jumping jacks', 'Estiramientos dinámicos'];
 const CARDIO_OPTIONS = ['Cuerda', 'Caminadora', 'Escaleras', 'Elíptica', 'Stepper', 'Bicicleta', 'Remo'];
 
+// kcal/min approx for 65kg person
+const WARMUP_KCAL = { 'Movilidad articular': 2.5, 'Trote suave': 7, 'Saltos': 6, 'Sentadillas sin peso': 4, 'Jumping jacks': 6, 'Estiramientos dinámicos': 2 };
+const CARDIO_KCAL = { 'Cuerda': 12, 'Caminadora': 6, 'Escaleras': 9, 'Elíptica': 8, 'Stepper': 7, 'Bicicleta': 7, 'Remo': 8 };
+
+function calcKcal(table, type, mins) {
+  if (!type || !mins) return null;
+  const rate = table[type];
+  return rate ? Math.round(rate * mins) : null;
+}
+
+function ActivityBlock({ emoji, label, options, kcalTable, defaultDuration }) {
+  const [choice, setChoice] = useState('');
+  const [mins, setMins] = useState(defaultDuration || '');
+  const kcal = calcKcal(kcalTable, choice, Number(mins));
+  return (
+    <div style={{ background: 'var(--bg)', borderRadius: 12, padding: '12px 14px' }}>
+      <p style={{ fontWeight: 700, fontSize: 13, marginBottom: 8 }}>{emoji} {label}</p>
+      <select className="input" value={choice} onChange={e => setChoice(e.target.value)} style={{ fontSize: 13, padding: '8px 10px', marginBottom: 8 }}>
+        <option value="">Sin {label.toLowerCase()} hoy</option>
+        {options.map(o => <option key={o} value={o}>{o}</option>)}
+      </select>
+      {choice && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
+          <div style={{ flex: 1 }}>
+            <label style={{ fontSize: 11, color: 'var(--muted)', display: 'block', marginBottom: 3 }}>Duración (min)</label>
+            <input className="input" type="number" min="1" max="120" placeholder={defaultDuration || '10'}
+              value={mins} onChange={e => setMins(e.target.value)} style={{ padding: '8px', textAlign: 'center' }} />
+          </div>
+          {kcal && (
+            <div style={{ background: 'var(--coral-light)', borderRadius: 10, padding: '8px 14px', textAlign: 'center', flexShrink: 0 }}>
+              <p style={{ fontSize: 18, fontWeight: 800, color: 'var(--coral)' }}>~{kcal}</p>
+              <p style={{ fontSize: 10, color: 'var(--coral)', fontWeight: 600 }}>kcal est.</p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function DayCard({ day, onLogged }) {
   const [open, setOpen] = useState(true);
-  const [warmupChoice, setWarmupChoice] = useState(day.warmup_type || '');
-  const [cardioChoice, setCardioChoice] = useState(day.cardio_type || '');
   return (
     <div className="card" style={{ marginBottom: 14 }}>
       <button onClick={() => setOpen(o => !o)} style={{
@@ -112,33 +150,11 @@ function DayCard({ day, onLogged }) {
       </button>
       {open && (
         <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ background: 'var(--bg)', borderRadius: 12, padding: '12px 14px' }}>
-            <p style={{ fontWeight: 700, fontSize: 13, marginBottom: 6 }}>🔥 Calentamiento{day.warmup_duration ? ` · ${day.warmup_duration} min` : ''}</p>
-            <select
-              className="input"
-              value={warmupChoice}
-              onChange={e => setWarmupChoice(e.target.value)}
-              style={{ fontSize: 13, padding: '8px 10px' }}
-            >
-              <option value="">Sin calentamiento hoy</option>
-              {WARMUP_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-            </select>
-          </div>
+          <ActivityBlock emoji="🔥" label="Calentamiento" options={WARMUP_OPTIONS} kcalTable={WARMUP_KCAL} defaultDuration={day.warmup_duration} />
           {day.exercises.map(ex => (
             <ExerciseCard key={ex.id} exercise={ex} onLogged={onLogged} />
           ))}
-          <div style={{ background: 'var(--bg)', borderRadius: 12, padding: '12px 14px' }}>
-            <p style={{ fontWeight: 700, fontSize: 13, marginBottom: 6 }}>🏃 Cardio{day.cardio_duration ? ` · ${day.cardio_duration} min` : ''}</p>
-            <select
-              className="input"
-              value={cardioChoice}
-              onChange={e => setCardioChoice(e.target.value)}
-              style={{ fontSize: 13, padding: '8px 10px' }}
-            >
-              <option value="">Sin cardio hoy</option>
-              {CARDIO_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-            </select>
-          </div>
+          <ActivityBlock emoji="🏃" label="Cardio" options={CARDIO_OPTIONS} kcalTable={CARDIO_KCAL} defaultDuration={day.cardio_duration} />
         </div>
       )}
     </div>
