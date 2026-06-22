@@ -57,6 +57,33 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Pending reminders */}
+      {(() => {
+        const reminders = [];
+        if (!calories?.consumed) reminders.push({ icon: '🥗', text: 'Registra tus comidas de hoy', to: '/food' });
+        if (!tracking.workout_done) reminders.push({ icon: '💪', text: 'Marca tu entrenamiento cuando lo hagas', to: '/plan' });
+        const lastWeight = weightData[weightData.length - 1];
+        const daysSinceWeight = lastWeight
+          ? Math.floor((Date.now() - new Date(data?.weight_history?.slice(-1)[0]?.logged_at)) / 86400000)
+          : 999;
+        if (daysSinceWeight > 6) reminders.push({ icon: '📏', text: 'Lleva más de una semana sin registrar medidas', to: '/measurements' });
+        if (reminders.length === 0) return null;
+        return (
+          <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {reminders.map((r, i) => (
+              <a key={i} href={r.to} style={{
+                display: 'flex', alignItems: 'center', gap: 10, background: '#FFF8E7',
+                border: '1.5px solid #F5D87A', borderRadius: 12, padding: '10px 14px', textDecoration: 'none',
+              }}>
+                <span style={{ fontSize: 20 }}>{r.icon}</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#7A5C00', flex: 1 }}>{r.text}</span>
+                <span style={{ color: '#C99A1E', fontSize: 16 }}>→</span>
+              </a>
+            ))}
+          </div>
+        );
+      })()}
+
       {/* Calories + macros */}
       <div className="card" style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>

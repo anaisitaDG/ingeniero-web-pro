@@ -108,28 +108,38 @@ function calcKcal(table, type, mins) {
 }
 
 function ActivityBlock({ emoji, label, options, kcalTable, defaultDuration, choice, setChoice, mins, setMins }) {
+  const [done, setDone] = useState(false);
   const kcal = calcKcal(kcalTable, choice, Number(mins));
   return (
-    <div style={{ background: 'var(--bg)', borderRadius: 12, padding: '12px 14px' }}>
+    <div style={{ background: done ? '#d1fae5' : 'var(--bg)', borderRadius: 12, padding: '12px 14px', transition: 'background 0.3s' }}>
       <p style={{ fontWeight: 700, fontSize: 13, marginBottom: 8 }}>{emoji} {label}</p>
-      <select className="input" value={choice} onChange={e => setChoice(e.target.value)} style={{ fontSize: 13, padding: '8px 10px', marginBottom: 8 }}>
+      <select className="input" value={choice} onChange={e => { setChoice(e.target.value); setDone(false); }} style={{ fontSize: 13, padding: '8px 10px', marginBottom: 8 }}>
         <option value="">Sin {label.toLowerCase()} hoy</option>
         {options.map(o => <option key={o} value={o}>{o}</option>)}
       </select>
       {choice && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
-          <div style={{ flex: 1 }}>
-            <label style={{ fontSize: 11, color: 'var(--muted)', display: 'block', marginBottom: 3 }}>Duración (min)</label>
-            <input className="input" type="number" min="1" max="120" placeholder={defaultDuration || '10'}
-              value={mins} onChange={e => setMins(e.target.value)} style={{ padding: '8px', textAlign: 'center' }} />
-          </div>
-          {kcal && (
-            <div style={{ background: 'var(--coral-light)', borderRadius: 10, padding: '8px 14px', textAlign: 'center', flexShrink: 0 }}>
-              <p style={{ fontSize: 18, fontWeight: 800, color: 'var(--coral)' }}>~{kcal}</p>
-              <p style={{ fontSize: 10, color: 'var(--coral)', fontWeight: 600 }}>kcal est.</p>
+        <>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: 11, color: 'var(--muted)', display: 'block', marginBottom: 3 }}>Duración (min)</label>
+              <input className="input" type="number" min="1" max="120" placeholder={defaultDuration || '10'}
+                value={mins} onChange={e => setMins(e.target.value)} style={{ padding: '8px', textAlign: 'center' }} />
             </div>
-          )}
-        </div>
+            {kcal && (
+              <div style={{ background: done ? '#a7f3d0' : 'var(--coral-light)', borderRadius: 10, padding: '8px 14px', textAlign: 'center', flexShrink: 0 }}>
+                <p style={{ fontSize: 18, fontWeight: 800, color: done ? '#065f46' : 'var(--coral)' }}>~{kcal}</p>
+                <p style={{ fontSize: 10, color: done ? '#065f46' : 'var(--coral)', fontWeight: 600 }}>kcal est.</p>
+              </div>
+            )}
+          </div>
+          <button onClick={() => setDone(d => !d)} style={{
+            width: '100%', padding: '9px', borderRadius: 10, border: 'none', cursor: 'pointer',
+            fontWeight: 700, fontSize: 13, transition: 'all 0.2s',
+            background: done ? '#065f46' : 'var(--border)', color: done ? '#fff' : 'var(--muted)',
+          }}>
+            {done ? `✅ ${label} completado` : `Marcar ${label.toLowerCase()} como completado`}
+          </button>
+        </>
       )}
     </div>
   );
