@@ -30,6 +30,51 @@ const db = require('./database/db');
         INDEX idx_user (user_id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS workout_plans (
+        id VARCHAR(36) PRIMARY KEY,
+        user_id VARCHAR(36) NOT NULL,
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_user (user_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS workout_days (
+        id VARCHAR(36) PRIMARY KEY,
+        plan_id VARCHAR(36) NOT NULL,
+        day_name VARCHAR(50) NOT NULL,
+        day_order INT DEFAULT 0,
+        FOREIGN KEY (plan_id) REFERENCES workout_plans(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS workout_exercises (
+        id VARCHAR(36) PRIMARY KEY,
+        day_id VARCHAR(36) NOT NULL,
+        name VARCHAR(200) NOT NULL,
+        youtube_url VARCHAR(500) DEFAULT NULL,
+        sets INT DEFAULT 3,
+        reps VARCHAR(50) DEFAULT '10',
+        weight_kg DECIMAL(5,2) DEFAULT NULL,
+        exercise_order INT DEFAULT 0,
+        FOREIGN KEY (day_id) REFERENCES workout_days(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS workout_logs (
+        id VARCHAR(36) PRIMARY KEY,
+        exercise_id VARCHAR(36) NOT NULL,
+        user_id VARCHAR(36) NOT NULL,
+        logged_date DATE NOT NULL,
+        set_number INT NOT NULL,
+        weight_kg DECIMAL(5,2) DEFAULT NULL,
+        reps_done INT DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_exercise_user (exercise_id, user_id),
+        INDEX idx_user_date (user_id, logged_date)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
   } catch (e) {
     console.error('Migration error:', e.message);
   }
@@ -56,6 +101,7 @@ app.use('/trainer',       require('./routes/trainer'));
 app.use('/questionnaire', require('./routes/questionnaire'));
 app.use('/profile',         require('./routes/profile'));
 app.use('/progress-photos', require('./routes/progressPhotos'));
+app.use('/workout',         require('./routes/workout'));
 
 // Health
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }));

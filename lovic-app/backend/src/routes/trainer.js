@@ -63,6 +63,53 @@ router.get('/clients/:id', async (req, res) => {
   res.json({ user, questionnaire, measurements, bioimpedance, routine, nutrition_plan: nutrition, adherence: adherence[0] });
 });
 
+// GET /trainer/clients/:id/workout — obtiene plan estructurado
+router.get('/clients/:id/workout', async (req, res) => {
+  const uid = req.params.id;
+  const [[plan]] = await db.query(
+    'SELECT * FROM workout_plans WHERE user_id=? AND is_active=TRUE ORDER BY created_at DESC LIMIT 1', [uid]
+  );
+  if (!plan) return res.json({ plan: null });
+
+  const [days] = await db.query(
+    'SELECT * FROM workout_days WHERE plan_id=? ORDER BY day_order', [plan.id]
+  );
+  for (const day of days) {
+    const [exercises] = await db.query(
+      'SELECT * FROM workout_exercises WHERE day_id=? ORDER BY exercise_order', [day.id]
+    );
+    day.exercises = exercises;
+  }
+  res.json({ plan: { ...plan, days } });
+});
+
+// PUT /trainer/clients/:id/workout — guarda plan estructurado completo
+router.put('/clients/:id/workout', async (req, res) => {
+  const uid = req.params.id;
+  const { days } = req.body;
+  if (!Array.isArray(days)) return res.status(400).json({ error: 'days requerido' });
+
+  await db.query('UPDATE workout_plans SET is_active=FALSE WHERE user_id=?', [uid]);
+  const planId = uuidv4();
+  await db.query('INSERT INTO workout_plans (id, user_id, is_active) VALUES (?, ?, TRUE)', [planId, uid]);
+
+  for (let di = 0; di < days.length; di++) {
+    const day = days[di];
+    const dayId = uuidv4();
+    await db.query('INSERT INTO workout_days (id, plan_id, day_name, day_order) VALUES (?, ?, ?, ?)',
+      [dayId, planId, day.day_name, di]);
+    const exercises = day.exercises || [];
+    for (let ei = 0; ei < exercises.length; ei++) {
+      const ex = exercises[ei];
+      await db.query(
+        'INSERT INTO workout_exercises (id, day_id, name, youtube_url, sets, reps, weight_kg, exercise_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [uuidv4(), dayId, ex.name, ex.youtube_url || null, ex.sets || 3, ex.reps || '10', ex.weight_kg || null, ei]
+      );
+    }
+  }
+  res.json({ message: 'Plan guardado' });
+});
+
 // PUT /trainer/clients/:id/routine — guarda rutina manual
 router.put('/clients/:id/routine', async (req, res) => {
   const uid = req.params.id;

@@ -83,6 +83,11 @@ export const api = {
       }).then(r => r.json());
     },
   },
+  workout: {
+    plan:    ()                    => request('/workout/plan'),
+    log:     (exercise_id, logged_date, sets) => request('/workout/log', { method: 'POST', body: JSON.stringify({ exercise_id, logged_date, sets }) }),
+    history: (exerciseId)         => request(`/workout/history/${exerciseId}`),
+  },
   trainer: {
     clients:       ()     => request('/trainer/clients'),
     client:        (id)   => request(`/trainer/clients/${id}`),
@@ -90,6 +95,8 @@ export const api = {
     genNutrition:  (id, override_prompt) => request(`/trainer/clients/${id}/nutrition`, { method: 'POST', body: JSON.stringify({ override_prompt }) }),
     saveRoutine:   (id, content) => request(`/trainer/clients/${id}/routine`, { method: 'PUT', body: JSON.stringify({ content }) }),
     saveNutrition: (id, content) => request(`/trainer/clients/${id}/nutrition`, { method: 'PUT', body: JSON.stringify({ content }) }),
+    getWorkout:    (id)          => request(`/trainer/clients/${id}/workout`),
+    saveWorkout:   (id, days)    => request(`/trainer/clients/${id}/workout`, { method: 'PUT', body: JSON.stringify({ days }) }),
     invite:        (id)   => request(`/trainer/clients/${id}/invite`, { method: 'POST' }),
     setTargets:    (id, body) => request(`/trainer/clients/${id}/targets`, { method: 'PUT', body: JSON.stringify(body) }),
   },

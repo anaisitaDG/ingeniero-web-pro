@@ -1,33 +1,39 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
+
+const EMPTY_EXERCISE = () => ({ _key: Math.random(), name: '', youtube_url: '', sets: 3, reps: '10', weight_kg: '' });
+const EMPTY_DAY = () => ({ _key: Math.random(), day_name: '', exercises: [EMPTY_EXERCISE()] });
 
 export default function ClientDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [data, setData]       = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [tab, setTab]         = useState('overview');
-  const [genLoading, setGenLoading] = useState({ routine: false, nutrition: false });
-  const [savingManual, setSavingManual] = useState({ routine: false, nutrition: false });
-  const [inviting, setInviting]     = useState(false);
-  const [prompt, setPrompt]         = useState('');
-  const [routineMode, setRoutineMode]     = useState('manual');
-  const [nutritionMode, setNutritionMode] = useState('manual');
-  const [manualRoutine, setManualRoutine]     = useState('');
-  const [manualNutrition, setManualNutrition] = useState('');
-  const [bioFile, setBioFile]       = useState(null);
+  const [data, setData]         = useState(null);
+  const [loading, setLoading]   = useState(true);
+  const [tab, setTab]           = useState('overview');
+  const [inviting, setInviting] = useState(false);
+  const [bioFile, setBioFile]   = useState(null);
   const [bioUploading, setBioUploading] = useState(false);
-  const [targets, setTargets]       = useState({ calorie_target: '', protein_target_g: '', carbs_target_g: '', fat_target_g: '' });
+  const [targets, setTargets]   = useState({ calorie_target: '', protein_target_g: '', carbs_target_g: '', fat_target_g: '' });
   const [savingTargets, setSavingTargets] = useState(false);
 
-  useEffect(() => { load(); }, [id]);
+  // Workout builder state
+  const [workoutDays, setWorkoutDays] = useState([EMPTY_DAY()]);
+  const [workoutLoading, setWorkoutLoading] = useState(false);
+  const [savingWorkout, setSavingWorkout]   = useState(false);
 
-  async function load() {
+  // Nutrition (text) state
+  const [manualNutrition, setManualNutrition] = useState('');
+  const [savingNutrition, setSavingNutrition] = useState(false);
+  const [nutritionMode, setNutritionMode]     = useState('manual');
+  const [genNutritionLoading, setGenNutritionLoading] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
+
+  const load = useCallback(async () => {
     setLoading(true);
-    api.trainer.client(id).then(d => {
+    try {
+      const d = await api.trainer.client(id);
       setData(d);
-      if (d.routine?.content) setManualRoutine(d.routine.content);
       if (d.nutrition_plan?.content) setManualNutrition(d.nutrition_plan.content);
       setTargets({
         calorie_target:   d.user?.calorie_target   || '',
@@ -35,8 +41,32 @@ export default function ClientDetail() {
         carbs_target_g:   d.user?.carbs_target_g   || '',
         fat_target_g:     d.user?.fat_target_g      || '',
       });
-    }).finally(() => setLoading(false));
-  }
+    } finally { setLoading(false); }
+  }, [id]);
+
+  const loadWorkout = useCallback(async () => {
+    setWorkoutLoading(true);
+    try {
+      const res = await api.trainer.getWorkout(id);
+      if (res.plan?.days?.length > 0) {
+        setWorkoutDays(res.plan.days.map(d => ({
+          _key: Math.random(),
+          day_name: d.day_name,
+          exercises: d.exercises.map(e => ({
+            _key: Math.random(),
+            name: e.name,
+            youtube_url: e.youtube_url || '',
+            sets: e.sets,
+            reps: e.reps,
+            weight_kg: e.weight_kg || '',
+          })),
+        })));
+      }
+    } finally { setWorkoutLoading(false); }
+  }, [id]);
+
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => { if (tab === 'routine') loadWorkout(); }, [tab, loadWorkout]);
 
   async function saveTargets() {
     setSavingTargets(true);
@@ -52,38 +82,44 @@ export default function ClientDetail() {
     finally { setSavingTargets(false); }
   }
 
-  async function saveManualRoutine() {
-    setSavingManual(p => ({ ...p, routine: true }));
-    try { await api.trainer.saveRoutine(id, manualRoutine); await load(); alert('Rutina guardada'); }
+  async function saveWorkout() {
+    const days = workoutDays
+      .filter(d => d.day_name.trim())
+      .map(d => ({
+        day_name: d.day_name,
+        exercises: d.exercises
+          .filter(e => e.name.trim())
+          .map(e => ({
+            name: e.name,
+            youtube_url: e.youtube_url || null,
+            sets: Number(e.sets) || 3,
+            reps: e.reps || '10',
+            weight_kg: e.weight_kg ? Number(e.weight_kg) : null,
+          })),
+      }));
+    if (days.length === 0) return alert('Agrega al menos un día con ejercicios');
+    setSavingWorkout(true);
+    try { await api.trainer.saveWorkout(id, days); alert('Plan de entrenamiento guardado ✓'); }
     catch (e) { alert(e.message); }
-    finally { setSavingManual(p => ({ ...p, routine: false })); }
+    finally { setSavingWorkout(false); }
   }
 
-  async function saveManualNutrition() {
-    setSavingManual(p => ({ ...p, nutrition: true }));
+  async function saveNutrition() {
+    setSavingNutrition(true);
     try { await api.trainer.saveNutrition(id, manualNutrition); await load(); alert('Plan guardado'); }
     catch (e) { alert(e.message); }
-    finally { setSavingManual(p => ({ ...p, nutrition: false })); }
-  }
-
-  async function genRoutine() {
-    setGenLoading(p => ({ ...p, routine: true }));
-    try {
-      await api.trainer.genRoutine(id, prompt || undefined);
-      await load();
-      setTab('routine');
-    } catch (e) { alert(e.message); }
-    finally { setGenLoading(p => ({ ...p, routine: false })); }
+    finally { setSavingNutrition(false); }
   }
 
   async function genNutrition() {
-    setGenLoading(p => ({ ...p, nutrition: true }));
+    setGenNutritionLoading(true);
     try {
-      await api.trainer.genNutrition(id, prompt || undefined);
-      await load();
-      setTab('nutrition');
+      await api.trainer.genNutrition(id, aiPrompt || undefined);
+      const d = await api.trainer.client(id);
+      if (d.nutrition_plan?.content) setManualNutrition(d.nutrition_plan.content);
+      setNutritionMode('manual');
     } catch (e) { alert(e.message); }
-    finally { setGenLoading(p => ({ ...p, nutrition: false })); }
+    finally { setGenNutritionLoading(false); }
   }
 
   async function sendInvite() {
@@ -110,22 +146,40 @@ export default function ClientDetail() {
     finally { setBioUploading(false); }
   }
 
+  // Day helpers
+  function addDay() { setWorkoutDays(d => [...d, EMPTY_DAY()]); }
+  function removeDay(idx) { setWorkoutDays(d => d.filter((_, i) => i !== idx)); }
+  function updateDay(idx, field, val) {
+    setWorkoutDays(d => d.map((day, i) => i === idx ? { ...day, [field]: val } : day));
+  }
+  function addExercise(dayIdx) {
+    setWorkoutDays(d => d.map((day, i) => i === dayIdx ? { ...day, exercises: [...day.exercises, EMPTY_EXERCISE()] } : day));
+  }
+  function removeExercise(dayIdx, exIdx) {
+    setWorkoutDays(d => d.map((day, i) => i === dayIdx ? { ...day, exercises: day.exercises.filter((_, j) => j !== exIdx) } : day));
+  }
+  function updateExercise(dayIdx, exIdx, field, val) {
+    setWorkoutDays(d => d.map((day, i) => i !== dayIdx ? day : {
+      ...day,
+      exercises: day.exercises.map((ex, j) => j === exIdx ? { ...ex, [field]: val } : ex),
+    }));
+  }
+
   if (loading) return <div style={{ textAlign: 'center', padding: 64 }}><div className="spinner" style={{ borderTopColor: 'var(--coral)', borderColor: 'var(--border)', width: 36, height: 36 }} /></div>;
   if (!data) return <div className="empty-state"><div className="icon">❌</div><p>Cliente no encontrado</p></div>;
 
-  const { user, questionnaire: q, measurements, bioimpedance, routine, nutrition_plan, adherence } = data;
+  const { user, questionnaire: q, measurements, bioimpedance, nutrition_plan, adherence } = data;
 
   const tabs = [
-    { key: 'overview', label: 'Resumen' },
-    { key: 'profile', label: '📋 Perfil' },
-    { key: 'routine', label: '💪 Rutina' },
+    { key: 'overview',  label: 'Resumen' },
+    { key: 'profile',   label: '📋 Perfil' },
+    { key: 'routine',   label: '💪 Rutina' },
     { key: 'nutrition', label: '🥗 Nutrición' },
-    { key: 'bio', label: '📊 Bio' },
+    { key: 'bio',       label: '📊 Bio' },
   ];
 
   return (
     <div>
-      {/* Back + header */}
       <button className="btn-ghost" onClick={() => navigate('/trainer')} style={{ marginBottom: 16, padding: '8px 0', fontSize: 14 }}>← Volver</button>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
@@ -155,10 +209,9 @@ export default function ClientDetail() {
         ))}
       </div>
 
-      {/* Overview tab */}
+      {/* Overview */}
       {tab === 'overview' && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
-          {/* Quick stats */}
           <div className="card">
             <p style={{ fontWeight: 700, marginBottom: 12 }}>📋 Datos básicos</p>
             <InfoRow label="Edad" value={q?.age} />
@@ -222,7 +275,7 @@ export default function ClientDetail() {
         </div>
       )}
 
-      {/* Profile tab */}
+      {/* Perfil */}
       {tab === 'profile' && (
         q ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
@@ -288,54 +341,92 @@ export default function ClientDetail() {
         )
       )}
 
-      {/* Routine tab */}
+      {/* Rutina — builder estructurado */}
       {tab === 'routine' && (
-        <div>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-            {[['manual', '✏️ Editar manualmente'], ['ai', '✨ Generar con IA']].map(([key, label]) => (
-              <button key={key} onClick={() => setRoutineMode(key)} style={{
-                flex: 1, padding: '10px', borderRadius: 10, fontWeight: 700, fontSize: 13, border: 'none', cursor: 'pointer',
-                background: routineMode === key ? 'var(--coral)' : 'var(--card)',
-                color: routineMode === key ? '#fff' : 'var(--muted)',
-                boxShadow: 'var(--shadow)',
-              }}>{label}</button>
+        workoutLoading ? (
+          <div style={{ textAlign: 'center', padding: 40 }}><div className="spinner" style={{ borderTopColor: 'var(--coral)', borderColor: 'var(--border)', width: 28, height: 28 }} /></div>
+        ) : (
+          <div>
+            {workoutDays.map((day, di) => (
+              <div key={day._key} className="card" style={{ marginBottom: 16 }}>
+                {/* Day header */}
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 14 }}>
+                  <input
+                    className="input"
+                    placeholder="Nombre del día (ej: Lunes — Pecho)"
+                    value={day.day_name}
+                    onChange={e => updateDay(di, 'day_name', e.target.value)}
+                    style={{ flex: 1, fontWeight: 700 }}
+                  />
+                  <button onClick={() => removeDay(di)} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: 'var(--muted)', padding: '4px 8px' }}>✕</button>
+                </div>
+
+                {/* Exercises */}
+                {day.exercises.map((ex, ei) => (
+                  <div key={ex._key} style={{ background: 'var(--bg)', borderRadius: 12, padding: 14, marginBottom: 10 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                      <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--coral)' }}>Ejercicio {ei + 1}</span>
+                      {day.exercises.length > 1 && (
+                        <button onClick={() => removeExercise(di, ei)} style={{ background: 'none', border: 'none', fontSize: 16, cursor: 'pointer', color: 'var(--muted)' }}>✕</button>
+                      )}
+                    </div>
+
+                    <input
+                      className="input"
+                      placeholder="Nombre del ejercicio (ej: Sentadilla en Smith)"
+                      value={ex.name}
+                      onChange={e => updateExercise(di, ei, 'name', e.target.value)}
+                      style={{ marginBottom: 8 }}
+                    />
+
+                    <input
+                      className="input"
+                      placeholder="Link de YouTube (ej: https://youtube.com/...)"
+                      value={ex.youtube_url}
+                      onChange={e => updateExercise(di, ei, 'youtube_url', e.target.value)}
+                      style={{ marginBottom: 8 }}
+                    />
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                      <div>
+                        <label className="label">Series</label>
+                        <input className="input" type="number" min="1" max="20" value={ex.sets}
+                          onChange={e => updateExercise(di, ei, 'sets', e.target.value)} />
+                      </div>
+                      <div>
+                        <label className="label">Reps</label>
+                        <input className="input" placeholder="10 / 8-12" value={ex.reps}
+                          onChange={e => updateExercise(di, ei, 'reps', e.target.value)} />
+                      </div>
+                      <div>
+                        <label className="label">Peso (kg)</label>
+                        <input className="input" type="number" min="0" step="0.5" placeholder="20" value={ex.weight_kg}
+                          onChange={e => updateExercise(di, ei, 'weight_kg', e.target.value)} />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                <button onClick={() => addExercise(di)} style={{
+                  width: '100%', padding: '10px', borderRadius: 10, border: '2px dashed var(--border)',
+                  background: 'none', cursor: 'pointer', color: 'var(--muted)', fontWeight: 600, fontSize: 13,
+                }}>+ Agregar ejercicio</button>
+              </div>
             ))}
+
+            <button onClick={addDay} style={{
+              width: '100%', padding: '14px', borderRadius: 12, border: '2px dashed var(--border)',
+              background: 'none', cursor: 'pointer', color: 'var(--coral)', fontWeight: 700, fontSize: 14, marginBottom: 16,
+            }}>+ Agregar día</button>
+
+            <button className="btn-primary" onClick={saveWorkout} disabled={savingWorkout} style={{ width: '100%', justifyContent: 'center', padding: '14px' }}>
+              {savingWorkout ? <><span className="spinner" /> Guardando…</> : '💾 Guardar plan de entrenamiento'}
+            </button>
           </div>
-
-          {routineMode === 'manual' && (
-            <div className="card" style={{ marginBottom: 16 }}>
-              <p style={{ fontWeight: 700, marginBottom: 10 }}>✏️ Plan de entrenamiento</p>
-              <textarea className="input" rows={16} placeholder={"Lunes — Pecho & Tríceps\n• Press banca 4x10\n• Aperturas 3x12\n\nMartes — Espalda & Bíceps\n..."} value={manualRoutine} onChange={e => setManualRoutine(e.target.value)} style={{ marginBottom: 10, resize: 'vertical', fontFamily: 'monospace', fontSize: 13 }} />
-              <button className="btn-primary" onClick={saveManualRoutine} disabled={savingManual.routine || !manualRoutine.trim()} style={{ width: '100%', justifyContent: 'center' }}>
-                {savingManual.routine ? <><span className="spinner" /> Guardando…</> : '💾 Guardar rutina'}
-              </button>
-            </div>
-          )}
-
-          {routineMode === 'ai' && (
-            <div className="card" style={{ marginBottom: 16 }}>
-              <p style={{ fontWeight: 700, marginBottom: 10 }}>Generar rutina con IA</p>
-              <textarea className="input" rows={2} placeholder="Instrucciones adicionales (opcional)..." value={prompt} onChange={e => setPrompt(e.target.value)} style={{ marginBottom: 10, resize: 'vertical' }} />
-              <button className="btn-primary" onClick={genRoutine} disabled={genLoading.routine} style={{ width: '100%', justifyContent: 'center' }}>
-                {genLoading.routine ? <><span className="spinner" /> Generando…</> : '✨ Generar rutina'}
-              </button>
-            </div>
-          )}
-
-          {routine && routineMode === 'ai' && (
-            <div className="card">
-              <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: 14, lineHeight: 1.7 }}>{routine.content}</pre>
-              <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 10 }}>Guardado: {new Date(routine.created_at).toLocaleDateString('es')}</p>
-            </div>
-          )}
-
-          {!routine && routineMode === 'ai' && (
-            <div className="empty-state"><div className="icon">💪</div><p>Aún no hay rutina generada</p></div>
-          )}
-        </div>
+        )
       )}
 
-      {/* Nutrition tab */}
+      {/* Nutrición */}
       {tab === 'nutrition' && (
         <div>
           <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
@@ -350,39 +441,39 @@ export default function ClientDetail() {
           </div>
 
           {nutritionMode === 'manual' && (
-            <div className="card" style={{ marginBottom: 16 }}>
+            <div className="card">
               <p style={{ fontWeight: 700, marginBottom: 10 }}>✏️ Plan de alimentación</p>
-              <textarea className="input" rows={16} placeholder={"Lunes\nDesayuno: Avena con frutas — 350 kcal\nAlmuerzo: Pollo con arroz — 550 kcal\nMerienda: Yogur griego — 150 kcal\nCena: Ensalada con atún — 400 kcal\n\nMartes\n..."} value={manualNutrition} onChange={e => setManualNutrition(e.target.value)} style={{ marginBottom: 10, resize: 'vertical', fontFamily: 'monospace', fontSize: 13 }} />
-              <button className="btn-primary" onClick={saveManualNutrition} disabled={savingManual.nutrition || !manualNutrition.trim()} style={{ width: '100%', justifyContent: 'center', background: 'var(--gold)' }}>
-                {savingManual.nutrition ? <><span className="spinner" /> Guardando…</> : '💾 Guardar plan'}
+              <textarea className="input" rows={16}
+                placeholder={"Lunes\nDesayuno: Avena con frutas — 350 kcal\nAlmuerzo: Pollo con arroz — 550 kcal\nMerienda: Yogur griego — 150 kcal\nCena: Ensalada con atún — 400 kcal\n\nMartes\n..."}
+                value={manualNutrition}
+                onChange={e => setManualNutrition(e.target.value)}
+                style={{ marginBottom: 10, resize: 'vertical', fontFamily: 'monospace', fontSize: 13 }}
+              />
+              <button className="btn-primary" onClick={saveNutrition} disabled={savingNutrition || !manualNutrition.trim()} style={{ width: '100%', justifyContent: 'center', background: 'var(--gold)' }}>
+                {savingNutrition ? <><span className="spinner" /> Guardando…</> : '💾 Guardar plan'}
               </button>
             </div>
           )}
 
           {nutritionMode === 'ai' && (
-            <div className="card" style={{ marginBottom: 16 }}>
-              <p style={{ fontWeight: 700, marginBottom: 10 }}>Generar plan nutricional con IA</p>
-              <textarea className="input" rows={2} placeholder="Instrucciones adicionales (opcional)..." value={prompt} onChange={e => setPrompt(e.target.value)} style={{ marginBottom: 10, resize: 'vertical' }} />
-              <button className="btn-primary" onClick={genNutrition} disabled={genLoading.nutrition} style={{ width: '100%', justifyContent: 'center', background: 'var(--gold)' }}>
-                {genLoading.nutrition ? <><span className="spinner" /> Generando…</> : '✨ Generar plan nutricional'}
-              </button>
-            </div>
-          )}
-
-          {nutrition_plan && nutritionMode === 'ai' && (
             <div className="card">
-              <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: 14, lineHeight: 1.7 }}>{nutrition_plan.content}</pre>
-              <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 10 }}>Guardado: {new Date(nutrition_plan.created_at).toLocaleDateString('es')}</p>
+              <p style={{ fontWeight: 700, marginBottom: 10 }}>Generar plan nutricional con IA</p>
+              <textarea className="input" rows={2} placeholder="Instrucciones adicionales (opcional)..." value={aiPrompt} onChange={e => setAiPrompt(e.target.value)} style={{ marginBottom: 10, resize: 'vertical' }} />
+              <button className="btn-primary" onClick={genNutrition} disabled={genNutritionLoading} style={{ width: '100%', justifyContent: 'center', background: 'var(--gold)' }}>
+                {genNutritionLoading ? <><span className="spinner" /> Generando…</> : '✨ Generar plan nutricional'}
+              </button>
+              {nutrition_plan && (
+                <div style={{ marginTop: 16 }}>
+                  <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: 13, lineHeight: 1.7 }}>{nutrition_plan.content}</pre>
+                  <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 8 }}>Guardado: {new Date(nutrition_plan.created_at).toLocaleDateString('es')}</p>
+                </div>
+              )}
             </div>
-          )}
-
-          {!nutrition_plan && nutritionMode === 'ai' && (
-            <div className="empty-state"><div className="icon">🥗</div><p>Aún no hay plan nutricional</p></div>
           )}
         </div>
       )}
 
-      {/* Bio tab */}
+      {/* Bio */}
       {tab === 'bio' && (
         <div>
           <div className="card" style={{ marginBottom: 16 }}>
