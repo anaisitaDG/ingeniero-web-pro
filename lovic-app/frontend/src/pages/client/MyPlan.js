@@ -107,9 +107,7 @@ function calcKcal(table, type, mins) {
   return rate ? Math.round(rate * mins) : null;
 }
 
-function ActivityBlock({ emoji, label, options, kcalTable, defaultDuration }) {
-  const [choice, setChoice] = useState('');
-  const [mins, setMins] = useState(defaultDuration || '');
+function ActivityBlock({ emoji, label, options, kcalTable, defaultDuration, choice, setChoice, mins, setMins }) {
   const kcal = calcKcal(kcalTable, choice, Number(mins));
   return (
     <div style={{ background: 'var(--bg)', borderRadius: 12, padding: '12px 14px' }}>
@@ -137,8 +135,21 @@ function ActivityBlock({ emoji, label, options, kcalTable, defaultDuration }) {
   );
 }
 
+// ~6 kcal per set for moderate resistance training
+const STRENGTH_KCAL_PER_SET = 6;
+
 function DayCard({ day, onLogged }) {
   const [open, setOpen] = useState(true);
+  const [warmupChoice, setWarmupChoice] = useState('');
+  const [warmupMins, setWarmupMins] = useState(day.warmup_duration || '');
+  const [cardioChoice, setCardioChoice] = useState('');
+  const [cardioMins, setCardioMins] = useState(day.cardio_duration || '');
+
+  const warmupKcal = calcKcal(WARMUP_KCAL, warmupChoice, Number(warmupMins)) || 0;
+  const cardioKcal = calcKcal(CARDIO_KCAL, cardioChoice, Number(cardioMins)) || 0;
+  const strengthKcal = day.exercises.reduce((sum, ex) => sum + (ex.sets || 3) * STRENGTH_KCAL_PER_SET, 0);
+  const totalKcal = warmupKcal + strengthKcal + cardioKcal;
+
   return (
     <div className="card" style={{ marginBottom: 14 }}>
       <button onClick={() => setOpen(o => !o)} style={{
@@ -150,11 +161,24 @@ function DayCard({ day, onLogged }) {
       </button>
       {open && (
         <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <ActivityBlock emoji="🔥" label="Calentamiento" options={WARMUP_OPTIONS} kcalTable={WARMUP_KCAL} defaultDuration={day.warmup_duration} />
+          <ActivityBlock emoji="🔥" label="Calentamiento" options={WARMUP_OPTIONS} kcalTable={WARMUP_KCAL}
+            defaultDuration={day.warmup_duration} choice={warmupChoice} setChoice={setWarmupChoice}
+            mins={warmupMins} setMins={setWarmupMins} />
           {day.exercises.map(ex => (
             <ExerciseCard key={ex.id} exercise={ex} onLogged={onLogged} />
           ))}
-          <ActivityBlock emoji="🏃" label="Cardio" options={CARDIO_OPTIONS} kcalTable={CARDIO_KCAL} defaultDuration={day.cardio_duration} />
+          <ActivityBlock emoji="🏃" label="Cardio" options={CARDIO_OPTIONS} kcalTable={CARDIO_KCAL}
+            defaultDuration={day.cardio_duration} choice={cardioChoice} setChoice={setCardioChoice}
+            mins={cardioMins} setMins={setCardioMins} />
+          <div style={{ background: 'var(--coral-light)', borderRadius: 12, padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <p style={{ fontWeight: 700, fontSize: 13, color: 'var(--coral)' }}>🔥 Total estimado del día</p>
+              <p style={{ fontSize: 11, color: 'var(--coral)', marginTop: 2 }}>
+                {warmupKcal > 0 && `Calent. ${warmupKcal} + `}Fuerza {strengthKcal}{cardioKcal > 0 && ` + Cardio ${cardioKcal}`} kcal
+              </p>
+            </div>
+            <p style={{ fontSize: 28, fontWeight: 900, color: 'var(--coral)' }}>~{totalKcal}</p>
+          </div>
         </div>
       )}
     </div>
