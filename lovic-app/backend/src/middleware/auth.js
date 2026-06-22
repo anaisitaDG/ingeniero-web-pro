@@ -1,6 +1,26 @@
 const jwt = require('jsonwebtoken');
 const db  = require('../database/db');
 
+function calcMacroTargets(calorieTarget, fitnessGoal) {
+  const kcal = calorieTarget || 2000;
+  const goal = fitnessGoal || 'maintenance';
+  // protein/carbs/fat split as % of calories
+  const splits = {
+    fat_loss:     { p: 0.40, c: 0.30, f: 0.30 },
+    muscle_gain:  { p: 0.30, c: 0.40, f: 0.30 },
+    maintenance:  { p: 0.25, c: 0.45, f: 0.30 },
+    health:       { p: 0.25, c: 0.45, f: 0.30 },
+  };
+  const s = splits[goal] || splits.maintenance;
+  return {
+    protein_target_g: Math.round((kcal * s.p) / 4),
+    carbs_target_g:   Math.round((kcal * s.c) / 4),
+    fat_target_g:     Math.round((kcal * s.f) / 9),
+  };
+}
+
+module.exports.calcMacroTargets = calcMacroTargets;
+
 async function requireAuth(req, res, next) {
   const header = req.headers.authorization;
   if (!header?.startsWith('Bearer ')) {
@@ -12,6 +32,7 @@ async function requireAuth(req, res, next) {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
     const [[user]] = await db.query(
       `SELECT u.id, u.email, u.name, u.role, u.calorie_target, u.fitness_goal,
+              u.protein_target_g, u.carbs_target_g, u.fat_target_g,
               (SELECT COUNT(*) FROM questionnaire_data q WHERE q.user_id = u.id) > 0 AS has_questionnaire
        FROM users u WHERE u.id = ?`,
       [payload.sub]
@@ -30,11 +51,20 @@ async function requireAuth(req, res, next) {
         const goal = user.fitness_goal || 'maintenance';
         const target = goal === 'fat_loss' ? tdee - 400 : goal === 'muscle_gain' ? tdee + 300 : tdee;
         user.calorie_target = target;
-        // Persist so we don't recalculate every request
         await db.query('UPDATE users SET calorie_target = ? WHERE id = ?', [target, user.id]);
       } else {
         user.calorie_target = 2000;
       }
+    }
+
+    // If macro targets not set, auto-calculate from calorie_target + fitness_goal
+    if (!user.protein_target_g) {
+      const macros = calcMacroTargets(user.calorie_target, user.fitness_goal);
+      Object.assign(user, macros);
+      await db.query(
+        'UPDATE users SET protein_target_g=?, carbs_target_g=?, fat_target_g=? WHERE id=?',
+        [macros.protein_target_g, macros.carbs_target_g, macros.fat_target_g, user.id]
+      );
     }
 
     req.user = user;

@@ -13,12 +13,36 @@ export default function ClientDetail() {
   const [prompt, setPrompt]         = useState('');
   const [bioFile, setBioFile]       = useState(null);
   const [bioUploading, setBioUploading] = useState(false);
+  const [targets, setTargets]       = useState({ calorie_target: '', protein_target_g: '', carbs_target_g: '', fat_target_g: '' });
+  const [savingTargets, setSavingTargets] = useState(false);
 
   useEffect(() => { load(); }, [id]);
 
   async function load() {
     setLoading(true);
-    api.trainer.client(id).then(d => setData(d)).finally(() => setLoading(false));
+    api.trainer.client(id).then(d => {
+      setData(d);
+      setTargets({
+        calorie_target:   d.user?.calorie_target   || '',
+        protein_target_g: d.user?.protein_target_g || '',
+        carbs_target_g:   d.user?.carbs_target_g   || '',
+        fat_target_g:     d.user?.fat_target_g      || '',
+      });
+    }).finally(() => setLoading(false));
+  }
+
+  async function saveTargets() {
+    setSavingTargets(true);
+    try {
+      await api.trainer.setTargets(id, {
+        calorie_target:   targets.calorie_target   ? Number(targets.calorie_target)   : null,
+        protein_target_g: targets.protein_target_g ? Number(targets.protein_target_g) : null,
+        carbs_target_g:   targets.carbs_target_g   ? Number(targets.carbs_target_g)   : null,
+        fat_target_g:     targets.fat_target_g      ? Number(targets.fat_target_g)     : null,
+      });
+      alert('Metas guardadas');
+    } catch(e) { alert(e.message); }
+    finally { setSavingTargets(false); }
   }
 
   async function genRoutine() {
@@ -141,6 +165,29 @@ export default function ClientDetail() {
               <InfoRow label="Brazo" value={measurements[0].arm_cm && `${measurements[0].arm_cm} cm`} />
             </div>
           )}
+
+          <div className="card">
+            <p style={{ fontWeight: 700, marginBottom: 12 }}>🎯 Metas nutricionales</p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+              {[
+                { key: 'calorie_target',   label: 'Calorías (kcal)', placeholder: 'Ej: 1800' },
+                { key: 'protein_target_g', label: 'Proteína (g)',    placeholder: 'Ej: 150' },
+                { key: 'carbs_target_g',   label: 'Carbos (g)',      placeholder: 'Ej: 200' },
+                { key: 'fat_target_g',     label: 'Grasa (g)',       placeholder: 'Ej: 60' },
+              ].map(f => (
+                <div key={f.key}>
+                  <label className="label">{f.label}</label>
+                  <input className="input" type="number" placeholder={f.placeholder}
+                    value={targets[f.key]}
+                    onChange={e => setTargets(t => ({ ...t, [f.key]: e.target.value }))}
+                  />
+                </div>
+              ))}
+            </div>
+            <button className="btn-primary" onClick={saveTargets} disabled={savingTargets} style={{ width: '100%', justifyContent: 'center', background: 'var(--gold)' }}>
+              {savingTargets ? <span className="spinner" /> : 'Guardar metas'}
+            </button>
+          </div>
 
           {q && (
             <div className="card">

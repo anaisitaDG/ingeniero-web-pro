@@ -75,9 +75,9 @@ export default function Dashboard() {
         </div>
         {macros && (macros.protein > 0 || macros.carbs > 0 || macros.fat > 0) && (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-            <MacroBar label="Proteína" value={macros.protein} color="#2D6EA0" />
-            <MacroBar label="Carbos" value={macros.carbs} color="#C99A1E" />
-            <MacroBar label="Grasa" value={macros.fat} color="#8B3A14" />
+            <MacroBar label="Proteína" consumed={macros.protein} target={macros.protein_target} color="#2D6EA0" />
+            <MacroBar label="Carbos"   consumed={macros.carbs}   target={macros.carbs_target}   color="#C99A1E" />
+            <MacroBar label="Grasa"    consumed={macros.fat}     target={macros.fat_target}      color="#8B3A14" />
           </div>
         )}
       </div>
@@ -155,11 +155,21 @@ export default function Dashboard() {
   );
 }
 
-function MacroBar({ label, value, color }) {
+function MacroBar({ label, consumed, target, color }) {
+  const remaining = target > 0 ? Math.max(target - consumed, 0) : null;
+  const pct = target > 0 ? Math.min(Math.round((consumed / target) * 100), 100) : 0;
+  const over = target > 0 && consumed > target;
   return (
     <div style={{ background: 'var(--bg)', borderRadius: 10, padding: '8px 10px', textAlign: 'center' }}>
-      <div style={{ fontWeight: 800, fontSize: 16, color }}>{value}g</div>
-      <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>{label}</div>
+      <div style={{ fontWeight: 800, fontSize: 15, color: over ? '#E05252' : color }}>{consumed}g</div>
+      {target > 0 && <div style={{ fontSize: 10, color: 'var(--muted)' }}>/ {target}g</div>}
+      {target > 0 && (
+        <div style={{ height: 4, background: 'var(--border)', borderRadius: 4, overflow: 'hidden', margin: '4px 0' }}>
+          <div style={{ height: '100%', width: `${pct}%`, background: over ? '#E05252' : color, borderRadius: 4 }} />
+        </div>
+      )}
+      <div style={{ fontSize: 10, color: 'var(--muted)' }}>{label}</div>
+      {remaining !== null && <div style={{ fontSize: 10, fontWeight: 700, color: remaining === 0 ? '#E05252' : color }}>faltan {remaining}g</div>}
     </div>
   );
 }

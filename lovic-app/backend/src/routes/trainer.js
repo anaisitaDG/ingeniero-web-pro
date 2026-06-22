@@ -108,6 +108,22 @@ router.post('/clients/:id/nutrition', async (req, res) => {
   res.json({ nutrition_plan: content });
 });
 
+// PUT /trainer/clients/:id/targets — actualiza metas de calorías y macros
+router.put('/clients/:id/targets', async (req, res) => {
+  const { calorie_target, protein_target_g, carbs_target_g, fat_target_g } = req.body;
+  const uid = req.params.id;
+  await db.query(
+    `UPDATE users SET
+       calorie_target   = COALESCE(?, calorie_target),
+       protein_target_g = COALESCE(?, protein_target_g),
+       carbs_target_g   = COALESCE(?, carbs_target_g),
+       fat_target_g     = COALESCE(?, fat_target_g)
+     WHERE id = ?`,
+    [calorie_target || null, protein_target_g || null, carbs_target_g || null, fat_target_g || null, uid]
+  );
+  res.json({ message: 'Metas actualizadas' });
+});
+
 // POST /trainer/clients/:id/invite — envía magic link de acceso
 router.post('/clients/:id/invite', async (req, res) => {
   const [[user]] = await db.query('SELECT * FROM users WHERE id=? AND role="client"', [req.params.id]);

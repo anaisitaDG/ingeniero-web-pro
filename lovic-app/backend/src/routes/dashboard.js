@@ -67,7 +67,12 @@ router.get('/', async (req, res) => {
   res.json({
     user: req.user,
     calories:  { target, consumed, remaining: Math.max(target - consumed, 0) },
-    macros:    { protein: Math.round(caloriesRow.protein), carbs: Math.round(caloriesRow.carbs), fat: Math.round(caloriesRow.fat) },
+    macros: {
+      protein: Math.round(caloriesRow.protein), carbs: Math.round(caloriesRow.carbs), fat: Math.round(caloriesRow.fat),
+      protein_target: req.user.protein_target_g || 0,
+      carbs_target:   req.user.carbs_target_g   || 0,
+      fat_target:     req.user.fat_target_g      || 0,
+    },
     tracking:  tracking || { workout_done: false, diet_followed: false, water_glasses: 0 },
     bio:       latest,
     weight_history: weightRows,
