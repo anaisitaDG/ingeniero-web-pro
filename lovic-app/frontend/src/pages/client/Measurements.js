@@ -171,6 +171,15 @@ export default function Measurements() {
                   {b.visceral_fat != null && <InfoRow label="Grasa visceral" value={b.visceral_fat} />}
                   {b.bmr_kcal != null && <InfoRow label="Metabolismo" value={`${b.bmr_kcal} kcal`} />}
                 </div>
+                {(b.target_muscle_kg != null || b.target_fat_loss_kg != null) && (
+                  <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
+                    <p style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 6, fontWeight: 600 }}>OBJETIVOS</p>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                      {b.target_muscle_kg != null && <InfoRow label="Músculo a ganar" value={`+${b.target_muscle_kg} kg`} />}
+                      {b.target_fat_loss_kg != null && <InfoRow label="Grasa a perder" value={`-${b.target_fat_loss_kg} kg`} />}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>

@@ -129,13 +129,17 @@ async function parseBioimpedance(imagePath) {
         },
         {
           type: 'text',
-          text: `Analiza esta imagen de bioimpedancia y extrae los datos. Devuelve SOLO un JSON válido:
+          text: `Analiza esta imagen de bioimpedancia y extrae los datos. Distingue entre valores ACTUALES del cuerpo y valores OBJETIVO/META (los que indican cuánto ganar o perder, suelen aparecer con + o - o en sección "Para alcanzar tu peso ideal").
+
+Devuelve SOLO un JSON válido:
 {
-  "body_fat_pct": número,
-  "muscle_mass_kg": número,
-  "visceral_fat": número,
-  "bmr_kcal": número,
-  "raw": { "key": "value" }
+  "body_fat_pct": número (% grasa corporal ACTUAL),
+  "muscle_mass_kg": número (masa muscular ACTUAL en kg, busca "Peso muscular" o "Masa muscular esquelética Kg"),
+  "visceral_fat": número (grasa visceral ACTUAL),
+  "bmr_kcal": número (metabolismo basal ACTUAL en kcal),
+  "target_muscle_kg": número (kg de músculo a GANAR según recomendación, suele aparecer como +X.XX),
+  "target_fat_loss_kg": número (kg de grasa a PERDER según recomendación, suele aparecer como -X.XX, guarda el valor positivo),
+  "raw": {}
 }
 Si no encuentras un valor, usa null. Solo devuelve el JSON.`,
         },
