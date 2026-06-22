@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 
 const FIELDS = [
   { key: 'weight_kg', label: 'Peso', unit: 'kg', icon: '⚖️' },
@@ -15,16 +16,22 @@ const FIELDS = [
 const EMPTY = FIELDS.reduce((acc, f) => ({ ...acc, [f.key]: '' }), { notes: '' });
 
 export default function Measurements() {
-  const [rows, setRows]     = useState([]);
-  const [form, setForm]     = useState(EMPTY);
-  const [saving, setSaving] = useState(false);
-  const [open, setOpen]     = useState(false);
+  const { user } = useAuth();
+  const [rows, setRows]         = useState([]);
+  const [form, setForm]         = useState(EMPTY);
+  const [saving, setSaving]     = useState(false);
+  const [open, setOpen]         = useState(false);
+  const [bioList, setBioList]   = useState([]);
+  const [bioFile, setBioFile]   = useState(null);
+  const [bioUploading, setBioUploading] = useState(false);
 
   useEffect(() => { load(); }, []);
 
   async function load() {
     const d = await api.measurements.list(10);
     setRows(d.measurements);
+    const b = await api.bioimpedance.list();
+    setBioList(b.records || []);
   }
 
   async function handleSubmit(e) {
@@ -127,6 +134,57 @@ export default function Measurements() {
           <p>Aún no hay medidas registradas</p>
         </div>
       )}
+
+      {/* Bioimpedancia */}
+      <div style={{ marginTop: 32 }}>
+        <p className="page-title" style={{ fontSize: 18, marginBottom: 16 }}>Bioimpedancia 📊</p>
+        <div className="card" style={{ marginBottom: 16 }}>
+          <p style={{ fontWeight: 700, marginBottom: 10 }}>Subir foto de bioimpedancia</p>
+          <input type="file" accept="image/*" onChange={e => setBioFile(e.target.files[0])} style={{ marginBottom: 10 }} />
+          <button className="btn-primary" onClick={async () => {
+            if (!bioFile) return;
+            setBioUploading(true);
+            const fd = new FormData();
+            fd.append('image', bioFile);
+            fd.append('user_id', user.id);
+            try {
+              const res = await api.bioimpedance.upload(fd, user.id);
+              if (res.error) throw new Error(res.error);
+              setBioFile(null);
+              load();
+            } catch (e) { alert(e.message); }
+            finally { setBioUploading(false); }
+          }} disabled={!bioFile || bioUploading} style={{ width: '100%', justifyContent: 'center' }}>
+            {bioUploading ? <><span className="spinner" /> Procesando…</> : 'Subir y analizar'}
+          </button>
+        </div>
+        {bioList.length > 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {bioList.map(b => (
+              <div key={b.id} className="card" style={{ padding: 16 }}>
+                <p style={{ fontWeight: 700, marginBottom: 10 }}>{new Date(b.logged_at).toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  {b.body_fat_pct != null && <InfoRow label="Grasa corporal" value={`${b.body_fat_pct}%`} />}
+                  {b.muscle_mass_kg != null && <InfoRow label="Masa muscular" value={`${b.muscle_mass_kg} kg`} />}
+                  {b.visceral_fat != null && <InfoRow label="Grasa visceral" value={b.visceral_fat} />}
+                  {b.bmr_kcal != null && <InfoRow label="Metabolismo" value={`${b.bmr_kcal} kcal`} />}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="empty-state"><div className="icon">📊</div><p>No hay registros de bioimpedancia</p></div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function InfoRow({ label, value }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid var(--border)', fontSize: 14 }}>
+      <span style={{ color: 'var(--muted)' }}>{label}</span>
+      <span style={{ fontWeight: 600 }}>{value}</span>
     </div>
   );
 }
