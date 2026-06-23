@@ -94,8 +94,7 @@ function calcKcal(table, type, mins) {
   return rate ? Math.round(rate * mins) : null;
 }
 
-function ActivityBlock({ emoji, label, options, kcalTable, defaultDuration, choice, setChoice, mins, setMins }) {
-  const [done, setDone] = useState(false);
+function ActivityBlock({ emoji, label, options, kcalTable, defaultDuration, choice, setChoice, mins, setMins, done, setDone }) {
   const kcal = calcKcal(kcalTable, choice, Number(mins));
   return (
     <div style={{ background: done ? '#d1fae5' : 'var(--bg)', borderRadius: 12, padding: '12px 14px', transition: 'background 0.3s' }}>
@@ -132,19 +131,29 @@ function ActivityBlock({ emoji, label, options, kcalTable, defaultDuration, choi
   );
 }
 
-// ~6 kcal per set for moderate resistance training
-const STRENGTH_KCAL_PER_SET = 6;
+// kcal from real logged sets: weight(kg) × reps × sets × 0.1 (aprox)
+function calcStrengthKcal(setWeights) {
+  return Math.round(setWeights.reduce((sum, s) => {
+    const w = parseFloat(s.weight_kg) || 0;
+    const r = parseFloat(s.reps_done) || 0;
+    return sum + w * r * 0.1;
+  }, 0));
+}
 
 function DayCard({ day, done, onToggleDone, onLogged }) {
   const [open, setOpen] = useState(true);
   const [warmupChoice, setWarmupChoice] = useState('');
   const [warmupMins, setWarmupMins] = useState(day.warmup_duration || '');
+  const [warmupDone, setWarmupDone] = useState(false);
   const [cardioChoice, setCardioChoice] = useState('');
   const [cardioMins, setCardioMins] = useState(day.cardio_duration || '');
+  const [cardioDone, setCardioDone] = useState(false);
+  // kcal per exercise keyed by ex.id, updated by ExerciseCard
+  const [exKcal, setExKcal] = useState({});
 
   const warmupKcal = calcKcal(WARMUP_KCAL, warmupChoice, Number(warmupMins)) || 0;
   const cardioKcal = calcKcal(CARDIO_KCAL, cardioChoice, Number(cardioMins)) || 0;
-  const strengthKcal = day.exercises.reduce((sum, ex) => sum + (ex.sets || 3) * STRENGTH_KCAL_PER_SET, 0);
+  const strengthKcal = Object.values(exKcal).reduce((a, b) => a + b, 0);
   const totalKcal = warmupKcal + strengthKcal + cardioKcal;
 
   return (
@@ -169,13 +178,14 @@ function DayCard({ day, done, onToggleDone, onLogged }) {
         <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
           <ActivityBlock emoji="🔥" label="Calentamiento" options={WARMUP_OPTIONS} kcalTable={WARMUP_KCAL}
             defaultDuration={day.warmup_duration} choice={warmupChoice} setChoice={setWarmupChoice}
-            mins={warmupMins} setMins={setWarmupMins} />
+            mins={warmupMins} setMins={setWarmupMins} done={warmupDone} setDone={setWarmupDone} />
           {day.exercises.map(ex => (
-            <ExerciseCard key={ex.id} exercise={ex} onLogged={onLogged} />
+            <ExerciseCard key={ex.id} exercise={ex} onLogged={onLogged}
+              onKcalChange={kcal => setExKcal(prev => ({ ...prev, [ex.id]: kcal }))} />
           ))}
           <ActivityBlock emoji="🏃" label="Cardio" options={CARDIO_OPTIONS} kcalTable={CARDIO_KCAL}
             defaultDuration={day.cardio_duration} choice={cardioChoice} setChoice={setCardioChoice}
-            mins={cardioMins} setMins={setCardioMins} />
+            mins={cardioMins} setMins={setCardioMins} done={cardioDone} setDone={setCardioDone} />
           <div style={{ background: 'var(--coral-light)', borderRadius: 12, padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <p style={{ fontWeight: 700, fontSize: 13, color: 'var(--coral)' }}>🔥 Total estimado del día</p>
@@ -191,7 +201,7 @@ function DayCard({ day, done, onToggleDone, onLogged }) {
   );
 }
 
-function ExerciseCard({ exercise: ex, onLogged }) {
+function ExerciseCard({ exercise: ex, onLogged, onKcalChange }) {
   const [showLog, setShowLog]     = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory]     = useState(null);
@@ -199,6 +209,11 @@ function ExerciseCard({ exercise: ex, onLogged }) {
     Array.from({ length: ex.sets }, (_, i) => ({ weight_kg: ex.weight_kg || '', reps_done: ex.reps || '' }))
   );
   const [saving, setSaving] = useState(false);
+
+  // Report kcal to parent whenever weights change
+  useEffect(() => {
+    onKcalChange?.(calcStrengthKcal(setWeights));
+  }, [setWeights]); // eslint-disable-line
 
   const today = new Date().toLocaleDateString('en-CA');
   const lastSession = ex.last_session;
