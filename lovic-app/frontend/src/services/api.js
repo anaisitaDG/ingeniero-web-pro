@@ -42,7 +42,7 @@ export const api = {
     magicLink: (email)=> request('/auth/magic-link', { method: 'POST', body: JSON.stringify({ email }) }),
   },
   dashboard: {
-    get:         ()      => request('/dashboard'),
+    get:         ()      => request(`/dashboard?date=${new Date().toLocaleDateString('en-CA')}`),
     postTracking:(body)  => request('/dashboard/tracking', { method: 'POST', body: JSON.stringify(body) }),
   },
   food: {

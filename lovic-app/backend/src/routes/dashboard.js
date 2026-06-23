@@ -8,7 +8,7 @@ router.use(requireAuth);
 // GET /dashboard
 router.get('/', async (req, res) => {
   const uid = req.user.id;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = req.query.date || new Date().toISOString().slice(0, 10);
 
   const [[caloriesRow]] = await db.query(
     `SELECT COALESCE(SUM(calories),0) AS consumed,
