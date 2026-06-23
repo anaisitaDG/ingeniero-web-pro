@@ -54,6 +54,12 @@ export default function Measurements() {
     }
   }
 
+  // For each field, find the most recent row that has a value
+  const latestByField = FIELDS.reduce((acc, f) => {
+    const row = rows.find(r => r[f.key] != null);
+    if (row) acc[f.key] = row[f.key];
+    return acc;
+  }, {});
   const latest = rows[0];
   const prev   = rows[1];
 
@@ -126,8 +132,8 @@ export default function Measurements() {
         <>
           {latest ? (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
-              {FIELDS.filter(f => latest[f.key] != null).map(f => (
-                <MeasureCard key={f.key} field={f} latest={latest} prev={prev} />
+              {FIELDS.filter(f => latestByField[f.key] != null).map(f => (
+                <MeasureCard key={f.key} field={f} value={latestByField[f.key]} prev={rows.slice(1).find(r => r[f.key] != null)?.[f.key]} unit={f.unit} />
               ))}
             </div>
           ) : (
@@ -256,9 +262,7 @@ function InfoRow({ label, value }) {
   );
 }
 
-function MeasureCard({ field, latest, prev }) {
-  const val  = latest[field.key];
-  const pval = prev?.[field.key];
+function MeasureCard({ field, value: val, prev: pval }) {
   const diff = pval != null ? (val - pval).toFixed(1) : null;
   const up   = diff > 0;
   const isWeight = field.key === 'weight_kg';
