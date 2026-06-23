@@ -94,6 +94,7 @@ const db = require('./database/db');
         INDEX idx_user_date (user_id, logged_date)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
+    await db.query(`ALTER TABLE bioimpedance ADD COLUMN IF NOT EXISTS body_water_pct DECIMAL(4,1) DEFAULT NULL`).catch(() => {});
     await db.query(`
       CREATE TABLE IF NOT EXISTS workout_day_completions (
         id VARCHAR(36) PRIMARY KEY,

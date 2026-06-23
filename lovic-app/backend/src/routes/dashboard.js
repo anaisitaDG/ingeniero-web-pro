@@ -86,8 +86,8 @@ router.get('/', async (req, res) => {
 
 // POST /dashboard/tracking
 router.post('/tracking', async (req, res) => {
-  const { workout_done, diet_followed, water_glasses, weight_kg, mood, notes } = req.body;
-  const today = new Date().toISOString().split('T')[0];
+  const { workout_done, diet_followed, water_glasses, weight_kg, mood, notes, date } = req.body;
+  const today = date || new Date().toISOString().split('T')[0];
 
   await db.query(
     `INSERT INTO daily_tracking (id, user_id, tracked_date, workout_done, diet_followed, water_glasses, weight_kg, mood, notes)

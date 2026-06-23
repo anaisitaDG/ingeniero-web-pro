@@ -43,7 +43,7 @@ export const api = {
   },
   dashboard: {
     get:         ()      => request(`/dashboard?date=${new Date().toLocaleDateString('en-CA')}`),
-    postTracking:(body)  => request('/dashboard/tracking', { method: 'POST', body: JSON.stringify(body) }),
+    postTracking:(body)  => request('/dashboard/tracking', { method: 'POST', body: JSON.stringify({ ...body, date: new Date().toLocaleDateString('en-CA') }) }),
   },
   food: {
     log:    (input_text, meal_type) => request('/food/log', { method: 'POST', body: JSON.stringify({ input_text, meal_type, date: new Date().toLocaleDateString('en-CA') }) }),

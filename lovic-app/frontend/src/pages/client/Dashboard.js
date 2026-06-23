@@ -117,16 +117,7 @@ export default function Dashboard() {
           <TrackToggle label="Entrenamiento" icon="💪" active={tracking.workout_done} onChange={v => saveTracking({ workout_done: v })} />
           <TrackToggle label="Dieta" icon="🥗" active={tracking.diet_followed} onChange={v => saveTracking({ diet_followed: v })} />
         </div>
-        <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8, fontWeight: 600 }}>💧 Agua — {tracking.water_glasses}/8 vasos</p>
-        <div style={{ display: 'flex', gap: 6 }}>
-          {Array.from({ length: 8 }, (_, i) => (
-            <button key={i} onClick={() => saveTracking({ water_glasses: tracking.water_glasses === i + 1 ? i : i + 1 })} style={{
-              flex: 1, height: 32, borderRadius: 8, border: 'none', cursor: 'pointer',
-              background: i < tracking.water_glasses ? '#4A90D9' : 'var(--border)',
-              transition: 'background 0.15s',
-            }} />
-          ))}
-        </div>
+        <WaterTracker tracking={tracking} bio={bio} onSave={saveTracking} />
       </div>
 
       {/* Routine preview */}
@@ -238,6 +229,64 @@ function AdherenceBar({ label, done, total, color }) {
         <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 8 }} />
       </div>
       <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>{done}/{total} días</p>
+    </div>
+  );
+}
+
+function WaterTracker({ tracking, bio, onSave }) {
+  const glasses = tracking.water_glasses || 0;
+
+  // Meta dinámica: +2 si entrenó hoy, +2 si hidratación corporal baja
+  let goal = 8;
+  let bioMsg = null;
+  if (tracking.workout_done) goal = 10;
+  if (bio?.body_water_pct != null) {
+    if (bio.body_water_pct < 50) {
+      goal = Math.max(goal, 10);
+      bioMsg = { type: 'warn', text: `Tu agua corporal fue ${bio.body_water_pct}% en tu última bio — apunta a ${goal} vasos hoy` };
+    } else if (bio.body_water_pct >= 55) {
+      bioMsg = { type: 'good', text: `Tu hidratación corporal está en ${bio.body_water_pct}% — ¡sigue así!` };
+    }
+  }
+
+  const pct = Math.min(Math.round((glasses / goal) * 100), 100);
+  let statusMsg = '';
+  if (glasses === 0) statusMsg = 'Empieza a hidratarte 💧';
+  else if (pct < 50) statusMsg = `Te faltan ${goal - glasses} vasos`;
+  else if (pct < 100) statusMsg = `¡Vas bien! ${goal - glasses} vasos más`;
+  else statusMsg = '¡Meta cumplida! 🎉';
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+        <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>
+          💧 Agua — {glasses}/{goal} vasos
+          {tracking.workout_done && <span style={{ fontSize: 10, color: '#4A90D9', marginLeft: 6 }}>+2 por entrenamiento</span>}
+        </p>
+        <span style={{ fontSize: 11, fontWeight: 600, color: pct >= 100 ? '#2D7A2D' : '#4A90D9' }}>{statusMsg}</span>
+      </div>
+      <div style={{ height: 8, background: 'var(--border)', borderRadius: 8, overflow: 'hidden', marginBottom: 8 }}>
+        <div style={{ height: '100%', width: `${pct}%`, background: '#4A90D9', borderRadius: 8, transition: 'width 0.3s' }} />
+      </div>
+      <div style={{ display: 'flex', gap: 6, marginBottom: bioMsg ? 10 : 0 }}>
+        {Array.from({ length: goal }, (_, i) => (
+          <button key={i} onClick={() => onSave({ water_glasses: glasses === i + 1 ? i : i + 1 })} style={{
+            flex: 1, height: 28, borderRadius: 6, border: 'none', cursor: 'pointer',
+            background: i < glasses ? '#4A90D9' : 'var(--border)',
+            transition: 'background 0.15s',
+          }} />
+        ))}
+      </div>
+      {bioMsg && (
+        <div style={{
+          padding: '8px 12px', borderRadius: 10, fontSize: 12, fontWeight: 600,
+          background: bioMsg.type === 'warn' ? '#FFF3CD' : '#D1FAE5',
+          color: bioMsg.type === 'warn' ? '#856404' : '#065f46',
+          borderLeft: `3px solid ${bioMsg.type === 'warn' ? '#FFC107' : '#10B981'}`,
+        }}>
+          {bioMsg.type === 'warn' ? '⚠️' : '✅'} {bioMsg.text}
+        </div>
+      )}
     </div>
   );
 }
