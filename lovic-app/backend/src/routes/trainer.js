@@ -231,7 +231,7 @@ router.post('/clients/:id/invite', async (req, res) => {
   const token = uuidv4();
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
   await db.query('INSERT INTO magic_links (user_id, token, expires_at) VALUES (?, ?, ?)', [user.id, token, expiresAt]);
-  await sendMagicLink(user.email, user.name, token, 'access');
+  await sendMagicLink(user.email, user.name, token, 'invite');
 
   res.json({ message: 'Invitación enviada' });
 });
