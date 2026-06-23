@@ -142,12 +142,20 @@ function calcStrengthKcal(setWeights) {
 
 function DayCard({ day, done, onToggleDone, onLogged }) {
   const [open, setOpen] = useState(true);
-  const [warmupChoice, setWarmupChoice] = useState('');
-  const [warmupMins, setWarmupMins] = useState(day.warmup_duration || '');
-  const [warmupDone, setWarmupDone] = useState(false);
-  const [cardioChoice, setCardioChoice] = useState('');
-  const [cardioMins, setCardioMins] = useState(day.cardio_duration || '');
-  const [cardioDone, setCardioDone] = useState(false);
+  const storageKey = `activity_${day.id}_${new Date().toLocaleDateString('en-CA')}`;
+  const saved = (() => { try { return JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch { return {}; } })();
+
+  const [warmupChoice, setWarmupChoice] = useState(saved.warmupChoice || '');
+  const [warmupMins, setWarmupMins]     = useState(saved.warmupMins || day.warmup_duration || '');
+  const [warmupDone, setWarmupDone]     = useState(saved.warmupDone || false);
+  const [cardioChoice, setCardioChoice] = useState(saved.cardioChoice || '');
+  const [cardioMins, setCardioMins]     = useState(saved.cardioMins || day.cardio_duration || '');
+  const [cardioDone, setCardioDone]     = useState(saved.cardioDone || false);
+
+  // Persist activity state to localStorage on any change
+  useEffect(() => {
+    localStorage.setItem(storageKey, JSON.stringify({ warmupChoice, warmupMins, warmupDone, cardioChoice, cardioMins, cardioDone }));
+  }, [warmupChoice, warmupMins, warmupDone, cardioChoice, cardioMins, cardioDone]); // eslint-disable-line
   // kcal per exercise keyed by ex.id, updated by ExerciseCard
   const [exKcal, setExKcal] = useState({});
 
