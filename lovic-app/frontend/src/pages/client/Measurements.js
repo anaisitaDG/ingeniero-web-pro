@@ -74,7 +74,7 @@ export default function Measurements() {
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 20, background: 'var(--border)', padding: 4, borderRadius: 12 }}>
-        {[{ key: 'current', icon: '📊', label: 'Actual' }, { key: 'progress', icon: '📈', label: 'Progreso' }, { key: 'bio', icon: '🔬', label: 'Bio' }].map(t => (
+        {[{ key: 'current', icon: '📊', label: 'Actual' }, { key: 'progress', icon: '📈', label: 'Progreso' }, { key: 'bio', icon: '🔬', label: 'Bioimpedancia' }].map(t => (
           <button key={t.key} onClick={() => setTab(t.key)} style={{
             flex: 1, padding: '8px 4px', borderRadius: 10, fontWeight: 700, border: 'none',
             background: tab === t.key ? 'var(--card)' : 'transparent',
