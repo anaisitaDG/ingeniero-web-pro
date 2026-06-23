@@ -8,7 +8,7 @@ router.use(requireAuth);
 // GET /dashboard
 router.get('/', async (req, res) => {
   const uid = req.user.id;
-  const today = new Date().toISOString().split('T')[0];
+  const [[{ today }]] = await db.query(`SELECT DATE(NOW()) AS today`);
 
   const [[caloriesRow]] = await db.query(
     `SELECT COALESCE(SUM(calories),0) AS consumed,
@@ -46,9 +46,9 @@ router.get('/', async (req, res) => {
   // Streak: consecutive days with workout_done OR diet_followed
   const [trackingRows] = await db.query(
     `SELECT tracked_date, workout_done, diet_followed
-     FROM daily_tracking WHERE user_id=? AND tracked_date < ?
+     FROM daily_tracking WHERE user_id=? AND tracked_date < CURDATE()
      ORDER BY tracked_date DESC LIMIT 60`,
-    [uid, today]);
+    [uid]);
   let streak = 0;
   const msPerDay = 86400000;
   let expected = new Date(today).getTime() - msPerDay;
