@@ -6,26 +6,29 @@ export default function MyPlan() {
   const [plan, setPlan]       = useState(null);
   const [nutrition, setNutrition] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [todayDone, setTodayDone] = useState(false);
-  const [completing, setCompleting] = useState(false);
+
+  const todayKey = `completedDays_${new Date().toLocaleDateString('en-CA')}`;
+  const [completedDays, setCompletedDays] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(todayKey) || '{}'); } catch { return {}; }
+  });
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [wRes, dRes, doneRes] = await Promise.all([api.workout.plan(), api.dashboard.get(), api.workout.todayDone()]);
+      const [wRes, dRes] = await Promise.all([api.workout.plan(), api.dashboard.get()]);
       setPlan(wRes.plan);
       setNutrition(dRes.nutrition_plan);
-      setTodayDone(doneRes.done);
     } finally { setLoading(false); }
   }, []);
 
-  async function markComplete() {
-    setCompleting(true);
-    try {
-      await api.workout.complete();
-      setTodayDone(true);
-    } catch (e) { alert(e.message); }
-    finally { setCompleting(false); }
+  async function toggleDay(dayId) {
+    const next = { ...completedDays, [dayId]: !completedDays[dayId] };
+    setCompletedDays(next);
+    localStorage.setItem(todayKey, JSON.stringify(next));
+    // Mark global workout_done if at least one day is completed
+    if (next[dayId]) {
+      try { await api.workout.complete(); } catch (_) {}
+    }
   }
 
   useEffect(() => { load(); }, [load]);
@@ -54,20 +57,8 @@ export default function MyPlan() {
         plan ? (
           <div>
             {plan.days.map(day => (
-              <DayCard key={day.id} day={day} onLogged={load} />
+              <DayCard key={day.id} day={day} done={!!completedDays[day.id]} onToggleDone={() => toggleDay(day.id)} onLogged={load} />
             ))}
-            <button
-              onClick={markComplete}
-              disabled={completing || todayDone}
-              style={{
-                display: 'block', margin: '8px auto 16px', padding: '10px 24px', borderRadius: 20, border: 'none',
-                cursor: todayDone ? 'default' : 'pointer', fontWeight: 700, fontSize: 14,
-                background: todayDone ? '#d1fae5' : 'var(--coral)', color: todayDone ? '#065f46' : '#fff',
-                transition: 'all 0.2s',
-              }}
-            >
-              {completing ? '⏳ Guardando…' : todayDone ? '✅ Rutina completada hoy' : '🏁 Completé mi rutina hoy'}
-            </button>
           </div>
         ) : (
           <div className="empty-state">
@@ -148,7 +139,7 @@ function ActivityBlock({ emoji, label, options, kcalTable, defaultDuration, choi
 // ~6 kcal per set for moderate resistance training
 const STRENGTH_KCAL_PER_SET = 6;
 
-function DayCard({ day, onLogged }) {
+function DayCard({ day, done, onToggleDone, onLogged }) {
   const [open, setOpen] = useState(true);
   const [warmupChoice, setWarmupChoice] = useState('');
   const [warmupMins, setWarmupMins] = useState(day.warmup_duration || '');
@@ -161,14 +152,23 @@ function DayCard({ day, onLogged }) {
   const totalKcal = warmupKcal + strengthKcal + cardioKcal;
 
   return (
-    <div className="card" style={{ marginBottom: 14 }}>
-      <button onClick={() => setOpen(o => !o)} style={{
-        width: '100%', background: 'none', border: 'none', cursor: 'pointer',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 0,
-      }}>
-        <p style={{ fontWeight: 800, fontSize: 16 }}>{day.day_name}</p>
-        <span style={{ color: 'var(--muted)', fontSize: 18 }}>{open ? '▲' : '▼'}</span>
-      </button>
+    <div className="card" style={{ marginBottom: 14, border: done ? '2px solid #86efac' : '2px solid transparent', transition: 'border 0.2s' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <button onClick={() => setOpen(o => !o)} style={{
+          flex: 1, background: 'none', border: 'none', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', padding: 0, textAlign: 'left',
+        }}>
+          <p style={{ fontWeight: 800, fontSize: 16 }}>{day.day_name}</p>
+          <span style={{ color: 'var(--muted)', fontSize: 14, marginLeft: 8 }}>{open ? '▲' : '▼'}</span>
+        </button>
+        <button onClick={e => { e.stopPropagation(); onToggleDone(); }} style={{
+          background: done ? '#d1fae5' : 'var(--border)', border: 'none', borderRadius: 20,
+          padding: '6px 12px', cursor: 'pointer', fontWeight: 700, fontSize: 12,
+          color: done ? '#065f46' : 'var(--muted)', transition: 'all 0.2s', flexShrink: 0,
+        }}>
+          {done ? '✅ Hecho' : '○ Marcar'}
+        </button>
+      </div>
       {open && (
         <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
           <ActivityBlock emoji="🔥" label="Calentamiento" options={WARMUP_OPTIONS} kcalTable={WARMUP_KCAL}
