@@ -9,8 +9,8 @@ export default function MyPlan() {
 
   const [completedDays, setCompletedDays] = useState({});
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (showSpinner = true) => {
+    if (showSpinner) setLoading(true);
     try {
       const [wRes, dRes, cRes] = await Promise.all([api.workout.plan(), api.dashboard.get(), api.workout.completedDays()]);
       setPlan(wRes.plan);
@@ -18,7 +18,7 @@ export default function MyPlan() {
       const map = {};
       (cRes.completed || []).forEach(id => { map[id] = true; });
       setCompletedDays(map);
-    } finally { setLoading(false); }
+    } finally { if (showSpinner) setLoading(false); }
   }, []);
 
   async function toggleDay(dayId) {
@@ -180,7 +180,7 @@ function DayCard({ day, done, onToggleDone, onLogged }) {
             defaultDuration={day.warmup_duration} choice={warmupChoice} setChoice={setWarmupChoice}
             mins={warmupMins} setMins={setWarmupMins} done={warmupDone} setDone={setWarmupDone} />
           {day.exercises.map(ex => (
-            <ExerciseCard key={ex.id} exercise={ex} onLogged={onLogged}
+            <ExerciseCard key={ex.id} exercise={ex} onLogged={() => onLogged(false)}
               onKcalChange={kcal => setExKcal(prev => ({ ...prev, [ex.id]: kcal }))} />
           ))}
           <ActivityBlock emoji="🏃" label="Cardio" options={CARDIO_OPTIONS} kcalTable={CARDIO_KCAL}
