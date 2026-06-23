@@ -205,9 +205,14 @@ function ExerciseCard({ exercise: ex, onLogged, onKcalChange }) {
   const [showLog, setShowLog]     = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory]     = useState(null);
-  const [setWeights, setSetWeights] = useState(() =>
-    Array.from({ length: ex.sets }, (_, i) => ({ weight_kg: ex.weight_kg || '', reps_done: ex.reps || '' }))
-  );
+  const [setWeights, setSetWeights] = useState(() => {
+    const lastW = ex.last_session?.weights ? ex.last_session.weights.split(',') : [];
+    const lastR = ex.last_session?.reps    ? ex.last_session.reps.split(',')    : [];
+    return Array.from({ length: ex.sets }, (_, i) => ({
+      weight_kg: lastW[i] || ex.weight_kg || '',
+      reps_done: lastR[i] || ex.reps || '',
+    }));
+  });
   const [saving, setSaving] = useState(false);
 
   // Report kcal to parent whenever weights change
