@@ -86,17 +86,18 @@ router.get('/', async (req, res) => {
 
 // POST /dashboard/tracking
 router.post('/tracking', async (req, res) => {
-  const { workout_done, diet_followed, water_glasses, weight_kg, mood, notes, date } = req.body;
+  const { workout_done, diet_followed, water_glasses, weight_kg, mood, notes, sleep_hours, date } = req.body;
   const today = date || new Date().toISOString().split('T')[0];
 
   await db.query(
-    `INSERT INTO daily_tracking (id, user_id, tracked_date, workout_done, diet_followed, water_glasses, weight_kg, mood, notes)
-     VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO daily_tracking (id, user_id, tracked_date, workout_done, diet_followed, water_glasses, weight_kg, mood, notes, sleep_hours)
+     VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON DUPLICATE KEY UPDATE
        workout_done=VALUES(workout_done), diet_followed=VALUES(diet_followed),
        water_glasses=VALUES(water_glasses),
-       weight_kg=VALUES(weight_kg), mood=VALUES(mood), notes=VALUES(notes)`,
-    [req.user.id, today, workout_done ?? false, diet_followed ?? false, water_glasses ?? 0, weight_kg, mood, notes]
+       weight_kg=VALUES(weight_kg), mood=VALUES(mood), notes=VALUES(notes),
+       sleep_hours=VALUES(sleep_hours)`,
+    [req.user.id, today, workout_done ?? false, diet_followed ?? false, water_glasses ?? 0, weight_kg, mood, notes, sleep_hours ?? null]
   );
 
   res.json({ message: 'Registro actualizado' });

@@ -9,7 +9,7 @@ export default function Dashboard() {
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving]   = useState(false);
-  const [tracking, setTracking] = useState({ workout_done: false, diet_followed: false, water_glasses: 0 });
+  const [tracking, setTracking] = useState({ workout_done: false, diet_followed: false, water_glasses: 0, mood: null, sleep_hours: null });
 
   useEffect(() => {
     api.dashboard.get()
@@ -19,6 +19,8 @@ export default function Dashboard() {
           workout_done:  !!d.tracking?.workout_done,
           diet_followed: !!d.tracking?.diet_followed,
           water_glasses: d.tracking?.water_glasses || 0,
+          mood:          d.tracking?.mood || null,
+          sleep_hours:   d.tracking?.sleep_hours || null,
         });
       })
       .finally(() => setLoading(false));
@@ -115,8 +117,9 @@ export default function Dashboard() {
         <p className="label" style={{ marginBottom: 12 }}>Seguimiento de hoy {saving && <span style={{ color: 'var(--muted)', fontWeight: 400 }}>guardando…</span>}</p>
         <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
           <TrackToggle label="Entrenamiento" icon="💪" active={tracking.workout_done} onChange={v => saveTracking({ workout_done: v })} />
-          <TrackToggle label="Dieta" icon="🥗" active={tracking.diet_followed} onChange={v => saveTracking({ diet_followed: v })} />
+          <SleepInput value={tracking.sleep_hours} onChange={v => saveTracking({ sleep_hours: v })} />
         </div>
+        <MoodSelector value={tracking.mood} onChange={v => saveTracking({ mood: v })} />
         <WaterTracker tracking={tracking} bio={bio} onSave={saveTracking} />
       </div>
 
@@ -229,6 +232,59 @@ function AdherenceBar({ label, done, total, color }) {
         <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 8 }} />
       </div>
       <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>{done}/{total} días</p>
+    </div>
+  );
+}
+
+function SleepInput({ value, onChange }) {
+  return (
+    <div style={{
+      flex: 1, padding: '14px', borderRadius: 14, border: '2px solid var(--border)',
+      background: value ? 'var(--bg)' : 'transparent',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+    }}>
+      <span style={{ fontSize: 24 }}>😴</span>
+      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)' }}>Sueño</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <button onClick={() => onChange(Math.max((value || 7) - 0.5, 0))} style={{
+          width: 28, height: 28, borderRadius: 8, border: 'none', background: 'var(--border)',
+          fontWeight: 700, fontSize: 16, cursor: 'pointer', color: 'var(--text)',
+        }}>−</button>
+        <span style={{ fontWeight: 800, fontSize: 16, minWidth: 36, textAlign: 'center' }}>
+          {value != null ? `${value}h` : '—'}
+        </span>
+        <button onClick={() => onChange(Math.min((value || 6) + 0.5, 14))} style={{
+          width: 28, height: 28, borderRadius: 8, border: 'none', background: 'var(--border)',
+          fontWeight: 700, fontSize: 16, cursor: 'pointer', color: 'var(--text)',
+        }}>+</button>
+      </div>
+    </div>
+  );
+}
+
+const MOODS = [
+  { value: 'tired',   emoji: '😴', label: 'Cansada' },
+  { value: 'normal',  emoji: '😐', label: 'Normal' },
+  { value: 'good',    emoji: '⚡', label: 'Con energía' },
+];
+
+function MoodSelector({ value, onChange }) {
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', marginBottom: 8 }}>¿Cómo amaneciste hoy?</p>
+      <div style={{ display: 'flex', gap: 8 }}>
+        {MOODS.map(m => (
+          <button key={m.value} onClick={() => onChange(value === m.value ? null : m.value)} style={{
+            flex: 1, padding: '10px 6px', borderRadius: 12, border: `2px solid ${value === m.value ? 'var(--coral)' : 'var(--border)'}`,
+            background: value === m.value ? 'var(--coral-light)' : 'transparent',
+            cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+            transition: 'all 0.2s',
+          }}>
+            <span style={{ fontSize: 22 }}>{m.emoji}</span>
+            <span style={{ fontSize: 11, fontWeight: 600, color: value === m.value ? 'var(--coral)' : 'var(--muted)' }}>{m.label}</span>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
