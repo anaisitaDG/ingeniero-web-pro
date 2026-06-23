@@ -7,28 +7,24 @@ export default function MyPlan() {
   const [nutrition, setNutrition] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const todayKey = `completedDays_${new Date().toLocaleDateString('en-CA')}`;
-  const [completedDays, setCompletedDays] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(todayKey) || '{}'); } catch { return {}; }
-  });
+  const [completedDays, setCompletedDays] = useState({});
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [wRes, dRes] = await Promise.all([api.workout.plan(), api.dashboard.get()]);
+      const [wRes, dRes, cRes] = await Promise.all([api.workout.plan(), api.dashboard.get(), api.workout.completedDays()]);
       setPlan(wRes.plan);
       setNutrition(dRes.nutrition_plan);
+      const map = {};
+      (cRes.completed || []).forEach(id => { map[id] = true; });
+      setCompletedDays(map);
     } finally { setLoading(false); }
   }, []);
 
   async function toggleDay(dayId) {
-    const next = { ...completedDays, [dayId]: !completedDays[dayId] };
-    setCompletedDays(next);
-    localStorage.setItem(todayKey, JSON.stringify(next));
-    // Mark global workout_done if at least one day is completed
-    if (next[dayId]) {
-      try { await api.workout.complete(); } catch (_) {}
-    }
+    const done = !completedDays[dayId];
+    setCompletedDays(prev => ({ ...prev, [dayId]: done }));
+    try { await api.workout.completeDay(dayId, done); } catch (_) {}
   }
 
   useEffect(() => { load(); }, [load]);

@@ -88,8 +88,10 @@ export const api = {
     plan:      ()                    => request('/workout/plan'),
     log:       (exercise_id, logged_date, sets) => request('/workout/log', { method: 'POST', body: JSON.stringify({ exercise_id, logged_date, sets }) }),
     history:   (exerciseId)         => request(`/workout/history/${exerciseId}`),
-    complete:  ()                   => request('/workout/complete', { method: 'POST' }),
-    todayDone: ()                   => request('/workout/today-done'),
+    complete:       ()              => request('/workout/complete', { method: 'POST' }),
+    todayDone:      ()              => request('/workout/today-done'),
+    completedDays:  ()              => request('/workout/completed-days'),
+    completeDay:    (day_id, done)  => request('/workout/complete-day', { method: 'POST', body: JSON.stringify({ day_id, done }) }),
   },
   trainer: {
     clients:       ()     => request('/trainer/clients'),

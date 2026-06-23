@@ -94,6 +94,16 @@ const db = require('./database/db');
         INDEX idx_user_date (user_id, logged_date)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS workout_day_completions (
+        id VARCHAR(36) PRIMARY KEY,
+        user_id VARCHAR(36) NOT NULL,
+        day_id VARCHAR(36) NOT NULL,
+        completed_date DATE NOT NULL,
+        UNIQUE KEY uq_user_day_date (user_id, day_id, completed_date),
+        INDEX idx_user_date (user_id, completed_date)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
   } catch (e) {
     console.error('Migration error:', e.message);
   }

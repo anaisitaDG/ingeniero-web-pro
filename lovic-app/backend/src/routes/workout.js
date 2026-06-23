@@ -61,7 +61,45 @@ router.get('/today-done', async (req, res) => {
   res.json({ done: !!(row?.workout_done) });
 });
 
-// POST /workout/log — cliente registra sets de un ejercicio
+// POST /workout/complete-day — marca/desmarca un día específico
+router.post('/complete-day', async (req, res) => {
+  const uid = req.user.id;
+  const { day_id, done } = req.body;
+  const today = new Date().toLocaleDateString('en-CA');
+  if (done) {
+    await db.query(
+      `INSERT INTO workout_day_completions (id, user_id, day_id, completed_date)
+       VALUES (?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE completed_date=completed_date`,
+      [uuidv4(), uid, day_id, today]
+    );
+    // También marca workout_done en daily_tracking
+    await db.query(
+      `INSERT INTO daily_tracking (id, user_id, tracked_date, workout_done) VALUES (?, ?, ?, 1)
+       ON DUPLICATE KEY UPDATE workout_done=1`,
+      [uuidv4(), uid, today]
+    );
+  } else {
+    await db.query(
+      'DELETE FROM workout_day_completions WHERE user_id=? AND day_id=? AND completed_date=?',
+      [uid, day_id, today]
+    );
+  }
+  res.json({ ok: true });
+});
+
+// GET /workout/completed-days — días completados hoy
+router.get('/completed-days', async (req, res) => {
+  const uid = req.user.id;
+  const today = new Date().toLocaleDateString('en-CA');
+  const [rows] = await db.query(
+    'SELECT day_id FROM workout_day_completions WHERE user_id=? AND completed_date=?',
+    [uid, today]
+  );
+  res.json({ completed: rows.map(r => r.day_id) });
+});
+
+
 router.post('/log', async (req, res) => {
   const uid = req.user.id;
   const { exercise_id, logged_date, sets } = req.body;
