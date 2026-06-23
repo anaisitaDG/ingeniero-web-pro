@@ -2,6 +2,7 @@ const express = require('express');
 const router  = express.Router();
 const db      = require('../database/db');
 const { requireAuth } = require('../middleware/auth');
+const { notifyTrainerOnboarding } = require('../services/email');
 
 router.use(requireAuth);
 
@@ -72,6 +73,10 @@ router.post('/', async (req, res) => {
       [q.fitness_goal || null, calorie_target, uid]
     );
   }
+
+  // Notify trainer
+  const [[u]] = await db.query('SELECT name FROM users WHERE id=?', [uid]);
+  notifyTrainerOnboarding(u?.name || 'Una clienta').catch(() => {});
 
   res.json({ message: 'Cuestionario guardado' });
 });

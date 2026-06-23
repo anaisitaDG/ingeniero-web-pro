@@ -115,7 +115,7 @@ export default function Onboarding() {
           </button>
         ) : (
           <button className="btn-primary" onClick={handleFinish} disabled={!canNext() || saving} style={{ flex: 2, padding: '14px', opacity: canNext() && !saving ? 1 : 0.5 }}>
-            {saving ? <span className="spinner" /> : '¡Listo! Ir a mi dashboard'}
+            {saving ? <span className="spinner" /> : '💪 ¡Iniciar mi entrenamiento!'}
           </button>
         )}
       </div>

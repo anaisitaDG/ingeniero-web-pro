@@ -63,10 +63,11 @@ export default function Dashboard() {
         if (!calories?.consumed) reminders.push({ icon: '🥗', text: 'Registra tus comidas de hoy', to: '/food' });
         if (!tracking.workout_done) reminders.push({ icon: '💪', text: 'Marca tu entrenamiento cuando lo hagas', to: '/plan' });
         const lastWeight = weightData[weightData.length - 1];
+        const accountAgeDays = Math.floor((Date.now() - new Date(data?.user_created_at || Date.now())) / 86400000);
         const daysSinceWeight = lastWeight
           ? Math.floor((Date.now() - new Date(data?.weight_history?.slice(-1)[0]?.logged_at)) / 86400000)
           : 999;
-        if (daysSinceWeight > 6) reminders.push({ icon: '📏', text: 'Lleva más de una semana sin registrar medidas', to: '/measurements' });
+        if (daysSinceWeight > 6 && accountAgeDays > 7) reminders.push({ icon: '📏', text: 'Lleva más de una semana sin registrar medidas', to: '/measurements' });
         if (reminders.length === 0) return null;
         return (
           <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>

@@ -74,14 +74,17 @@ export default function Measurements() {
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 20, background: 'var(--border)', padding: 4, borderRadius: 12 }}>
-        {[{ key: 'current', label: '📊 Actual' }, { key: 'progress', label: '📈 Progreso' }, { key: 'bio', label: '🔬 Bioimpedancia' }].map(t => (
+        {[{ key: 'current', icon: '📊', label: 'Actual' }, { key: 'progress', icon: '📈', label: 'Progreso' }, { key: 'bio', icon: '🔬', label: 'Bio' }].map(t => (
           <button key={t.key} onClick={() => setTab(t.key)} style={{
-            flex: 1, padding: '9px 4px', borderRadius: 10, fontWeight: 700, fontSize: 13, border: 'none',
+            flex: 1, padding: '8px 4px', borderRadius: 10, fontWeight: 700, border: 'none',
             background: tab === t.key ? 'var(--card)' : 'transparent',
             color: tab === t.key ? 'var(--coral)' : 'var(--muted)',
             boxShadow: tab === t.key ? '0 1px 4px rgba(0,0,0,0.1)' : 'none',
-            cursor: 'pointer',
-          }}>{t.label}</button>
+            cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+          }}>
+            <span style={{ fontSize: 18 }}>{t.icon}</span>
+            <span style={{ fontSize: 11 }}>{t.label}</span>
+          </button>
         ))}
       </div>
 

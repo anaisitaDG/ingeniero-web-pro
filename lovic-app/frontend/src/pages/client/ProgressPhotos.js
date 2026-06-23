@@ -3,11 +3,18 @@ import { api } from '../../services/api';
 
 export default function ProgressPhotos() {
   const [photos, setPhotos]     = useState([]);
-  const [file, setFile]         = useState(null);
+  const [files, setFiles]       = useState([]);
+  const [previews, setPreviews] = useState([]);
   const [note, setNote]         = useState('');
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading]   = useState(true);
   const [preview, setPreview]   = useState(null);
+
+  function handleFileChange(e) {
+    const selected = Array.from(e.target.files);
+    setFiles(selected);
+    setPreviews(selected.map(f => URL.createObjectURL(f)));
+  }
 
   useEffect(() => { load(); }, []);
 
@@ -22,15 +29,18 @@ export default function ProgressPhotos() {
   }
 
   async function handleUpload() {
-    if (!file) return;
+    if (!files.length) return;
     setUploading(true);
-    const fd = new FormData();
-    fd.append('photo', file);
-    fd.append('note', note);
     try {
-      const res = await api.progressPhotos.upload(fd);
-      if (res.error) throw new Error(res.error);
-      setFile(null);
+      for (const f of files) {
+        const fd = new FormData();
+        fd.append('photo', f);
+        fd.append('note', note);
+        const res = await api.progressPhotos.upload(fd);
+        if (res.error) throw new Error(res.error);
+      }
+      setFiles([]);
+      setPreviews([]);
       setNote('');
       load();
     } catch (e) { alert(e.message); }
@@ -54,10 +64,17 @@ export default function ProgressPhotos() {
       {/* Upload */}
       <div className="card" style={{ marginBottom: 20 }}>
         <p style={{ fontWeight: 700, marginBottom: 10 }}>Nueva foto</p>
-        <input type="file" accept="image/*" onChange={e => setFile(e.target.files[0])} style={{ marginBottom: 10, display: 'block' }} />
+        <input type="file" accept="image/*" multiple onChange={handleFileChange} style={{ marginBottom: 10, display: 'block' }} />
+        {previews.length > 0 && (
+          <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+            {previews.map((src, i) => (
+              <img key={i} src={src} alt="" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 10 }} />
+            ))}
+          </div>
+        )}
         <input className="input" placeholder="Nota (opcional, ej: semana 4)" value={note} onChange={e => setNote(e.target.value)} style={{ marginBottom: 10 }} />
-        <button className="btn-primary" onClick={handleUpload} disabled={!file || uploading} style={{ width: '100%', justifyContent: 'center' }}>
-          {uploading ? <><span className="spinner" /> Subiendo…</> : '📤 Subir foto'}
+        <button className="btn-primary" onClick={handleUpload} disabled={!files.length || uploading} style={{ width: '100%', justifyContent: 'center' }}>
+          {uploading ? <><span className="spinner" /> Subiendo…</> : `📤 Subir ${files.length > 1 ? `${files.length} fotos` : 'foto'}`}
         </button>
       </div>
 
@@ -72,7 +89,7 @@ export default function ProgressPhotos() {
             {photos.map(p => (
               <div key={p.id} className="card" style={{ padding: 0, overflow: 'hidden', position: 'relative' }}>
                 <img
-                  src={`${BASE}/uploads/${p.image_url.split('/').pop()}`}
+                  src={p.image_url.startsWith('http') ? p.image_url : `${BASE}/${p.image_url}`}
                   alt={p.note || 'Progreso'}
                   style={{ width: '100%', aspectRatio: '3/4', objectFit: 'cover', display: 'block', cursor: 'pointer' }}
                   onClick={() => setPreview(p)}
@@ -97,7 +114,7 @@ export default function ProgressPhotos() {
           display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
         }}>
           <div style={{ maxWidth: 440, width: '100%' }}>
-            <img src={`${BASE}/uploads/${preview.image_url.split('/').pop()}`} alt={preview.note} style={{ width: '100%', borderRadius: 16, display: 'block' }} />
+            <img src={preview.image_url.startsWith('http') ? preview.image_url : `${BASE}/${preview.image_url}`} alt={preview.note} style={{ width: '100%', borderRadius: 16, display: 'block' }} />
             {preview.note && <p style={{ color: '#fff', textAlign: 'center', marginTop: 10, fontWeight: 600 }}>{preview.note}</p>}
             <p style={{ color: 'rgba(255,255,255,0.5)', textAlign: 'center', fontSize: 12, marginTop: 4 }}>Toca para cerrar</p>
           </div>

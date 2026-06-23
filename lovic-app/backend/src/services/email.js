@@ -14,7 +14,7 @@ async function sendMagicLink(email, name, token, type = 'access') {
   const bodies = {
     access:     'Haz clic en el botón para acceder a tu panel de Lovic. Este enlace expira en 15 minutos.',
     invite:     'Tu rutina de entrenamiento y plan de nutrición están cargados en la plataforma y listos para que comiences a transformar tu cuerpo.',
-    onboarding: 'Tu entrenadora ha preparado todo para ti. Haz clic en el botón para completar tu valoración inicial y que Lorena pueda diseñar tu plan personalizado de entrenamiento y nutrición.',
+    onboarding: '¡Hola! Soy Lorena, tu entrenadora personal. Estoy emocionada de acompañarte en este proceso. Para comenzar, necesito conocerte mejor — haz clic en el botón para completar tu valoración inicial y así poder diseñar tu plan de entrenamiento y nutrición completamente personalizado. ¡Este es tu primer paso hacia la transformación! 💪',
   };
   const buttons = {
     access:     'Acceder ahora →',
@@ -47,6 +47,30 @@ async function sendMagicLink(email, name, token, type = 'access') {
   });
 }
 
+async function notifyTrainerOnboarding(clientName) {
+  const trainerEmail = process.env.TRAINER_EMAIL || 'hola@anaismoralesmkt.com';
+  await resend.emails.send({
+    from: FROM,
+    to: trainerEmail,
+    subject: `📋 ${clientName} completó su valoración`,
+    html: `
+      <div style="font-family:'Helvetica Neue',sans-serif;max-width:520px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
+        <div style="background:linear-gradient(135deg,#FF6B6B,#FF8E53);padding:2rem;text-align:center">
+          <h1 style="color:#fff;margin:0;font-size:1.4rem">Nueva valoración 📋</h1>
+        </div>
+        <div style="padding:2rem">
+          <p style="color:#1A1A1A;font-size:1rem;line-height:1.7">
+            <strong>${clientName}</strong> acaba de completar su valoración inicial en Lovic.
+          </p>
+          <p style="color:#555;line-height:1.7">
+            Ya puedes revisar su perfil, diseñar su rutina y plan nutricional.
+          </p>
+        </div>
+      </div>
+    `,
+  });
+}
+
 async function sendWelcome(email, name) {
   await resend.emails.send({
     from: FROM,
@@ -70,4 +94,4 @@ async function sendWelcome(email, name) {
   });
 }
 
-module.exports = { sendMagicLink, sendWelcome };
+module.exports = { sendMagicLink, sendWelcome, notifyTrainerOnboarding };
