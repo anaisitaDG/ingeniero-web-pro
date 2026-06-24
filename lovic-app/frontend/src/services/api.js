@@ -92,6 +92,8 @@ export const api = {
     todayDone:      ()              => request(`/workout/today-done?date=${new Date().toLocaleDateString('en-CA')}`),
     completedDays:  ()              => request(`/workout/completed-days?date=${new Date().toLocaleDateString('en-CA')}`),
     completeDay:    (day_id, done)  => request('/workout/complete-day', { method: 'POST', body: JSON.stringify({ day_id, done, date: new Date().toLocaleDateString('en-CA') }) }),
+    saveActivity:   (day_id, type, activity_name, duration_mins) => request('/workout/activity', { method: 'POST', body: JSON.stringify({ day_id, type, activity_name, duration_mins, date: new Date().toLocaleDateString('en-CA') }) }),
+    getActivity:    (dayId) => request(`/workout/activity/${dayId}`),
   },
   trainer: {
     clients:       ()     => request('/trainer/clients'),
