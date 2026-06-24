@@ -158,20 +158,49 @@ function formatDayDate(dateStr) {
 
 function DayCard({ day, onLogged }) {
   const [open, setOpen] = useState(true);
-  const storageKey = `activity_${day.id}`;
-  const saved = (() => { try { return JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch { return {}; } })();
 
-  const [warmupChoice, setWarmupChoice] = useState(saved.warmupChoice || '');
-  const [warmupMins, setWarmupMins]     = useState(saved.warmupMins || day.warmup_duration || '');
-  const [warmupDone, setWarmupDone]     = useState(saved.warmupDone || false);
-  const [cardioChoice, setCardioChoice] = useState(saved.cardioChoice || '');
-  const [cardioMins, setCardioMins]     = useState(saved.cardioMins || day.cardio_duration || '');
-  const [cardioDone, setCardioDone]     = useState(saved.cardioDone || false);
+  const [warmupChoice, setWarmupChoice] = useState('');
+  const [warmupMins, setWarmupMins]     = useState(day.warmup_duration || '');
+  const [warmupDone, setWarmupDone]     = useState(false);
+  const [cardioChoice, setCardioChoice] = useState('');
+  const [cardioMins, setCardioMins]     = useState(day.cardio_duration || '');
+  const [cardioDone, setCardioDone]     = useState(false);
+  const [activityLoaded, setActivityLoaded] = useState(false);
 
-  // Persist activity state to localStorage on any change
+  const today = new Date().toLocaleDateString('en-CA');
+
+  // Load today's activity from backend on mount
   useEffect(() => {
-    localStorage.setItem(storageKey, JSON.stringify({ warmupChoice, warmupMins, warmupDone, cardioChoice, cardioMins, cardioDone }));
-  }, [warmupChoice, warmupMins, warmupDone, cardioChoice, cardioMins, cardioDone]); // eslint-disable-line
+    api.workout.getActivity(day.id).then(res => {
+      const acts = res.activities || [];
+      const todayActs = acts.filter(a => {
+        const d = a.session_date instanceof Date
+          ? a.session_date.toISOString().slice(0, 10)
+          : String(a.session_date).slice(0, 10);
+        return d === today;
+      });
+      const w = todayActs.find(a => a.type === 'warmup');
+      const c = todayActs.find(a => a.type === 'cardio');
+      if (w) { setWarmupChoice(w.activity_name); setWarmupMins(w.duration_mins || ''); setWarmupDone(true); }
+      if (c) { setCardioChoice(c.activity_name); setCardioMins(c.duration_mins || ''); setCardioDone(true); }
+      setActivityLoaded(true);
+    }).catch(() => setActivityLoaded(true));
+  }, [day.id]); // eslint-disable-line
+
+  // Save to backend when done is toggled or choice/mins change (only after initial load)
+  useEffect(() => {
+    if (!activityLoaded) return;
+    if (warmupChoice && warmupChoice !== 'Otro') {
+      api.workout.saveActivity(day.id, 'warmup', warmupChoice, Number(warmupMins) || null).catch(() => {});
+    }
+  }, [warmupChoice, warmupMins, warmupDone, activityLoaded]); // eslint-disable-line
+
+  useEffect(() => {
+    if (!activityLoaded) return;
+    if (cardioChoice && cardioChoice !== 'Otro') {
+      api.workout.saveActivity(day.id, 'cardio', cardioChoice, Number(cardioMins) || null).catch(() => {});
+    }
+  }, [cardioChoice, cardioMins, cardioDone, activityLoaded]); // eslint-disable-line
   // kcal per exercise keyed by ex.id, updated by ExerciseCard
   const [exKcal, setExKcal] = useState({});
 
