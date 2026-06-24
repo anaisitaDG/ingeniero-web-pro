@@ -142,7 +142,7 @@ function calcStrengthKcal(setWeights) {
 
 function DayCard({ day, done, onToggleDone, onLogged }) {
   const [open, setOpen] = useState(true);
-  const storageKey = `activity_${day.id}_${new Date().toLocaleDateString('en-CA')}`;
+  const storageKey = `activity_${day.id}`;
   const saved = (() => { try { return JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch { return {}; } })();
 
   const [warmupChoice, setWarmupChoice] = useState(saved.warmupChoice || '');
