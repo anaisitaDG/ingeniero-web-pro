@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { api } from '../../services/api';
 
 export default function MyPlan() {
@@ -53,7 +54,7 @@ export default function MyPlan() {
         plan ? (
           <div>
             {plan.days.map(day => (
-              <DayCard key={day.id} day={day} done={!!completedDays[day.id]} onToggleDone={() => toggleDay(day.id)} onLogged={load} />
+              <DayCard key={day.id} day={day} onLogged={load} />
             ))}
           </div>
         ) : (
@@ -140,7 +141,13 @@ function calcStrengthKcal(setWeights) {
   }, 0));
 }
 
-function DayCard({ day, done, onToggleDone, onLogged }) {
+function formatDayDate(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('es', { weekday: 'short', day: 'numeric', month: 'short' });
+}
+
+function DayCard({ day, onLogged }) {
   const [open, setOpen] = useState(true);
   const storageKey = `activity_${day.id}`;
   const saved = (() => { try { return JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch { return {}; } })();
@@ -164,24 +171,29 @@ function DayCard({ day, done, onToggleDone, onLogged }) {
   const strengthKcal = Object.values(exKcal).reduce((a, b) => a + b, 0);
   const totalKcal = warmupKcal + strengthKcal + cardioKcal;
 
+  // Last session date = most recent exercise log in this day
+  const lastSessionDate = day.exercises
+    .map(ex => ex.last_session?.logged_date)
+    .filter(Boolean)
+    .map(d => String(d).slice(0, 10))
+    .sort()
+    .reverse()[0];
+  const lastSessionLabel = lastSessionDate ? formatDayDate(lastSessionDate) : null;
+
   return (
-    <div className="card" style={{ marginBottom: 14, border: done ? '2px solid #86efac' : '2px solid transparent', transition: 'border 0.2s' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <button onClick={() => setOpen(o => !o)} style={{
-          flex: 1, background: 'none', border: 'none', cursor: 'pointer',
-          display: 'flex', alignItems: 'center', padding: 0, textAlign: 'left',
-        }}>
+    <div className="card" style={{ marginBottom: 14 }}>
+      <button onClick={() => setOpen(o => !o)} style={{
+        width: '100%', background: 'none', border: 'none', cursor: 'pointer',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 0,
+      }}>
+        <div style={{ textAlign: 'left' }}>
           <p style={{ fontWeight: 800, fontSize: 16 }}>{day.day_name}</p>
-          <span style={{ color: 'var(--muted)', fontSize: 14, marginLeft: 8 }}>{open ? '▲' : '▼'}</span>
-        </button>
-        <button onClick={e => { e.stopPropagation(); onToggleDone(); }} style={{
-          background: done ? '#d1fae5' : 'var(--border)', border: 'none', borderRadius: 20,
-          padding: '6px 12px', cursor: 'pointer', fontWeight: 700, fontSize: 12,
-          color: done ? '#065f46' : 'var(--muted)', transition: 'all 0.2s', flexShrink: 0,
-        }}>
-          {done ? '✅ Hecho' : '○ Marcar'}
-        </button>
-      </div>
+          {lastSessionLabel && (
+            <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>Última sesión: {lastSessionLabel}</p>
+          )}
+        </div>
+        <span style={{ color: 'var(--muted)', fontSize: 14 }}>{open ? '▲' : '▼'}</span>
+      </button>
       {open && (
         <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
           <ActivityBlock emoji="🔥" label="Calentamiento" options={WARMUP_OPTIONS} kcalTable={WARMUP_KCAL}
@@ -342,20 +354,41 @@ function ExerciseCard({ exercise: ex, onLogged, onKcalChange }) {
           {history.length === 0 ? (
             <p style={{ fontSize: 13, color: 'var(--muted)', textAlign: 'center' }}>Sin historial aún</p>
           ) : (
-            history.map(session => (
-              <div key={session.date} style={{ background: 'var(--card)', borderRadius: 10, padding: '10px 12px', marginBottom: 8 }}>
-                <p style={{ fontWeight: 700, fontSize: 13, marginBottom: 6 }}>
-                  {new Date(session.date).toLocaleDateString('es', { weekday: 'short', day: 'numeric', month: 'short' })}
-                </p>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  {session.sets.map(s => (
-                    <span key={s.set_number} style={{ fontSize: 12, background: 'var(--bg)', padding: '4px 8px', borderRadius: 6 }}>
-                      S{s.set_number}: {s.weight_kg ?? '—'}kg × {s.reps_done ?? '—'}
-                    </span>
-                  ))}
+            <>
+              {history.length >= 2 && (() => {
+                const chartData = [...history].reverse().map(s => ({
+                  fecha: new Date(s.date).toLocaleDateString('es', { day: 'numeric', month: 'short' }),
+                  max: Math.max(...s.sets.map(x => x.weight_kg || 0)),
+                }));
+                return (
+                  <div style={{ marginBottom: 12 }}>
+                    <p style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600, marginBottom: 6 }}>PROGRESIÓN DE PESO MÁXIMO</p>
+                    <ResponsiveContainer width="100%" height={90}>
+                      <LineChart data={chartData}>
+                        <XAxis dataKey="fecha" tick={{ fontSize: 10, fill: 'var(--muted)' }} axisLine={false} tickLine={false} />
+                        <Tooltip formatter={v => [`${v} kg`, 'Máx']} contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', fontSize: 12 }} />
+                        <Line type="monotone" dataKey="max" stroke="var(--coral)" strokeWidth={2.5} dot={{ r: 3, fill: 'var(--coral)' }} connectNulls />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                );
+              })()}
+              <p style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600, marginBottom: 8 }}>HISTORIAL DE SESIONES</p>
+              {history.map(session => (
+                <div key={session.date} style={{ background: 'var(--card)', borderRadius: 10, padding: '10px 12px', marginBottom: 8 }}>
+                  <p style={{ fontWeight: 700, fontSize: 13, marginBottom: 6, color: 'var(--coral)' }}>
+                    {new Date(session.date).toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' })}
+                  </p>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {session.sets.map(s => (
+                      <span key={s.set_number} style={{ fontSize: 12, background: 'var(--bg)', padding: '4px 10px', borderRadius: 6, fontWeight: 600 }}>
+                        S{s.set_number}: {s.weight_kg ?? '—'}kg × {s.reps_done ?? '—'}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))
+              ))}
+            </>
           )}
         </div>
       )}
