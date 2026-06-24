@@ -173,14 +173,9 @@ function DayCard({ day, onLogged }) {
   useEffect(() => {
     api.workout.getActivity(day.id).then(res => {
       const acts = res.activities || [];
-      const todayActs = acts.filter(a => {
-        const d = a.session_date instanceof Date
-          ? a.session_date.toISOString().slice(0, 10)
-          : String(a.session_date).slice(0, 10);
-        return d === today;
-      });
-      const w = todayActs.find(a => a.type === 'warmup');
-      const c = todayActs.find(a => a.type === 'cardio');
+      // Find most recent entry for each type
+      const w = acts.find(a => a.type === 'warmup');
+      const c = acts.find(a => a.type === 'cardio');
       if (w) { setWarmupChoice(w.activity_name); setWarmupMins(w.duration_mins || ''); setWarmupDone(true); }
       if (c) { setCardioChoice(c.activity_name); setCardioMins(c.duration_mins || ''); setCardioDone(true); }
       setActivityLoaded(true);
