@@ -172,6 +172,7 @@ function DayCard({ day, onLogged }) {
   // Load today's activity from backend on mount
   useEffect(() => {
     api.workout.getActivity(day.id).then(res => {
+      console.log('Activity response:', JSON.stringify(res));
       const acts = res.activities || [];
       // Find most recent entry for each type
       const w = acts.find(a => a.type === 'warmup');
