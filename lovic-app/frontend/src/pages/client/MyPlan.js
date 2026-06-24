@@ -179,7 +179,7 @@ function DayCard({ day, onLogged }) {
       if (w) { setWarmupChoice(w.activity_name); setWarmupMins(w.duration_mins || ''); setWarmupDone(true); }
       if (c) { setCardioChoice(c.activity_name); setCardioMins(c.duration_mins || ''); setCardioDone(true); }
       setActivityLoaded(true);
-    }).catch(() => setActivityLoaded(true));
+    }).catch(err => { console.error('Activity load error:', err); setActivityLoaded(true); });
   }, [day.id]); // eslint-disable-line
 
   // Save to backend when done is toggled or choice/mins change (only after initial load)
