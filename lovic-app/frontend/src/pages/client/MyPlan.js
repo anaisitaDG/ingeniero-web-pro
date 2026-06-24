@@ -82,7 +82,7 @@ export default function MyPlan() {
   );
 }
 
-const WARMUP_OPTIONS = ['Movilidad articular', 'Trote suave', 'Saltos', 'Sentadillas sin peso', 'Jumping jacks', 'Estiramientos dinámicos'];
+const WARMUP_OPTIONS = ['Movilidad articular', 'Trote suave', 'Saltos', 'Sentadillas sin peso', 'Jumping jacks', 'Estiramientos dinámicos', 'Remo', 'Otro'];
 const CARDIO_OPTIONS = ['Cuerda', 'Caminadora', 'Escaleras', 'Elíptica', 'Stepper', 'Bicicleta', 'Remo'];
 
 // kcal/min approx for 65kg person
@@ -100,11 +100,16 @@ function ActivityBlock({ emoji, label, options, kcalTable, defaultDuration, choi
   return (
     <div style={{ background: done ? '#d1fae5' : 'var(--bg)', borderRadius: 12, padding: '12px 14px', transition: 'background 0.3s' }}>
       <p style={{ fontWeight: 700, fontSize: 13, marginBottom: 8 }}>{emoji} {label}</p>
-      <select className="input" value={choice} onChange={e => { setChoice(e.target.value); setDone(false); }} style={{ fontSize: 13, padding: '8px 10px', marginBottom: 8 }}>
+      <select className="input" value={choice === 'Otro' || (!options.includes(choice) && choice) ? 'Otro' : choice} onChange={e => { setChoice(e.target.value); setDone(false); }} style={{ fontSize: 13, padding: '8px 10px', marginBottom: 8 }}>
         <option value="">Sin {label.toLowerCase()} hoy</option>
         {options.map(o => <option key={o} value={o}>{o}</option>)}
       </select>
-      {choice && (
+      {(choice === 'Otro' || (!options.includes(choice) && choice)) && (
+        <input className="input" placeholder="¿Qué hiciste?" value={choice === 'Otro' ? '' : choice}
+          onChange={e => setChoice(e.target.value || 'Otro')}
+          style={{ fontSize: 13, padding: '8px 10px', marginBottom: 8 }} autoFocus />
+      )}
+      {choice && choice !== 'Otro' && (
         <>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
             <div style={{ flex: 1 }}>
