@@ -146,10 +146,14 @@ function calcStrengthKcal(setWeights) {
   }, 0));
 }
 
+function parseDate(d) {
+  const s = String(d).slice(0, 10);
+  return new Date(`${s}T00:00:00`);
+}
+
 function formatDayDate(dateStr) {
   if (!dateStr) return null;
-  const d = new Date(dateStr);
-  return d.toLocaleDateString('es', { weekday: 'short', day: 'numeric', month: 'short' });
+  return parseDate(dateStr).toLocaleDateString('es', { weekday: 'short', day: 'numeric', month: 'short' });
 }
 
 function DayCard({ day, onLogged }) {
@@ -298,7 +302,7 @@ function ExerciseCard({ exercise: ex, onLogged, onKcalChange }) {
 
       {lastSession && (
         <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>
-          {isLoggedToday ? '✅ Registrado hoy' : `Última vez: ${new Date(lastSession.logged_date).toLocaleDateString('es', { day: 'numeric', month: 'short' })}`}
+          {isLoggedToday ? '✅ Registrado hoy' : `Última vez: ${parseDate(lastSession.logged_date).toLocaleDateString('es', { day: 'numeric', month: 'short' })}`}
           {lastWeights.length > 0 && ` · ${lastWeights.filter(Boolean).map((w, i) => `S${i+1}: ${w}kg`).join(' ')}`}
         </div>
       )}
@@ -362,7 +366,7 @@ function ExerciseCard({ exercise: ex, onLogged, onKcalChange }) {
             <>
               {history.length >= 2 && (() => {
                 const chartData = [...history].reverse().map(s => ({
-                  fecha: new Date(s.date).toLocaleDateString('es', { day: 'numeric', month: 'short' }),
+                  fecha: parseDate(s.date).toLocaleDateString('es', { day: 'numeric', month: 'short' }),
                   max: Math.max(...s.sets.map(x => x.weight_kg || 0)),
                 }));
                 return (
@@ -382,7 +386,7 @@ function ExerciseCard({ exercise: ex, onLogged, onKcalChange }) {
               {history.map(session => (
                 <div key={session.date} style={{ background: 'var(--card)', borderRadius: 10, padding: '10px 12px', marginBottom: 8 }}>
                   <p style={{ fontWeight: 700, fontSize: 13, marginBottom: 6, color: 'var(--coral)' }}>
-                    {new Date(session.date).toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' })}
+                    {parseDate(session.date).toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' })}
                   </p>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     {session.sets.map(s => (
