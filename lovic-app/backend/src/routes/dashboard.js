@@ -46,12 +46,12 @@ router.get('/', async (req, res) => {
   // Streak: consecutive days with workout_done, any exercise logged, OR diet_followed
   const [logDays] = await db.query(
     `SELECT DISTINCT DATE_FORMAT(logged_date, '%Y-%m-%d') as d
-     FROM workout_logs WHERE user_id=? AND logged_date < ?
+     FROM workout_logs WHERE user_id=? AND logged_date <= ?
      ORDER BY d DESC LIMIT 60`,
     [uid, today]);
   const [trackDays] = await db.query(
     `SELECT DATE_FORMAT(tracked_date, '%Y-%m-%d') as d
-     FROM daily_tracking WHERE user_id=? AND (workout_done=1 OR diet_followed=1) AND tracked_date < ?
+     FROM daily_tracking WHERE user_id=? AND (workout_done=1 OR diet_followed=1) AND tracked_date <= ?
      ORDER BY d DESC LIMIT 60`,
     [uid, today]);
 
@@ -61,7 +61,7 @@ router.get('/', async (req, res) => {
 
   let streak = 0;
   const msPerDay = 86400000;
-  let expected = new Date(today).getTime() - msPerDay;
+  let expected = new Date(today).getTime();
   while (true) {
     const dateStr = new Date(expected).toISOString().slice(0, 10);
     if (!activeDates.has(dateStr)) break;
