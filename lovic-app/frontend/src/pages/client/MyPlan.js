@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { api } from '../../services/api';
 
@@ -7,8 +7,10 @@ export default function MyPlan() {
   const [plan, setPlan]       = useState(null);
   const [nutrition, setNutrition] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [streak, setStreak]   = useState(0);
 
   const [completedDays, setCompletedDays] = useState({});
+  const [celebration, setCelebration] = useState(null); // { dayName, kcal }
 
   const load = useCallback(async (showSpinner = true) => {
     if (showSpinner) setLoading(true);
@@ -16,6 +18,7 @@ export default function MyPlan() {
       const [wRes, dRes, cRes] = await Promise.all([api.workout.plan(), api.dashboard.get(), api.workout.completedDays()]);
       setPlan(wRes.plan);
       setNutrition(dRes.nutrition_plan);
+      setStreak(dRes.streak || 0);
       const map = {};
       (cRes.completed || []).forEach(r => {
         if (typeof r === 'string') map[r] = true;
@@ -25,11 +28,17 @@ export default function MyPlan() {
     } finally { if (showSpinner) setLoading(false); }
   }, []);
 
-  async function toggleDay(dayId) {
+  async function toggleDay(dayId, dayName, kcal) {
     const done = !completedDays[dayId];
     const today = new Date().toLocaleDateString('en-CA');
     setCompletedDays(prev => ({ ...prev, [dayId]: done ? today : undefined }));
     try { await api.workout.completeDay(dayId, done); } catch (_) {}
+    if (done) {
+      const dRes = await api.dashboard.get().catch(() => null);
+      const newStreak = dRes?.streak || streak + 1;
+      setStreak(newStreak);
+      setCelebration({ dayName, kcal, streak: newStreak });
+    }
   }
 
   useEffect(() => { load(); }, [load]);
@@ -54,13 +63,22 @@ export default function MyPlan() {
         ))}
       </div>
 
+      {celebration && (
+        <CelebrationModal
+          dayName={celebration.dayName}
+          kcal={celebration.kcal}
+          streak={celebration.streak}
+          onClose={() => setCelebration(null)}
+        />
+      )}
+
       {tab === 'routine' && (
         plan ? (
           <div>
             {plan.days.map(day => (
               <DayCard key={day.id} day={day} onLogged={load}
                 completedDate={completedDays[day.id]}
-                onToggleComplete={() => toggleDay(day.id)} />
+                onToggleComplete={(kcal) => toggleDay(day.id, day.day_name, kcal)} />
             ))}
           </div>
         ) : (
@@ -305,7 +323,7 @@ function DayCard({ day, onLogged, completedDate, onToggleComplete }) {
             </div>
             <p style={{ fontSize: 28, fontWeight: 900, color: 'var(--coral)' }}>~{totalKcal}</p>
           </div>
-          <button onClick={onToggleComplete} style={{
+          <button onClick={() => onToggleComplete(totalKcal)} style={{
             width: '100%', padding: '11px', borderRadius: 12, border: 'none', cursor: 'pointer',
             fontWeight: 700, fontSize: 14, transition: 'all 0.2s',
             background: completedDate ? '#065f46' : 'var(--coral)',
@@ -490,6 +508,117 @@ function ExerciseCard({ exercise: ex, onLogged, onKcalChange }) {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function CelebrationModal({ dayName, kcal, streak, onClose }) {
+  const cardRef = useRef(null);
+  const today = new Date();
+  const dateLabel = today.toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' });
+
+  const dow = today.getDay();
+  const monday = new Date(today); monday.setDate(today.getDate() - ((dow + 6) % 7));
+  const weekDays = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday); d.setDate(monday.getDate() + i);
+    return { label: ['L','M','M','J','V','S','D'][i], date: d.getDate(), isToday: d.toDateString() === today.toDateString() };
+  });
+
+  async function handleShare() {
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      const canvas = await html2canvas(cardRef.current, { backgroundColor: null, scale: 2 });
+      canvas.toBlob(async blob => {
+        const file = new File([blob], 'lovic-entrenamiento.png', { type: 'image/png' });
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: '¡Entrené hoy! 💪', text: `Rutina de ${dayName} completada. ¡${streak} día${streak !== 1 ? 's' : ''} de racha! #LovicGym` });
+        } else {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a'); a.href = url; a.download = 'lovic-entrenamiento.png'; a.click();
+          URL.revokeObjectURL(url);
+        }
+      }, 'image/png');
+    } catch (e) {
+      if (navigator.share) {
+        navigator.share({ title: '¡Entrené hoy! 💪', text: `Rutina de ${dayName} completada. ¡${streak} día${streak !== 1 ? 's' : ''} de racha! #LovicGym` }).catch(() => {});
+      }
+    }
+  }
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 1000,
+      background: 'rgba(0,0,0,0.85)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: '20px',
+    }}>
+      <div style={{ width: '100%', maxWidth: 380, display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 64, marginBottom: 8 }}>🏆</div>
+          <h2 style={{ color: '#fff', fontSize: 26, fontWeight: 900, marginBottom: 4 }}>¡Rutina completada!</h2>
+          <p style={{ color: 'var(--coral)', fontWeight: 600, fontSize: 14, textTransform: 'capitalize' }}>{dateLabel}</p>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 4px' }}>
+          {weekDays.map((d, i) => (
+            <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
+              <span style={{ fontSize: 11, color: '#666', fontWeight: 600 }}>{d.label}</span>
+              <div style={{
+                width: 38, height: 38, borderRadius: '50%',
+                background: d.isToday ? 'var(--coral)' : '#2a2a2a',
+                boxShadow: d.isToday ? '0 0 0 3px rgba(255,107,74,0.3)' : 'none',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: d.isToday ? '#fff' : '#555', fontWeight: 700, fontSize: 13,
+              }}>
+                {d.isToday ? '✓' : d.date}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div ref={cardRef} style={{
+          background: 'linear-gradient(135deg, #FF6B4A 0%, #e8440f 100%)',
+          borderRadius: 24, padding: '28px 24px',
+          boxShadow: '0 8px 32px rgba(255,107,74,0.4)',
+          position: 'relative', overflow: 'hidden',
+        }}>
+          <div style={{ position: 'absolute', top: -40, right: -40, width: 160, height: 160, background: 'rgba(255,255,255,0.08)', borderRadius: '50%' }} />
+          <div style={{ position: 'absolute', bottom: -60, left: -30, width: 200, height: 200, background: 'rgba(255,255,255,0.05)', borderRadius: '50%' }} />
+          <p style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.7)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 16 }}>LOVIC GYM</p>
+          <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.85)', fontWeight: 600, marginBottom: 4, textTransform: 'capitalize' }}>{today.toLocaleDateString('es', { weekday: 'long' })} · Rutina del día</p>
+          <p style={{ fontSize: 24, fontWeight: 900, color: '#fff', marginBottom: 20 }}>{dayName} 💪</p>
+          <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+            <div style={{ background: 'rgba(255,255,255,0.15)', borderRadius: 14, padding: '12px 16px', flex: 1 }}>
+              <p style={{ fontSize: 26, fontWeight: 900, color: '#fff', lineHeight: 1 }}>🔥 {streak}</p>
+              <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.75)', fontWeight: 600, marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>días de racha</p>
+            </div>
+            {kcal > 0 && (
+              <div style={{ background: 'rgba(255,255,255,0.15)', borderRadius: 14, padding: '12px 16px', flex: 1 }}>
+                <p style={{ fontSize: 26, fontWeight: 900, color: '#fff', lineHeight: 1 }}>~{kcal}</p>
+                <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.75)', fontWeight: 600, marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>kcal quemadas</p>
+              </div>
+            )}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', fontWeight: 600 }}>#LovicGym #YoEntreno</span>
+            <span style={{ fontSize: 16, fontWeight: 900, color: '#fff' }}>LOVIC</span>
+          </div>
+        </div>
+
+        <button onClick={handleShare} style={{
+          background: 'var(--coral)', color: '#fff', border: 'none', borderRadius: 16,
+          padding: '16px', fontSize: 16, fontWeight: 800, cursor: 'pointer',
+          boxShadow: '0 4px 20px rgba(255,107,74,0.4)',
+        }}>
+          📤 Compartir en redes
+        </button>
+        <button onClick={onClose} style={{
+          background: 'transparent', color: '#666', border: 'none',
+          padding: '12px', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+        }}>
+          Ir al inicio
+        </button>
+      </div>
     </div>
   );
 }
