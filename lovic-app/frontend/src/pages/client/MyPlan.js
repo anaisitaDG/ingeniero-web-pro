@@ -101,11 +101,36 @@ function calcKcal(table, type, mins) {
   return rate ? Math.round(rate * mins) : null;
 }
 
-function ActivityBlock({ emoji, label, options, kcalTable, defaultDuration, choice, setChoice, mins, setMins, done, setDone }) {
+function ActivityBlock({ emoji, label, options, kcalTable, defaultDuration, choice, setChoice, mins, setMins, done, setDone, history = [] }) {
   const kcal = calcKcal(kcalTable, choice, Number(mins));
+  const [showHistory, setShowHistory] = useState(false);
   return (
     <div style={{ background: done ? '#d1fae5' : 'var(--bg)', borderRadius: 12, padding: '12px 14px', transition: 'background 0.3s' }}>
-      <p style={{ fontWeight: 700, fontSize: 13, marginBottom: 8 }}>{emoji} {label}</p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <p style={{ fontWeight: 700, fontSize: 13 }}>{emoji} {label}</p>
+        {history.length > 0 && (
+          <button onClick={() => setShowHistory(h => !h)} style={{
+            background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, padding: '0 4px',
+          }} title="Ver historial">📈</button>
+        )}
+      </div>
+      {showHistory && (
+        <div style={{ marginBottom: 10, background: 'var(--card)', borderRadius: 10, padding: '10px 12px' }}>
+          <p style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600, marginBottom: 8 }}>HISTORIAL DE SESIONES</p>
+          {history.map((a, i) => {
+            const dateStr = a.session_date ? String(a.session_date).slice(0, 10) : null;
+            const dateLabel = dateStr
+              ? new Date(`${dateStr}T00:00:00`).toLocaleDateString('es', { weekday: 'short', day: 'numeric', month: 'short' })
+              : '—';
+            return (
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, fontSize: 13 }}>
+                <span style={{ color: 'var(--muted)', fontSize: 12 }}>{dateLabel}</span>
+                <span style={{ fontWeight: 600 }}>{a.activity_name}{a.duration_mins ? ` · ${a.duration_mins} min` : ''}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
       <select className="input" value={choice === 'Otro' || (!options.includes(choice) && choice) ? 'Otro' : choice} onChange={e => { setChoice(e.target.value); setDone(false); }} style={{ fontSize: 13, padding: '8px 10px', marginBottom: 8 }}>
         <option value="">Sin {label.toLowerCase()} hoy</option>
         {options.map(o => <option key={o} value={o}>{o}</option>)}
@@ -176,6 +201,7 @@ function DayCard({ day, onLogged, completedDate, onToggleComplete }) {
   const [cardioMins, setCardioMins]     = useState(day.cardio_duration || '');
   const [cardioDone, setCardioDone]     = useState(false);
   const [activityLoaded, setActivityLoaded] = useState(false);
+  const [allActivities, setAllActivities] = useState([]);
 
   const today = new Date().toLocaleDateString('en-CA');
 
@@ -183,6 +209,7 @@ function DayCard({ day, onLogged, completedDate, onToggleComplete }) {
   useEffect(() => {
     api.workout.getActivity(day.id).then(res => {
       const acts = res.activities || [];
+      setAllActivities(acts);
       // Find most recent entry for each type
       const w = acts.find(a => a.type === 'warmup');
       const c = acts.find(a => a.type === 'cardio');
@@ -249,7 +276,7 @@ function DayCard({ day, onLogged, completedDate, onToggleComplete }) {
           {completedLabel && (
             <p style={{ fontSize: 11, color: '#059669', marginTop: 2, fontWeight: 600 }}>✅ Completado el {completedLabel}</p>
           )}
-          {!completedLabel && lastSessionLabel && (
+          {lastSessionLabel && (
             <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>Última sesión: {lastSessionLabel}</p>
           )}
         </div>
@@ -259,14 +286,16 @@ function DayCard({ day, onLogged, completedDate, onToggleComplete }) {
         <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
           <ActivityBlock emoji="🔥" label="Calentamiento" options={WARMUP_OPTIONS} kcalTable={WARMUP_KCAL}
             defaultDuration={day.warmup_duration} choice={warmupChoice} setChoice={setWarmupChoice}
-            mins={warmupMins} setMins={setWarmupMins} done={warmupDone} setDone={setWarmupDone} />
+            mins={warmupMins} setMins={setWarmupMins} done={warmupDone} setDone={setWarmupDone}
+            history={allActivities.filter(a => a.type === 'warmup')} />
           {day.exercises.map(ex => (
             <ExerciseCard key={ex.id} exercise={ex} onLogged={() => onLogged(false)}
               onKcalChange={kcal => setExKcal(prev => ({ ...prev, [ex.id]: kcal }))} />
           ))}
           <ActivityBlock emoji="🏃" label="Cardio" options={CARDIO_OPTIONS} kcalTable={CARDIO_KCAL}
             defaultDuration={day.cardio_duration} choice={cardioChoice} setChoice={setCardioChoice}
-            mins={cardioMins} setMins={setCardioMins} done={cardioDone} setDone={setCardioDone} />
+            mins={cardioMins} setMins={setCardioMins} done={cardioDone} setDone={setCardioDone}
+            history={allActivities.filter(a => a.type === 'cardio')} />
           <div style={{ background: 'var(--coral-light)', borderRadius: 12, padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <p style={{ fontWeight: 700, fontSize: 13, color: 'var(--coral)' }}>🔥 Total estimado del día</p>
