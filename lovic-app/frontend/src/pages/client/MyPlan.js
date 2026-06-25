@@ -17,14 +17,18 @@ export default function MyPlan() {
       setPlan(wRes.plan);
       setNutrition(dRes.nutrition_plan);
       const map = {};
-      (cRes.completed || []).forEach(id => { map[id] = true; });
+      (cRes.completed || []).forEach(r => {
+        if (typeof r === 'string') map[r] = true;
+        else map[r.day_id] = r.last_completed || true;
+      });
       setCompletedDays(map);
     } finally { if (showSpinner) setLoading(false); }
   }, []);
 
   async function toggleDay(dayId) {
     const done = !completedDays[dayId];
-    setCompletedDays(prev => ({ ...prev, [dayId]: done }));
+    const today = new Date().toLocaleDateString('en-CA');
+    setCompletedDays(prev => ({ ...prev, [dayId]: done ? today : undefined }));
     try { await api.workout.completeDay(dayId, done); } catch (_) {}
   }
 
@@ -54,7 +58,9 @@ export default function MyPlan() {
         plan ? (
           <div>
             {plan.days.map(day => (
-              <DayCard key={day.id} day={day} onLogged={load} />
+              <DayCard key={day.id} day={day} onLogged={load}
+                completedDate={completedDays[day.id]}
+                onToggleComplete={() => toggleDay(day.id)} />
             ))}
           </div>
         ) : (
@@ -156,8 +162,12 @@ function formatDayDate(dateStr) {
   return parseDate(dateStr).toLocaleDateString('es', { weekday: 'short', day: 'numeric', month: 'short' });
 }
 
-function DayCard({ day, onLogged }) {
-  const [open, setOpen] = useState(true);
+const DAYS_ES = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+
+function DayCard({ day, onLogged, completedDate, onToggleComplete }) {
+  const todayDayEs = DAYS_ES[new Date().getDay()];
+  const isToday = day.day_name.toLowerCase().startsWith(todayDayEs);
+  const [open, setOpen] = useState(isToday);
 
   const [warmupChoice, setWarmupChoice] = useState('');
   const [warmupMins, setWarmupMins]     = useState(day.warmup_duration || '');
@@ -172,7 +182,6 @@ function DayCard({ day, onLogged }) {
   // Load today's activity from backend on mount
   useEffect(() => {
     api.workout.getActivity(day.id).then(res => {
-      console.log('Activity response:', JSON.stringify(res));
       const acts = res.activities || [];
       // Find most recent entry for each type
       const w = acts.find(a => a.type === 'warmup');
@@ -214,15 +223,33 @@ function DayCard({ day, onLogged }) {
     .reverse()[0];
   const lastSessionLabel = lastSessionDate ? formatDayDate(lastSessionDate) : null;
 
+  const completedLabel = completedDate && typeof completedDate === 'string'
+    ? formatDayDate(completedDate)
+    : null;
+
   return (
-    <div className="card" style={{ marginBottom: 14 }}>
+    <div className="card" style={{
+      marginBottom: 14,
+      border: isToday ? '2px solid var(--coral)' : '2px solid transparent',
+      background: isToday ? 'var(--card)' : undefined,
+    }}>
+      {isToday && (
+        <div style={{ background: 'var(--coral)', color: '#fff', fontSize: 11, fontWeight: 700,
+          padding: '3px 10px', borderRadius: '8px 8px 0 0', marginTop: -16, marginLeft: -16,
+          marginRight: -16, marginBottom: 10, letterSpacing: 0.5 }}>
+          HOY
+        </div>
+      )}
       <button onClick={() => setOpen(o => !o)} style={{
         width: '100%', background: 'none', border: 'none', cursor: 'pointer',
         display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 0,
       }}>
         <div style={{ textAlign: 'left' }}>
           <p style={{ fontWeight: 800, fontSize: 16 }}>{day.day_name}</p>
-          {lastSessionLabel && (
+          {completedLabel && (
+            <p style={{ fontSize: 11, color: '#059669', marginTop: 2, fontWeight: 600 }}>✅ Completado el {completedLabel}</p>
+          )}
+          {!completedLabel && lastSessionLabel && (
             <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>Última sesión: {lastSessionLabel}</p>
           )}
         </div>
@@ -249,6 +276,14 @@ function DayCard({ day, onLogged }) {
             </div>
             <p style={{ fontSize: 28, fontWeight: 900, color: 'var(--coral)' }}>~{totalKcal}</p>
           </div>
+          <button onClick={onToggleComplete} style={{
+            width: '100%', padding: '11px', borderRadius: 12, border: 'none', cursor: 'pointer',
+            fontWeight: 700, fontSize: 14, transition: 'all 0.2s',
+            background: completedDate ? '#065f46' : 'var(--coral)',
+            color: '#fff',
+          }}>
+            {completedDate ? '✅ Día completado — desmarcar' : '🏁 Marcar día como completado'}
+          </button>
         </div>
       )}
     </div>

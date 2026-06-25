@@ -88,15 +88,16 @@ router.post('/complete-day', async (req, res) => {
   res.json({ ok: true });
 });
 
-// GET /workout/completed-days — días completados hoy
+// GET /workout/completed-days — días completados (más reciente por día)
 router.get('/completed-days', async (req, res) => {
   const uid = req.user.id;
-  const today = req.query.date || new Date().toLocaleDateString('en-CA');
   const [rows] = await db.query(
-    'SELECT day_id FROM workout_day_completions WHERE user_id=? AND completed_date=?',
-    [uid, today]
+    `SELECT day_id, MAX(completed_date) as last_completed
+     FROM workout_day_completions WHERE user_id=?
+     GROUP BY day_id`,
+    [uid]
   );
-  res.json({ completed: rows.map(r => r.day_id) });
+  res.json({ completed: rows });
 });
 
 
