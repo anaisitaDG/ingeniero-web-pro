@@ -43,21 +43,39 @@ router.get('/', async (req, res) => {
      FROM daily_tracking WHERE user_id=? AND tracked_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)`,
     [uid]);
 
-  // Streak: consecutive days with workout_done OR diet_followed
+  // Streak: consecutive days with any exercise logged OR diet_followed
   const [trackingRows] = await db.query(
-    `SELECT tracked_date, workout_done, diet_followed
-     FROM daily_tracking WHERE user_id=? AND tracked_date < ?
-     ORDER BY tracked_date DESC LIMIT 60`,
+    `SELECT dt.tracked_date,
+            (dt.workout_done OR EXISTS (
+              SELECT 1 FROM workout_logs wl WHERE wl.user_id=dt.user_id AND wl.logged_date=dt.tracked_date
+            )) AS active,
+            dt.diet_followed
+     FROM daily_tracking dt
+     WHERE dt.user_id=? AND dt.tracked_date < ?
+     ORDER BY dt.tracked_date DESC LIMIT 60`,
     [uid, today]);
+
+  // Also get days with exercise logs but no daily_tracking entry
+  const [logDays] = await db.query(
+    `SELECT DISTINCT DATE(logged_date) as d FROM workout_logs
+     WHERE user_id=? AND logged_date < ? ORDER BY d DESC LIMIT 60`,
+    [uid, today]);
+
+  // Merge into a set of active dates
+  const activeDates = new Set();
+  for (const r of trackingRows) {
+    if (r.active || r.diet_followed) {
+      activeDates.add(String(r.tracked_date).slice(0, 10));
+    }
+  }
+  for (const r of logDays) activeDates.add(String(r.d).slice(0, 10));
+
   let streak = 0;
   const msPerDay = 86400000;
   let expected = new Date(today).getTime() - msPerDay;
-  for (const row of trackingRows) {
-    const d = new Date(row.tracked_date).getTime();
-    if (d === expected && (row.workout_done || row.diet_followed)) {
-      streak++;
-      expected -= msPerDay;
-    } else break;
+  while (activeDates.has(new Date(expected).toLocaleDateString('en-CA'))) {
+    streak++;
+    expected -= msPerDay;
   }
 
   const latest = bioRows[0] || null;
