@@ -19,7 +19,7 @@ export default function MyPlan() {
       const map = {};
       (cRes.completed || []).forEach(r => {
         if (typeof r === 'string') map[r] = true;
-        else map[r.day_id] = r.last_completed || true;
+        else map[r.day_id] = r.last_completed ? String(r.last_completed).slice(0, 10) : true;
       });
       setCompletedDays(map);
     } finally { if (showSpinner) setLoading(false); }
