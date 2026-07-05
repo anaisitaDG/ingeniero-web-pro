@@ -936,6 +936,7 @@ function SessionCard({ session, prevSession }) {
   }
 
   return (
+    <>
     <div style={{
       borderRadius: 18, overflow: 'hidden',
       boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
@@ -1014,5 +1015,6 @@ function SessionCard({ session, prevSession }) {
         <img src={lightbox} alt="" style={{ maxWidth: '100%', maxHeight: '90vh', borderRadius: 12, objectFit: 'contain' }} />
       </div>
     )}
+    </>
   );
 }
