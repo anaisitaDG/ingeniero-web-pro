@@ -228,6 +228,75 @@ export default function Measurements() {
   );
 }
 
+function MetricCard({ s, idPrefix = 'grad' }) {
+  const color = s.good ? '#16a34a' : s.diff === 0 ? '#6b7280' : '#dc2626';
+  const gradId = `${idPrefix}-${s.key}`;
+  const fewData = s.pts.length < 4;
+
+  return (
+    <div className="card" style={{ borderTop: `3px solid ${color}`, paddingTop: 14 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: fewData ? 14 : 10 }}>
+        <div>
+          <p style={{ fontWeight: 700, fontSize: 15 }}>{s.icon} {s.label}</p>
+          <p style={{ fontSize: 12, color, fontWeight: 700, marginTop: 2 }}>
+            {s.diff > 0 ? '▲ +' : s.diff < 0 ? '▼ ' : ''}{s.diff} {s.unit}
+            <span style={{ fontWeight: 400, color: 'var(--muted)', marginLeft: 6 }}>desde inicio</span>
+          </p>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <p style={{ fontSize: 22, fontWeight: 800, color }}>{s.last}<span style={{ fontSize: 12, fontWeight: 400 }}> {s.unit}</span></p>
+          <p style={{ fontSize: 11, color: 'var(--muted)' }}>antes: {s.first} {s.unit}</p>
+        </div>
+      </div>
+
+      {fewData ? (
+        /* Before/after visual for sparse data */
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0' }}>
+          <div style={{ flex: 1, background: 'var(--bg)', borderRadius: 12, padding: '10px 14px', textAlign: 'center' }}>
+            <p style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 4 }}>{s.pts[0].date}</p>
+            <p style={{ fontSize: 20, fontWeight: 800, color: 'var(--muted)' }}>{s.first}<span style={{ fontSize: 11, fontWeight: 400 }}> {s.unit}</span></p>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+            <div style={{ fontSize: 22, color }}>
+              {s.diff < 0 ? '▼' : s.diff > 0 ? '▲' : '→'}
+            </div>
+            <div style={{ fontSize: 11, fontWeight: 700, color, background: color + '18', borderRadius: 8, padding: '2px 8px' }}>
+              {s.diff > 0 ? '+' : ''}{s.diff} {s.unit}
+            </div>
+          </div>
+          <div style={{ flex: 1, background: color + '12', borderRadius: 12, padding: '10px 14px', textAlign: 'center', border: `1.5px solid ${color}30` }}>
+            <p style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 4 }}>{s.pts[s.pts.length - 1].date}</p>
+            <p style={{ fontSize: 20, fontWeight: 800, color }}>{s.last}<span style={{ fontSize: 11, fontWeight: 400 }}> {s.unit}</span></p>
+          </div>
+        </div>
+      ) : (
+        /* Area chart for 4+ data points */
+        <ResponsiveContainer width="100%" height={90}>
+          <AreaChart data={s.pts} margin={{ top: 5, right: 5, left: 5, bottom: 0 }}>
+            <defs>
+              <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={color} stopOpacity={0.25} />
+                <stop offset="95%" stopColor={color} stopOpacity={0.02} />
+              </linearGradient>
+            </defs>
+            <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'var(--muted)' }} axisLine={false} tickLine={false} />
+            <Tooltip formatter={v => [`${v} ${s.unit}`, s.label]} contentStyle={{ borderRadius: 10, border: 'none', boxShadow: '0 2px 12px rgba(0,0,0,0.12)', fontSize: 13 }} />
+            <Area type="monotone" dataKey={s.key} stroke={color} strokeWidth={2.5} fill={`url(#${gradId})`}
+              dot={(props) => {
+                const isFirst = props.index === 0;
+                const isLast  = props.index === s.pts.length - 1;
+                if (!isFirst && !isLast) return <g key={props.key} />;
+                return <circle key={props.key} cx={props.cx} cy={props.cy} r={5} fill={color} stroke="#fff" strokeWidth={2} />;
+              }}
+              connectNulls
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      )}
+    </div>
+  );
+}
+
 function ProgressTab({ chartData }) {
   // Compute per-field stats
   const fieldStats = FIELDS.map(f => {
@@ -274,54 +343,7 @@ function ProgressTab({ chartData }) {
       )}
 
       {/* Per-metric cards */}
-      {fieldStats.map(s => {
-        const gradId = `grad-${s.key}`;
-        const color = s.good ? '#16a34a' : s.diff === 0 ? '#6b7280' : '#dc2626';
-        const fillColor = s.good ? '#16a34a' : s.diff === 0 ? '#6b7280' : '#dc2626';
-        const bgTint = s.good ? 'rgba(22,163,74,0.05)' : s.diff === 0 ? 'transparent' : 'rgba(220,38,38,0.04)';
-        return (
-          <div key={s.key} className="card" style={{ background: `var(--card)`, borderTop: `3px solid ${color}`, paddingTop: 14 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-              <div>
-                <p style={{ fontWeight: 700, fontSize: 15 }}>{s.icon} {s.label}</p>
-                <p style={{ fontSize: 12, color, fontWeight: 700, marginTop: 2 }}>
-                  {s.diff > 0 ? '▲ +' : s.diff < 0 ? '▼ ' : ''}{s.diff} {s.unit}
-                  <span style={{ fontWeight: 400, color: 'var(--muted)', marginLeft: 6 }}>desde inicio</span>
-                </p>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <p style={{ fontSize: 22, fontWeight: 800, color }}>{s.last}<span style={{ fontSize: 12, fontWeight: 400 }}> {s.unit}</span></p>
-                <p style={{ fontSize: 11, color: 'var(--muted)' }}>antes: {s.first} {s.unit}</p>
-              </div>
-            </div>
-            <ResponsiveContainer width="100%" height={90}>
-              <AreaChart data={s.pts} margin={{ top: 5, right: 5, left: 5, bottom: 0 }}>
-                <defs>
-                  <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={fillColor} stopOpacity={0.25} />
-                    <stop offset="95%" stopColor={fillColor} stopOpacity={0.02} />
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'var(--muted)' }} axisLine={false} tickLine={false} />
-                <Tooltip
-                  formatter={v => [`${v} ${s.unit}`, s.label]}
-                  contentStyle={{ borderRadius: 10, border: 'none', boxShadow: '0 2px 12px rgba(0,0,0,0.12)', fontSize: 13 }}
-                />
-                <Area type="monotone" dataKey={s.key} stroke={color} strokeWidth={2.5}
-                  fill={`url(#${gradId})`}
-                  dot={(props) => {
-                    const isFirst = props.index === 0;
-                    const isLast  = props.index === s.pts.length - 1;
-                    if (!isFirst && !isLast) return <g key={props.key} />;
-                    return <circle key={props.key} cx={props.cx} cy={props.cy} r={5} fill={color} stroke="#fff" strokeWidth={2} />;
-                  }}
-                  connectNulls
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        );
-      })}
+      {fieldStats.map(s => <MetricCard key={s.key} s={s} idPrefix="grad" />)}
     </div>
   );
 }
