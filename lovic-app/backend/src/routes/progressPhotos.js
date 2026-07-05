@@ -47,7 +47,7 @@ router.post('/register', upload.fields([
     if (files[angle]) {
       await db.query(
         'INSERT INTO progress_photos (id, user_id, register_id, angle, image_url, note) VALUES (?, ?, ?, ?, ?, ?)',
-        [uuidv4(), req.user.id, registerId, angle, files[angle][0].path, note]
+        [uuidv4(), req.user.id, registerId, angle, 'uploads/' + files[angle][0].filename, note]
       );
     }
   }
@@ -110,7 +110,7 @@ router.post('/upload', upload.single('photo'), async (req, res) => {
   );
   await db.query(
     'INSERT INTO progress_photos (id, user_id, register_id, angle, image_url, note) VALUES (?, ?, ?, ?, ?, ?)',
-    [uuidv4(), req.user.id, registerId, 'frente', req.file.path, note]
+    [uuidv4(), req.user.id, registerId, 'frente', 'uploads/' + req.file.filename, note]
   );
 
   res.json({ message: 'Foto guardada', path: req.file.path });
