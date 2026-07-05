@@ -1,8 +1,9 @@
-const express = require('express');
-const router  = express.Router();
-const jwt     = require('jsonwebtoken');
+const express  = require('express');
+const router   = express.Router();
+const jwt      = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
-const db      = require('../database/db');
+const bcrypt   = require('bcryptjs');
+const db       = require('../database/db');
 const { sendMagicLink, sendWelcome } = require('../services/email');
 const { requireAuth } = require('../middleware/auth');
 
@@ -117,6 +118,32 @@ router.get('/verify', async (req, res) => {
 
   // En producción redirige al frontend con el token
   res.redirect(`${process.env.APP_URL}/?token=${jwt_token}`);
+});
+
+// POST /auth/login — login con contraseña
+router.post('/login', async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) return res.status(400).json({ error: 'Email y contraseña requeridos' });
+
+  const [[user]] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
+  if (!user) return res.status(401).json({ error: 'Email o contraseña incorrectos' });
+  if (!user.password_hash) return res.status(401).json({ error: 'Esta cuenta no tiene contraseña. Usa el enlace por correo.' });
+
+  const valid = await bcrypt.compare(password, user.password_hash);
+  if (!valid) return res.status(401).json({ error: 'Email o contraseña incorrectos' });
+
+  const token = jwt.sign({ sub: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN });
+  res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
+});
+
+// POST /auth/set-password — establecer o cambiar contraseña
+router.post('/set-password', requireAuth, async (req, res) => {
+  const { password } = req.body;
+  if (!password || password.length < 6) return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
+
+  const hash = await bcrypt.hash(password, 10);
+  await db.query('UPDATE users SET password_hash = ? WHERE id = ?', [hash, req.user.id]);
+  res.json({ message: 'Contraseña guardada' });
 });
 
 // GET /auth/me

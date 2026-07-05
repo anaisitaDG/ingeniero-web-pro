@@ -38,8 +38,10 @@ async function request(path, options = {}) {
 // Auth
 export const api = {
   auth: {
-    me:        ()     => request('/auth/me'),
-    magicLink: (email)=> request('/auth/magic-link', { method: 'POST', body: JSON.stringify({ email }) }),
+    me:          ()                   => request('/auth/me'),
+    magicLink:   (email)              => request('/auth/magic-link', { method: 'POST', body: JSON.stringify({ email }) }),
+    login:       (email, password)    => request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+    setPassword: (password)           => request('/auth/set-password', { method: 'POST', body: JSON.stringify({ password }) }),
   },
   dashboard: {
     get:         ()      => request(`/dashboard?date=${new Date().toLocaleDateString('en-CA')}`),

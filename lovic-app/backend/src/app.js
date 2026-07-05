@@ -96,6 +96,7 @@ const db = require('./database/db');
     `);
     await db.query(`ALTER TABLE bioimpedance ADD COLUMN IF NOT EXISTS body_water_pct DECIMAL(4,1) DEFAULT NULL`).catch(() => {});
     await db.query(`ALTER TABLE daily_tracking ADD COLUMN IF NOT EXISTS sleep_hours DECIMAL(3,1) DEFAULT NULL`).catch(() => {});
+    await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(100) DEFAULT NULL`).catch(() => {});
     await db.query(`
       CREATE TABLE IF NOT EXISTS workout_day_completions (
         id VARCHAR(36) PRIMARY KEY,

@@ -2,6 +2,46 @@ import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 
+function SetPasswordCard() {
+  const [pw, setPw]       = useState('');
+  const [pw2, setPw2]     = useState('');
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg]     = useState('');
+
+  async function handleSave(e) {
+    e.preventDefault();
+    if (pw !== pw2) { setMsg('Las contraseñas no coinciden'); return; }
+    if (pw.length < 6) { setMsg('Mínimo 6 caracteres'); return; }
+    setSaving(true);
+    try {
+      const res = await api.auth.setPassword(pw);
+      if (res.error) throw new Error(res.error);
+      setMsg('✅ Contraseña guardada');
+      setPw(''); setPw2('');
+    } catch (e) { setMsg(e.message); }
+    finally { setSaving(false); }
+  }
+
+  return (
+    <div className="card">
+      <p style={{ fontWeight: 700, marginBottom: 12 }}>🔑 Contraseña</p>
+      <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 14 }}>
+        Establece una contraseña para entrar sin necesitar el link del correo.
+      </p>
+      <form onSubmit={handleSave}>
+        <input className="input" type="password" placeholder="Nueva contraseña" value={pw}
+          onChange={e => setPw(e.target.value)} style={{ marginBottom: 10 }} />
+        <input className="input" type="password" placeholder="Repite la contraseña" value={pw2}
+          onChange={e => setPw2(e.target.value)} style={{ marginBottom: 12 }} />
+        {msg && <p style={{ fontSize: 13, marginBottom: 10, color: msg.startsWith('✅') ? 'var(--green)' : 'var(--coral)' }}>{msg}</p>}
+        <button className="btn-primary" type="submit" disabled={saving} style={{ width: '100%', justifyContent: 'center', fontSize: 14 }}>
+          {saving ? <span className="spinner" /> : 'Guardar contraseña'}
+        </button>
+      </form>
+    </div>
+  );
+}
+
 const GOALS = [
   { key: 'fat_loss',    label: 'Perder grasa',  icon: '🔥' },
   { key: 'muscle_gain', label: 'Ganar músculo', icon: '💪' },
@@ -101,6 +141,7 @@ export default function Profile() {
             <Row label="Email" value={user?.email} />
             <Row label="Rol" value={user?.role === 'client' ? 'Cliente' : 'Entrenador'} />
           </div>
+          <SetPasswordCard />
         </div>
       )}
     </div>
