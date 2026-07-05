@@ -186,6 +186,75 @@ app.use('/workout',         require('./routes/workout'));
 // Health
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }));
 
+// ── Weekly summary scheduler ──────────────────────────────────────────────────
+async function sendWeeklySummaryJob() {
+  try {
+    const { sendWeeklySummary } = require('./services/email');
+    const [[trainer]] = await db.query(`SELECT * FROM users WHERE role='trainer' LIMIT 1`);
+    if (!trainer) return;
+
+    const [clients] = await db.query(`SELECT id, name FROM users WHERE role='client' ORDER BY name`);
+    const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
+    const weekStr = weekAgo.toISOString().slice(0, 10);
+
+    const clientStats = await Promise.all(clients.map(async (c) => {
+      const [[track]] = await db.query(
+        `SELECT COUNT(*) as workout_days FROM daily_tracking WHERE user_id=? AND workout_done=1 AND tracked_date >= ?`,
+        [c.id, weekStr]
+      );
+      const [[diet]] = await db.query(
+        `SELECT COUNT(*) as diet_days FROM daily_tracking WHERE user_id=? AND diet_followed=1 AND tracked_date >= ?`,
+        [c.id, weekStr]
+      );
+      const [[lastT]] = await db.query(
+        `SELECT MAX(tracked_date) as last_trained FROM daily_tracking WHERE user_id=? AND workout_done=1`,
+        [c.id]
+      );
+      // streak
+      const [logDays] = await db.query(
+        `SELECT DISTINCT DATE_FORMAT(logged_date,'%Y-%m-%d') as d FROM workout_logs WHERE user_id=? ORDER BY d DESC LIMIT 60`, [c.id]
+      );
+      const [trackDays] = await db.query(
+        `SELECT DATE_FORMAT(tracked_date,'%Y-%m-%d') as d FROM daily_tracking WHERE user_id=? AND workout_done=1 ORDER BY d DESC LIMIT 60`, [c.id]
+      );
+      const allDates = new Set([...logDays.map(r=>r.d), ...trackDays.map(r=>r.d)]);
+      const todayStr = new Date().toISOString().slice(0,10);
+      let streak = 0, expected = new Date(todayStr).getTime();
+      while (allDates.has(new Date(expected).toISOString().slice(0,10))) { streak++; expected -= 86400000; }
+
+      return { name: c.name, workout_days: track.workout_days, diet_days: diet.diet_days, streak, last_trained: lastT.last_trained };
+    }));
+
+    await sendWeeklySummary(trainer.email, trainer.name, clientStats);
+    console.log('[weekly-summary] Enviado a', trainer.email);
+  } catch (e) {
+    console.error('[weekly-summary] Error:', e.message);
+  }
+}
+
+// Run every Monday at 8am — check every hour
+(function scheduleWeeklySummary() {
+  function msUntilNextMonday8am() {
+    const now = new Date();
+    const next = new Date(now);
+    next.setHours(8, 0, 0, 0);
+    // days until Monday (1): if today is Monday and past 8am, next week
+    const day = next.getDay(); // 0=Sun,1=Mon,...
+    const daysUntilMon = (1 - day + 7) % 7 || (now >= next ? 7 : 0);
+    next.setDate(next.getDate() + daysUntilMon);
+    return next.getTime() - now.getTime();
+  }
+  function schedule() {
+    const ms = msUntilNextMonday8am();
+    console.log(`[weekly-summary] Próximo envío en ${Math.round(ms/3600000)}h`);
+    setTimeout(async () => {
+      await sendWeeklySummaryJob();
+      schedule(); // reschedule for next Monday
+    }, ms);
+  }
+  schedule();
+})();
+
 // Error handler
 app.use((err, req, res, next) => {
   console.error(err);

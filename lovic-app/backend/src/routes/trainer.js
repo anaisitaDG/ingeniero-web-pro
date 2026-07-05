@@ -389,6 +389,32 @@ router.post('/invite-new', async (req, res) => {
   res.json({ message: 'Valoración enviada', userId });
 });
 
+// POST /trainer/weekly-summary — envía resumen manualmente
+router.post('/weekly-summary', async (req, res) => {
+  try {
+    const { sendWeeklySummaryJob } = require('../app');
+    // Trigger via app-level function isn't exported cleanly; replicate inline
+    const { sendWeeklySummary } = require('../services/email');
+    const [[trainer]] = await db.query(`SELECT * FROM users WHERE role='trainer' LIMIT 1`);
+    const [clients] = await db.query(`SELECT id, name FROM users WHERE role='client' ORDER BY name`);
+    const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
+    const weekStr = weekAgo.toISOString().slice(0, 10);
+    const clientStats = await Promise.all(clients.map(async (c) => {
+      const [[track]] = await db.query(`SELECT COUNT(*) as workout_days FROM daily_tracking WHERE user_id=? AND workout_done=1 AND tracked_date >= ?`, [c.id, weekStr]);
+      const [[diet]]  = await db.query(`SELECT COUNT(*) as diet_days FROM daily_tracking WHERE user_id=? AND diet_followed=1 AND tracked_date >= ?`, [c.id, weekStr]);
+      const [[lastT]] = await db.query(`SELECT MAX(tracked_date) as last_trained FROM daily_tracking WHERE user_id=? AND workout_done=1`, [c.id]);
+      const [logDays] = await db.query(`SELECT DISTINCT DATE_FORMAT(logged_date,'%Y-%m-%d') as d FROM workout_logs WHERE user_id=? ORDER BY d DESC LIMIT 60`, [c.id]);
+      const [tDays]   = await db.query(`SELECT DATE_FORMAT(tracked_date,'%Y-%m-%d') as d FROM daily_tracking WHERE user_id=? AND workout_done=1 ORDER BY d DESC LIMIT 60`, [c.id]);
+      const allDates  = new Set([...logDays.map(r=>r.d), ...tDays.map(r=>r.d)]);
+      let streak = 0, expected = new Date().getTime();
+      while (allDates.has(new Date(expected).toISOString().slice(0,10))) { streak++; expected -= 86400000; }
+      return { name: c.name, workout_days: track.workout_days, diet_days: diet.diet_days, streak, last_trained: lastT.last_trained };
+    }));
+    await sendWeeklySummary(trainer.email, trainer.name, clientStats);
+    res.json({ ok: true, sent_to: trainer.email });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── Exercise Library ──────────────────────────────────────────────────────────
 
 // GET /trainer/library

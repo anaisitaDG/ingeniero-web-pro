@@ -76,12 +76,26 @@ export default function MyPlan() {
         <>
           {plan ? (
             <div>
-              {plan.duration_days && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--coral-light)', borderRadius: 12, padding: '10px 14px', marginBottom: 14 }}>
-                  <span style={{ fontSize: 18 }}>⏱</span>
-                  <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--coral)' }}>Plan de <strong>{plan.duration_days} días</strong> · Asignado por tu entrenadora</p>
-                </div>
-              )}
+              {plan.duration_days && (() => {
+                const start = new Date(plan.created_at);
+                const today = new Date();
+                const dayOfPlan = Math.min(Math.floor((today - start) / 86400000) + 1, plan.duration_days);
+                const pct = Math.round((dayOfPlan / plan.duration_days) * 100);
+                return (
+                  <div className="card" style={{ marginBottom: 14, padding: '14px 16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                      <p style={{ fontWeight: 800, fontSize: 15 }}>Día {dayOfPlan} <span style={{ color: 'var(--muted)', fontWeight: 400 }}>de {plan.duration_days}</span></p>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--coral)' }}>{pct}%</span>
+                    </div>
+                    <div style={{ background: 'var(--border)', borderRadius: 99, height: 8, overflow: 'hidden' }}>
+                      <div style={{ width: `${pct}%`, height: '100%', background: 'linear-gradient(90deg, var(--coral), #FF8E53)', borderRadius: 99, transition: 'width 0.5s ease' }} />
+                    </div>
+                    <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 6 }}>
+                      {dayOfPlan >= plan.duration_days ? '🎉 ¡Completaste el plan! Habla con tu entrenadora.' : `${plan.duration_days - dayOfPlan} días restantes`}
+                    </p>
+                  </div>
+                );
+              })()}
               {plan.days.map(day => (
                 <DayCard key={day.id} day={day} onLogged={load}
                   completedDate={completedDays[day.id]}

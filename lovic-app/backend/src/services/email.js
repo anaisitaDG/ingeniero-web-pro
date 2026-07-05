@@ -94,4 +94,71 @@ async function sendWelcome(email, name) {
   });
 }
 
-module.exports = { sendMagicLink, sendWelcome, notifyTrainerOnboarding };
+async function sendWeeklySummary(trainerEmail, trainerName, clients) {
+  // clients = [{ name, workout_days, diet_days, streak, last_trained }]
+  const activeClients = clients.filter(c => c.workout_days > 0 || c.diet_days > 0);
+  const inactiveClients = clients.filter(c => c.workout_days === 0 && c.diet_days === 0);
+
+  const clientRow = (c) => `
+    <tr style="border-bottom:1px solid #f0f0f0">
+      <td style="padding:10px 0;font-weight:600;color:#1A1A1A">${c.name}</td>
+      <td style="padding:10px;text-align:center">
+        <span style="background:${c.workout_days >= 3 ? '#dcfce7' : c.workout_days >= 1 ? '#fef9c3' : '#fee2e2'};color:${c.workout_days >= 3 ? '#16a34a' : c.workout_days >= 1 ? '#ca8a04' : '#dc2626'};padding:3px 10px;border-radius:99px;font-size:13px;font-weight:700">
+          ${c.workout_days}/7 entrenamientos
+        </span>
+      </td>
+      <td style="padding:10px;text-align:center;color:#555;font-size:13px">${c.streak > 0 ? `🔥 ${c.streak} días` : '—'}</td>
+      <td style="padding:10px;text-align:center;color:#999;font-size:12px">${c.last_trained ? new Date(c.last_trained).toLocaleDateString('es', { weekday: 'short', day: 'numeric', month: 'short' }) : 'Sin registro'}</td>
+    </tr>
+  `;
+
+  const weekStart = new Date(); weekStart.setDate(weekStart.getDate() - 7);
+  const weekLabel = `${weekStart.toLocaleDateString('es', { day: 'numeric', month: 'long' })} – ${new Date().toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' })}`;
+
+  await resend.emails.send({
+    from: FROM,
+    to: trainerEmail,
+    subject: `📊 Resumen semanal de tus clientas — ${weekLabel}`,
+    html: `
+      <div style="font-family:'Helvetica Neue',sans-serif;max-width:620px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
+        <div style="background:linear-gradient(135deg,#FF6B6B,#FF8E53);padding:2rem;text-align:center">
+          <h1 style="color:#fff;margin:0;font-size:1.5rem">📊 Resumen Semanal</h1>
+          <p style="color:rgba(255,255,255,.85);margin:.5rem 0 0;font-size:.9rem">${weekLabel}</p>
+        </div>
+        <div style="padding:2rem">
+          <p style="color:#555;margin:0 0 1.5rem">Hola ${trainerName}, aquí el resumen de tus clientas esta semana:</p>
+
+          ${activeClients.length > 0 ? `
+          <h3 style="color:#1A1A1A;margin:0 0 1rem;font-size:1rem">✅ Activas esta semana (${activeClients.length})</h3>
+          <table style="width:100%;border-collapse:collapse;margin-bottom:1.5rem">
+            <thead>
+              <tr style="border-bottom:2px solid #f0f0f0">
+                <th style="padding:8px 0;text-align:left;color:#999;font-size:12px;font-weight:600">CLIENTA</th>
+                <th style="padding:8px;text-align:center;color:#999;font-size:12px;font-weight:600">ENTRENOS</th>
+                <th style="padding:8px;text-align:center;color:#999;font-size:12px;font-weight:600">RACHA</th>
+                <th style="padding:8px;text-align:center;color:#999;font-size:12px;font-weight:600">ÚLTIMO ENTRENO</th>
+              </tr>
+            </thead>
+            <tbody>${activeClients.map(clientRow).join('')}</tbody>
+          </table>` : ''}
+
+          ${inactiveClients.length > 0 ? `
+          <h3 style="color:#dc2626;margin:0 0 1rem;font-size:1rem">⚠️ Sin actividad esta semana (${inactiveClients.length})</h3>
+          <div style="background:#fff5f5;border-radius:8px;padding:1rem;margin-bottom:1.5rem">
+            ${inactiveClients.map(c => `<p style="margin:4px 0;color:#555;font-size:14px">• ${c.name}</p>`).join('')}
+          </div>` : ''}
+
+          <div style="background:#f8f8f8;border-radius:8px;padding:1rem;text-align:center">
+            <p style="color:#555;margin:0;font-size:13px">Total clientas: <strong>${clients.length}</strong> · Activas: <strong>${activeClients.length}</strong> · Inactivas: <strong>${inactiveClients.length}</strong></p>
+          </div>
+
+          <p style="color:#999;font-size:12px;margin:1.5rem 0 0;text-align:center">
+            Este resumen se envía automáticamente cada lunes. <a href="${process.env.APP_URL}/trainer" style="color:#FF6B6B">Ver panel →</a>
+          </p>
+        </div>
+      </div>
+    `,
+  });
+}
+
+module.exports = { sendMagicLink, sendWelcome, notifyTrainerOnboarding, sendWeeklySummary };
