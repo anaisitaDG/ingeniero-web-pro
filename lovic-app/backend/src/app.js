@@ -119,6 +119,41 @@ const db = require('./database/db');
         INDEX idx_user_day (user_id, day_id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS exercise_library (
+        id VARCHAR(36) PRIMARY KEY,
+        trainer_id VARCHAR(36) NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        muscle_group VARCHAR(100) DEFAULT NULL,
+        youtube_url VARCHAR(500) DEFAULT NULL,
+        notes VARCHAR(500) DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_trainer (trainer_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS exercise_variations (
+        id VARCHAR(36) PRIMARY KEY,
+        exercise_id VARCHAR(36) NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        youtube_url VARCHAR(500) DEFAULT NULL,
+        notes VARCHAR(255) DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_exercise (exercise_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+    await db.query(`ALTER TABLE workout_exercises ADD COLUMN IF NOT EXISTS library_exercise_id VARCHAR(36) DEFAULT NULL`).catch(() => {});
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS free_workout_logs (
+        id VARCHAR(36) PRIMARY KEY,
+        user_id VARCHAR(36) NOT NULL,
+        session_date DATE NOT NULL,
+        note VARCHAR(255),
+        exercises JSON NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_user_date (user_id, session_date)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
   } catch (e) {
     console.error('Migration error:', e.message);
   }

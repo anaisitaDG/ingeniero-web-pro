@@ -384,7 +384,8 @@ function ExerciseCard({ exercise: ex, onLogged, onKcalChange }) {
       reps_done: lastR[i] || ex.reps || '',
     }));
   });
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving]           = useState(false);
+  const [showVariations, setShowVariations] = useState(false);
 
   // Report kcal to parent whenever weights change
   useEffect(() => {
@@ -456,6 +457,12 @@ function ExerciseCard({ exercise: ex, onLogged, onKcalChange }) {
         }}>
           {isLoggedToday ? '✏️ Editar registro' : '📝 Registrar sesión'}
         </button>
+        {ex.variations?.length > 0 && (
+          <button onClick={() => setShowVariations(v => !v)} title="Ver variaciones" style={{
+            padding: '8px 12px', borderRadius: 10, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 13,
+            background: showVariations ? 'var(--gold)' : 'var(--card)', color: showVariations ? '#fff' : 'var(--muted)',
+          }}>⇄</button>
+        )}
         <button onClick={loadHistory} style={{
           padding: '8px 12px', borderRadius: 10, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 13,
           background: 'var(--card)', color: 'var(--muted)',
@@ -463,6 +470,23 @@ function ExerciseCard({ exercise: ex, onLogged, onKcalChange }) {
           📈
         </button>
       </div>
+
+      {showVariations && ex.variations?.length > 0 && (
+        <div style={{ marginTop: 10, background: 'var(--card)', borderRadius: 12, padding: 12 }}>
+          <p style={{ fontWeight: 700, fontSize: 13, marginBottom: 8, color: 'var(--gold)' }}>⇄ Variaciones disponibles</p>
+          {ex.variations.map(v => (
+            <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
+              <p style={{ flex: 1, fontSize: 14, fontWeight: 600 }}>{v.name}</p>
+              {v.youtube_url && (
+                <a href={v.youtube_url} target="_blank" rel="noreferrer" style={{
+                  background: '#FF0000', color: '#fff', padding: '4px 10px', borderRadius: 6,
+                  textDecoration: 'none', fontSize: 12, fontWeight: 700,
+                }}>▶</a>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       {showLog && (
         <div style={{ marginTop: 12, background: 'var(--card)', borderRadius: 12, padding: 12 }}>

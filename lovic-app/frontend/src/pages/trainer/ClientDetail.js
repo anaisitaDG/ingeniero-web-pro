@@ -23,6 +23,11 @@ export default function ClientDetail() {
   const [workoutLoading, setWorkoutLoading] = useState(false);
   const [savingWorkout, setSavingWorkout]   = useState(false);
 
+  // Library picker
+  const [library, setLibrary]           = useState(null);
+  const [pickerTarget, setPickerTarget] = useState(null); // { dayIdx, exIdx }
+  const [libSearch, setLibSearch]       = useState('');
+
   // Nutrition (text) state
   const [manualNutrition, setManualNutrition] = useState('');
   const [savingNutrition, setSavingNutrition] = useState(false);
@@ -71,6 +76,7 @@ export default function ClientDetail() {
             sets: e.sets,
             reps: e.reps,
             weight_kg: e.weight_kg || '',
+            library_exercise_id: e.library_exercise_id || null,
           })),
         })));
       }
@@ -195,6 +201,29 @@ export default function ClientDetail() {
       ...day,
       exercises: day.exercises.map((ex, j) => j === exIdx ? { ...ex, [field]: val } : ex),
     }));
+  }
+
+  async function openLibraryPicker(dayIdx, exIdx) {
+    setPickerTarget({ dayIdx, exIdx });
+    setLibSearch('');
+    if (!library) {
+      const res = await api.trainer.getLibrary();
+      setLibrary(res.exercises || []);
+    }
+  }
+
+  function pickFromLibrary(ex) {
+    const { dayIdx, exIdx } = pickerTarget;
+    setWorkoutDays(d => d.map((day, i) => i !== dayIdx ? day : {
+      ...day,
+      exercises: day.exercises.map((e, j) => j !== exIdx ? e : {
+        ...e,
+        name: ex.name,
+        youtube_url: ex.youtube_url || '',
+        library_exercise_id: ex.id,
+      }),
+    }));
+    setPickerTarget(null);
   }
 
   if (loading) return <div style={{ textAlign: 'center', padding: 64 }}><div className="spinner" style={{ borderTopColor: 'var(--coral)', borderColor: 'var(--border)', width: 36, height: 36 }} /></div>;
@@ -439,13 +468,21 @@ export default function ClientDetail() {
                       )}
                     </div>
 
-                    <input
-                      className="input"
-                      placeholder="Nombre del ejercicio (ej: Sentadilla en Smith)"
-                      value={ex.name}
-                      onChange={e => updateExercise(di, ei, 'name', e.target.value)}
-                      style={{ marginBottom: 8 }}
-                    />
+                    <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                      <input
+                        className="input"
+                        placeholder="Nombre del ejercicio (ej: Sentadilla en Smith)"
+                        value={ex.name}
+                        onChange={e => updateExercise(di, ei, 'name', e.target.value)}
+                        style={{ flex: 1 }}
+                      />
+                      <button
+                        onClick={() => openLibraryPicker(di, ei)}
+                        title="Seleccionar de biblioteca"
+                        style={{ background: 'var(--coral-light)', border: 'none', borderRadius: 8, cursor: 'pointer', padding: '8px 12px', fontSize: 14, color: 'var(--coral)', fontWeight: 700, flexShrink: 0 }}>
+                        📚
+                      </button>
+                    </div>
 
                     <input
                       className="input"
@@ -726,6 +763,41 @@ export default function ClientDetail() {
           ) : (
             <div className="empty-state"><div className="icon">📊</div><p>No hay registros de bioimpedancia</p></div>
           )}
+        </div>
+      )}
+
+      {/* Library Picker Modal */}
+      {pickerTarget && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 200, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
+          onClick={e => e.target === e.currentTarget && setPickerTarget(null)}>
+          <div style={{ background: 'var(--card)', borderRadius: '20px 20px 0 0', width: '100%', maxWidth: 600, maxHeight: '80vh', display: 'flex', flexDirection: 'column', padding: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <p style={{ fontWeight: 800, fontSize: 16 }}>📚 Seleccionar de biblioteca</p>
+              <button onClick={() => setPickerTarget(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--muted)' }}>✕</button>
+            </div>
+            <input className="input" placeholder="Buscar ejercicio..." value={libSearch}
+              onChange={e => setLibSearch(e.target.value)} style={{ marginBottom: 14 }} />
+            <div style={{ overflowY: 'auto', flex: 1 }}>
+              {!library ? (
+                <div style={{ textAlign: 'center', padding: 32 }}><div className="spinner" style={{ borderTopColor: 'var(--coral)', borderColor: 'var(--border)', width: 28, height: 28 }} /></div>
+              ) : library.filter(e => !libSearch || e.name.toLowerCase().includes(libSearch.toLowerCase())).length === 0 ? (
+                <p style={{ textAlign: 'center', color: 'var(--muted)', padding: 24, fontSize: 14 }}>
+                  {library.length === 0 ? 'La biblioteca está vacía. Ve a Biblioteca para agregar ejercicios.' : 'Sin resultados'}
+                </p>
+              ) : (
+                library.filter(e => !libSearch || e.name.toLowerCase().includes(libSearch.toLowerCase())).map(ex => (
+                  <div key={ex.id} onClick={() => pickFromLibrary(ex)}
+                    style={{ padding: '12px 14px', borderRadius: 12, marginBottom: 8, cursor: 'pointer', background: 'var(--bg)', display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ fontWeight: 700, fontSize: 14 }}>{ex.name}</p>
+                      <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>{ex.muscle_group || 'Sin grupo'}{ex.variations?.length > 0 ? ` · ${ex.variations.length} variación${ex.variations.length !== 1 ? 'es' : ''}` : ''}</p>
+                    </div>
+                    <span style={{ fontSize: 12, color: 'var(--coral)', fontWeight: 700 }}>Seleccionar →</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>

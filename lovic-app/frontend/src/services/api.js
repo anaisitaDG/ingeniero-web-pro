@@ -115,5 +115,11 @@ export const api = {
     getWorkoutLogs:(id) => request(`/trainer/clients/${id}/workout-logs`),
     getNotes:      (id) => request(`/trainer/clients/${id}/notes`),
     saveNotes:     (id, notes) => request(`/trainer/clients/${id}/notes`, { method: 'PUT', body: JSON.stringify({ notes }) }),
+    getLibrary:    ()           => request('/trainer/library'),
+    addLibrary:    (body)       => request('/trainer/library', { method: 'POST', body: JSON.stringify(body) }),
+    updateLibrary: (id, body)   => request(`/trainer/library/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+    deleteLibrary: (id)         => request(`/trainer/library/${id}`, { method: 'DELETE' }),
+    addVariation:  (exId, body) => request(`/trainer/library/${exId}/variations`, { method: 'POST', body: JSON.stringify(body) }),
+    deleteVariation:(varId)     => request(`/trainer/library/variations/${varId}`, { method: 'DELETE' }),
   },
 };

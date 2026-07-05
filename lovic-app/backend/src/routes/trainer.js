@@ -88,6 +88,16 @@ router.get('/clients/:id/workout', async (req, res) => {
     const [exercises] = await db.query(
       'SELECT * FROM workout_exercises WHERE day_id=? ORDER BY exercise_order', [day.id]
     );
+    for (const ex of exercises) {
+      if (ex.library_exercise_id) {
+        const [vars] = await db.query(
+          'SELECT id, name, youtube_url, notes FROM exercise_variations WHERE exercise_id=?', [ex.library_exercise_id]
+        );
+        ex.variations = vars;
+      } else {
+        ex.variations = [];
+      }
+    }
     day.exercises = exercises;
   }
   res.json({ plan: { ...plan, days } });
@@ -113,8 +123,8 @@ router.put('/clients/:id/workout', async (req, res) => {
     for (let ei = 0; ei < exercises.length; ei++) {
       const ex = exercises[ei];
       await db.query(
-        'INSERT INTO workout_exercises (id, day_id, name, youtube_url, sets, reps, weight_kg, exercise_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        [uuidv4(), dayId, ex.name, ex.youtube_url || null, ex.sets || 3, ex.reps || '10', ex.weight_kg || null, ei]
+        'INSERT INTO workout_exercises (id, day_id, name, youtube_url, sets, reps, weight_kg, exercise_order, library_exercise_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [uuidv4(), dayId, ex.name, ex.youtube_url || null, ex.sets || 3, ex.reps || '10', ex.weight_kg || null, ei, ex.library_exercise_id || null]
       );
     }
   }
@@ -377,6 +387,86 @@ router.post('/invite-new', async (req, res) => {
   await sendMagicLink(email, name, token, 'onboarding');
 
   res.json({ message: 'Valoración enviada', userId });
+});
+
+// ── Exercise Library ──────────────────────────────────────────────────────────
+
+// GET /trainer/library
+router.get('/library', async (req, res) => {
+  try {
+    const trainerId = req.user.id;
+    const [exercises] = await db.query(
+      'SELECT * FROM exercise_library WHERE trainer_id=? ORDER BY muscle_group, name', [trainerId]
+    );
+    // Attach variations
+    for (const ex of exercises) {
+      const [vars] = await db.query(
+        'SELECT * FROM exercise_variations WHERE exercise_id=? ORDER BY name', [ex.id]
+      );
+      ex.variations = vars;
+    }
+    res.json({ exercises });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /trainer/library
+router.post('/library', async (req, res) => {
+  try {
+    const trainerId = req.user.id;
+    const { name, muscle_group, youtube_url, notes } = req.body;
+    if (!name?.trim()) return res.status(400).json({ error: 'name requerido' });
+    const id = uuidv4();
+    await db.query(
+      'INSERT INTO exercise_library (id, trainer_id, name, muscle_group, youtube_url, notes) VALUES (?, ?, ?, ?, ?, ?)',
+      [id, trainerId, name.trim(), muscle_group || null, youtube_url || null, notes || null]
+    );
+    res.json({ id, name, muscle_group, youtube_url, notes, variations: [] });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// PUT /trainer/library/:id
+router.put('/library/:id', async (req, res) => {
+  try {
+    const trainerId = req.user.id;
+    const { name, muscle_group, youtube_url, notes } = req.body;
+    await db.query(
+      'UPDATE exercise_library SET name=?, muscle_group=?, youtube_url=?, notes=? WHERE id=? AND trainer_id=?',
+      [name?.trim() || '', muscle_group || null, youtube_url || null, notes || null, req.params.id, trainerId]
+    );
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// DELETE /trainer/library/variations/:varId  — must come before /library/:id
+router.delete('/library/variations/:varId', async (req, res) => {
+  try {
+    await db.query('DELETE FROM exercise_variations WHERE id=?', [req.params.varId]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /trainer/library/:id/variations
+router.post('/library/:id/variations', async (req, res) => {
+  try {
+    const { name, youtube_url, notes } = req.body;
+    if (!name?.trim()) return res.status(400).json({ error: 'name requerido' });
+    const id = uuidv4();
+    await db.query(
+      'INSERT INTO exercise_variations (id, exercise_id, name, youtube_url, notes) VALUES (?, ?, ?, ?, ?)',
+      [id, req.params.id, name.trim(), youtube_url || null, notes || null]
+    );
+    res.json({ id, exercise_id: req.params.id, name, youtube_url, notes });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// DELETE /trainer/library/:id
+router.delete('/library/:id', async (req, res) => {
+  try {
+    const trainerId = req.user.id;
+    await db.query('DELETE FROM exercise_variations WHERE exercise_id=?', [req.params.id]);
+    await db.query('DELETE FROM exercise_library WHERE id=? AND trainer_id=?', [req.params.id, trainerId]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 function extractCalorieTarget(content) {
