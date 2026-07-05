@@ -643,26 +643,35 @@ export default function ClientDetail() {
           ) : !workoutLogs.sessions?.length ? (
             <div className="empty-state"><div className="icon">🏋️</div><p>La cliente aún no ha registrado ningún ejercicio</p></div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {/* Resumen */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {/* Stats */}
               {workoutLogs.summary && (
-                <div style={{ display: 'flex', gap: 10, marginBottom: 4 }}>
+                <div style={{ display: 'flex', gap: 10 }}>
                   {[
-                    { label: 'Racha actual', value: `🔥 ${workoutLogs.summary.streak} días` },
-                    { label: 'Últimos 30 días', value: `📅 ${workoutLogs.summary.days_this_month} días` },
-                    { label: 'Total sesiones', value: `🏋️ ${workoutLogs.summary.total_sessions}` },
+                    { label: 'Racha', value: workoutLogs.summary.streak, unit: 'días', icon: '🔥', color: '#FF6B4A' },
+                    { label: 'Últ. 30 días', value: workoutLogs.summary.days_this_month, unit: 'días', icon: '📅', color: '#6366f1' },
+                    { label: 'Sesiones', value: workoutLogs.summary.total_sessions, unit: 'total', icon: '🏋️', color: '#059669' },
                   ].map(s => (
-                    <div key={s.label} className="card" style={{ flex: 1, padding: '12px', textAlign: 'center', margin: 0 }}>
-                      <p style={{ fontSize: 16, fontWeight: 800 }}>{s.value}</p>
-                      <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 3 }}>{s.label}</p>
+                    <div key={s.label} style={{
+                      flex: 1, borderRadius: 16, padding: '14px 10px', textAlign: 'center',
+                      background: `${s.color}12`, border: `1.5px solid ${s.color}30`,
+                    }}>
+                      <p style={{ fontSize: 22, marginBottom: 2 }}>{s.icon}</p>
+                      <p style={{ fontSize: 22, fontWeight: 900, color: s.color, lineHeight: 1 }}>{s.value}</p>
+                      <p style={{ fontSize: 10, color: 'var(--muted)', marginTop: 3, fontWeight: 600 }}>{s.unit} · {s.label}</p>
                     </div>
                   ))}
                 </div>
               )}
 
+              {/* Heatmap */}
+              <WorkoutHeatmap sessions={workoutLogs.sessions} />
+
               {/* Sesiones */}
-              {workoutLogs.sessions.map(session => (
-                <SessionCard key={session.date + session.day_name} session={session} />
+              {workoutLogs.sessions.map((session, idx) => (
+                <SessionCard key={session.date + session.day_name}
+                  session={session}
+                  prevSession={workoutLogs.sessions.slice(idx + 1).find(s => s.day_name === session.day_name)} />
               ))}
             </div>
           )}
@@ -743,51 +752,144 @@ function parseJson(v) {
   } catch { return v; }
 }
 
-function SessionCard({ session }) {
-  const [expanded, setExpanded] = useState({});
-  const dateLabel = new Date(`${session.date}T00:00:00`).toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' });
-  const isFree = session.type === 'free';
+const DAY_COLORS = {
+  'lunes':     '#6366f1',
+  'martes':    '#8b5cf6',
+  'miércoles': '#0ea5e9',
+  'jueves':    '#f59e0b',
+  'viernes':   '#FF6B4A',
+  'sábado':    '#059669',
+  'domingo':   '#ec4899',
+  'libre':     '#FF6B4A',
+};
+
+function dayColor(dayName) {
+  if (!dayName) return '#6366f1';
+  const key = dayName.toLowerCase().split(':')[0].trim().split(' ')[0];
+  return DAY_COLORS[key] || '#6366f1';
+}
+
+function WorkoutHeatmap({ sessions }) {
+  const today = new Date();
+  const days = Array.from({ length: 35 }, (_, i) => {
+    const d = new Date(today); d.setDate(today.getDate() - (34 - i));
+    return d.toISOString().slice(0, 10);
+  });
+  const trained = new Set(sessions.map(s => s.date));
+  const sessionByDate = {};
+  sessions.forEach(s => { sessionByDate[s.date] = s; });
 
   return (
     <div className="card" style={{ padding: '14px 16px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+      <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', marginBottom: 10, letterSpacing: 0.5 }}>ÚLTIMOS 35 DÍAS</p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
+        {['L','M','M','J','V','S','D'].map(d => (
+          <p key={d} style={{ fontSize: 9, color: 'var(--muted)', textAlign: 'center', fontWeight: 600 }}>{d}</p>
+        ))}
+        {days.map(d => {
+          const s = sessionByDate[d];
+          const color = s ? dayColor(s.day_name) : null;
+          const isToday = d === today.toISOString().slice(0,10);
+          return (
+            <div key={d} title={s ? `${d} · ${s.day_name}` : d} style={{
+              height: 28, borderRadius: 6,
+              background: color ? `${color}cc` : 'var(--bg)',
+              border: isToday ? '2px solid var(--coral)' : '2px solid transparent',
+              transition: 'transform 0.1s',
+            }} />
+          );
+        })}
+      </div>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 10 }}>
+        {Object.entries(DAY_COLORS).slice(0,7).map(([day, color]) => (
+          <div key={day} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <div style={{ width: 10, height: 10, borderRadius: 3, background: color }} />
+            <span style={{ fontSize: 10, color: 'var(--muted)', textTransform: 'capitalize' }}>{day}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SessionCard({ session, prevSession }) {
+  const [expanded, setExpanded] = useState({});
+  const dateLabel = new Date(`${session.date}T00:00:00`).toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' });
+  const isFree = session.type === 'free';
+  const color = dayColor(session.day_name);
+
+  // Build prev weight map
+  const prevWeights = {};
+  if (prevSession) {
+    prevSession.exercises.forEach(ex => { prevWeights[ex.name] = ex.max_weight; });
+  }
+
+  function progressBadge(exName, maxWeight) {
+    const prev = prevWeights[exName];
+    if (!prev || !maxWeight) return null;
+    const diff = parseFloat(maxWeight) - parseFloat(prev);
+    if (Math.abs(diff) < 0.1) return { icon: '→', color: '#6b7280', label: 'igual' };
+    if (diff > 0) return { icon: '↑', color: '#059669', label: `+${diff.toFixed(1)}kg` };
+    return { icon: '↓', color: '#dc2626', label: `${diff.toFixed(1)}kg` };
+  }
+
+  return (
+    <div style={{
+      borderRadius: 18, overflow: 'hidden',
+      boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+      border: '1px solid var(--border)',
+      background: 'var(--card)',
+    }}>
+      {/* Header con color del día */}
+      <div style={{ background: color, padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <p style={{ fontWeight: 800, fontSize: 14, textTransform: 'capitalize' }}>{dateLabel}</p>
-          <p style={{ fontSize: 12, color: isFree ? 'var(--coral)' : 'var(--muted)', marginTop: 2, fontWeight: isFree ? 600 : 400 }}>
+          <p style={{ fontWeight: 800, fontSize: 15, color: '#fff', textTransform: 'capitalize' }}>{dateLabel}</p>
+          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)', marginTop: 2, fontWeight: 600 }}>
             {isFree ? '🆓 Entrenamiento libre' : session.day_name}
           </p>
-          {session.note && <p style={{ fontSize: 12, color: 'var(--muted)', fontStyle: 'italic', marginTop: 2 }}>"{session.note}"</p>}
+          {session.note && <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', marginTop: 2, fontStyle: 'italic' }}>"{session.note}"</p>}
         </div>
-        <span style={{ fontSize: 12, color: 'var(--muted)', background: 'var(--bg)', padding: '4px 10px', borderRadius: 20, whiteSpace: 'nowrap', marginLeft: 8 }}>
-          {session.exercises.length} ejerc.
-        </span>
+        <div style={{ background: 'rgba(255,255,255,0.2)', borderRadius: 10, padding: '6px 12px', textAlign: 'center' }}>
+          <p style={{ fontSize: 18, fontWeight: 900, color: '#fff', lineHeight: 1 }}>{session.exercises.length}</p>
+          <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.8)', fontWeight: 600 }}>EJERC.</p>
+        </div>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {/* Ejercicios */}
+      <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 4 }}>
         {session.exercises.map((ex, i) => {
           const isOpen = expanded[i];
-          let summary = ex.name;
-          if (ex.type === 'cardio') summary += ex.duration_mins ? ` · ${ex.duration_mins} min` : '';
-          else if (ex.type === 'time') summary += ex.duration_secs ? ` · ${ex.sets || 1}×${ex.duration_secs}seg` : '';
-          else if (ex.max_weight) summary += ` · ${parseFloat(ex.max_weight)}kg × ${ex.reps ?? '—'}`;
+          const badge = progressBadge(ex.name, ex.max_weight);
+          const hasSets = ex.sets?.length > 0;
+
+          let detail = '';
+          if (ex.type === 'cardio') detail = ex.duration_mins ? `${ex.duration_mins} min` : '';
+          else if (ex.type === 'time') detail = ex.duration_secs ? `${ex.sets || 1}×${ex.duration_secs}seg` : '';
+          else if (ex.max_weight) detail = `${parseFloat(ex.max_weight)}kg × ${ex.reps ?? '—'}`;
 
           return (
             <div key={i}>
-              <div
-                onClick={() => ex.sets?.length > 0 && setExpanded(p => ({ ...p, [i]: !p[i] }))}
-                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  background: 'var(--bg)', borderRadius: 10, padding: '8px 12px',
-                  cursor: ex.sets?.length > 0 ? 'pointer' : 'default' }}
-              >
-                <p style={{ fontSize: 13, fontWeight: 600 }}>{summary}</p>
-                {ex.sets?.length > 0 && (
-                  <span style={{ fontSize: 11, color: 'var(--muted)' }}>{isOpen ? '▲' : '▼'}</span>
+              <div onClick={() => hasSets && setExpanded(p => ({ ...p, [i]: !p[i] }))}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px',
+                  borderRadius: 10, background: isOpen ? `${color}12` : 'var(--bg)',
+                  cursor: hasSets ? 'pointer' : 'default', transition: 'background 0.15s' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 13, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ex.name}</p>
+                  {detail && <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 1 }}>{detail}</p>}
+                </div>
+                {badge && (
+                  <span style={{ fontSize: 11, fontWeight: 800, color: badge.color,
+                    background: `${badge.color}15`, padding: '2px 7px', borderRadius: 6, flexShrink: 0 }}>
+                    {badge.icon} {badge.label}
+                  </span>
                 )}
+                {hasSets && <span style={{ fontSize: 11, color: 'var(--muted)', flexShrink: 0 }}>{isOpen ? '▲' : '▼'}</span>}
               </div>
-              {isOpen && ex.sets?.length > 0 && (
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', padding: '6px 4px 2px' }}>
+              {isOpen && hasSets && (
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', padding: '6px 10px 4px' }}>
                   {ex.sets.map((s, j) => (
-                    <span key={j} style={{ fontSize: 12, background: 'var(--card)', padding: '3px 10px', borderRadius: 6 }}>
+                    <span key={j} style={{ fontSize: 12, background: `${color}18`, color: color,
+                      padding: '3px 10px', borderRadius: 6, fontWeight: 700 }}>
                       S{s.set ?? j+1}: {s.weight ?? s.weight_kg ?? '—'}kg × {s.reps ?? s.reps_done ?? '—'}
                     </span>
                   ))}
