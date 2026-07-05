@@ -76,7 +76,7 @@ export default function MyPlan() {
         <>
           {plan ? (
             <div>
-              {plan.duration_days && <PlanProgress createdAt={plan.created_at} durationDays={plan.duration_days} />}
+              {plan.duration_days && <PlanProgress startDate={plan.start_date || plan.created_at} durationDays={plan.duration_days} />}
               {plan.days.map(day => (
                 <DayCard key={day.id} day={day} onLogged={load}
                   completedDate={completedDays[day.id]}
@@ -128,23 +128,48 @@ function calcKcal(table, type, mins) {
   return rate ? Math.round(rate * mins) : null;
 }
 
-function PlanProgress({ createdAt, durationDays }) {
-  const start = new Date(createdAt);
-  const dayOfPlan = Math.min(Math.floor((Date.now() - start) / 86400000) + 1, durationDays);
-  const pct = Math.round((dayOfPlan / durationDays) * 100);
+function PlanProgress({ startDate, durationDays }) {
+  const start = new Date(startDate);
+  const elapsed = Math.floor((Date.now() - start) / 86400000);
+  const dayOfPlan = Math.min(elapsed + 1, durationDays);
+  const pct = Math.min(Math.round((elapsed / durationDays) * 100), 100);
+  const daysLeft = durationDays - elapsed;
+  const expired = elapsed >= durationDays;
+  const expiringSoon = !expired && daysLeft <= 7;
+
   return (
-    <div className="card" style={{ marginBottom: 14, padding: '14px 16px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-        <p style={{ fontWeight: 800, fontSize: 15 }}>Día {dayOfPlan} <span style={{ color: 'var(--muted)', fontWeight: 400 }}>de {durationDays}</span></p>
-        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--coral)' }}>{pct}%</span>
+    <>
+      {expired && (
+        <div style={{ background: '#fee2e2', border: '1.5px solid #fca5a5', borderRadius: 14, padding: '14px 18px', marginBottom: 14, display: 'flex', gap: 10, alignItems: 'center' }}>
+          <span style={{ fontSize: 22 }}>⏰</span>
+          <div>
+            <p style={{ fontWeight: 800, fontSize: 14, color: '#dc2626' }}>Tu plan de entrenamiento ha vencido</p>
+            <p style={{ fontSize: 13, color: '#b91c1c', marginTop: 2 }}>Contacta a tu entrenadora para renovar y seguir avanzando. ¡No pares ahora! 💪</p>
+          </div>
+        </div>
+      )}
+      {expiringSoon && (
+        <div style={{ background: '#fef9c3', border: '1.5px solid #fde047', borderRadius: 14, padding: '14px 18px', marginBottom: 14, display: 'flex', gap: 10, alignItems: 'center' }}>
+          <span style={{ fontSize: 22 }}>⚠️</span>
+          <div>
+            <p style={{ fontWeight: 800, fontSize: 14, color: '#ca8a04' }}>Tu plan vence en {daysLeft} día{daysLeft !== 1 ? 's' : ''}</p>
+            <p style={{ fontSize: 13, color: '#a16207', marginTop: 2 }}>Habla con tu entrenadora para renovar pronto.</p>
+          </div>
+        </div>
+      )}
+      <div className="card" style={{ marginBottom: 14, padding: '14px 16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <p style={{ fontWeight: 800, fontSize: 15 }}>Día {dayOfPlan} <span style={{ color: 'var(--muted)', fontWeight: 400 }}>de {durationDays}</span></p>
+          <span style={{ fontSize: 13, fontWeight: 700, color: expired ? '#dc2626' : 'var(--coral)' }}>{pct}%</span>
+        </div>
+        <div style={{ background: 'var(--border)', borderRadius: 99, height: 8, overflow: 'hidden' }}>
+          <div style={{ width: `${pct}%`, height: '100%', background: expired ? 'linear-gradient(90deg,#f87171,#dc2626)' : 'linear-gradient(90deg, var(--coral), #FF8E53)', borderRadius: 99 }} />
+        </div>
+        <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 6 }}>
+          {expired ? '🎉 ¡Completaste el plan! Habla con tu entrenadora.' : `${daysLeft} días restantes`}
+        </p>
       </div>
-      <div style={{ background: 'var(--border)', borderRadius: 99, height: 8, overflow: 'hidden' }}>
-        <div style={{ width: `${pct}%`, height: '100%', background: 'linear-gradient(90deg, var(--coral), #FF8E53)', borderRadius: 99 }} />
-      </div>
-      <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 6 }}>
-        {dayOfPlan >= durationDays ? '🎉 ¡Completaste el plan! Habla con tu entrenadora.' : `${durationDays - dayOfPlan} días restantes`}
-      </p>
-    </div>
+    </>
   );
 }
 

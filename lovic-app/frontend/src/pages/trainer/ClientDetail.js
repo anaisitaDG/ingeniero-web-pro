@@ -29,6 +29,7 @@ export default function ClientDetail() {
   const [workoutLoading, setWorkoutLoading] = useState(false);
   const [savingWorkout, setSavingWorkout]   = useState(false);
   const [durationDays, setDurationDays]     = useState('');
+  const [startDate, setStartDate]           = useState(new Date().toISOString().slice(0, 10));
 
   // Library picker
   const [library, setLibrary]           = useState(null);
@@ -71,6 +72,7 @@ export default function ClientDetail() {
       const res = await api.trainer.getWorkout(id);
       if (res.plan) {
         setDurationDays(res.plan.duration_days || '');
+        setStartDate(res.plan.start_date ? res.plan.start_date.slice(0, 10) : new Date().toISOString().slice(0, 10));
       }
       if (res.plan?.days?.length > 0) {
         setWorkoutDays(res.plan.days.map(d => ({
@@ -138,7 +140,7 @@ export default function ClientDetail() {
       }));
     if (days.length === 0) return alert('Agrega al menos un día con ejercicios');
     setSavingWorkout(true);
-    try { await api.trainer.saveWorkout(id, days, durationDays ? Number(durationDays) : null); alert('Plan de entrenamiento guardado ✓'); }
+    try { await api.trainer.saveWorkout(id, days, durationDays ? Number(durationDays) : null, startDate || null); alert('Plan de entrenamiento guardado ✓'); }
     catch (e) { alert(e.message); }
     finally { setSavingWorkout(false); }
   }
@@ -441,6 +443,15 @@ export default function ClientDetail() {
                   style={{ width: 90 }} />
               </div>
               {durationDays && <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 8 }}>La clienta verá que este plan dura <strong>{durationDays} días</strong>.</p>}
+              <div style={{ marginTop: 14 }}>
+                <label className="label" style={{ marginBottom: 6 }}>📅 Fecha de inicio</label>
+                <input className="input" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={{ maxWidth: 200 }} />
+                {durationDays && startDate && (() => {
+                  const end = new Date(startDate);
+                  end.setDate(end.getDate() + Number(durationDays));
+                  return <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 6 }}>Vence el <strong>{end.toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' })}</strong></p>;
+                })()}
+              </div>
             </div>
 
             {workoutDays.map((day, di) => (

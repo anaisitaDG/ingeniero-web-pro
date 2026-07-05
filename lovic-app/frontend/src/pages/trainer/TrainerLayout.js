@@ -31,6 +31,7 @@ export default function TrainerLayout() {
           <nav style={{ display: 'flex', gap: 4, marginLeft: 8 }}>
             <NavLink to="/trainer" end style={navLinkStyle}>👥 Clientes</NavLink>
             <NavLink to="/trainer/library" style={navLinkStyle}>📚 Biblioteca</NavLink>
+            <NavLink to="/trainer/billing" style={navLinkStyle}>💰 Ingresos</NavLink>
           </nav>
         </div>
         <button className="btn-ghost" onClick={() => { logout(); navigate('/login'); }} style={{ fontSize: 13 }}>Salir</button>
