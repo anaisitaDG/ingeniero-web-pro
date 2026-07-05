@@ -7,6 +7,11 @@ const { requireAuth } = require('../middleware/auth');
 
 router.use(requireAuth);
 
+// Fecha local en Colombia (UTC-5) como fallback cuando el cliente no la manda
+function colombiaToday() {
+  return new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
 // POST /food/log
 router.post('/log', async (req, res) => {
   const { input_text, meal_type } = req.body;
@@ -46,7 +51,7 @@ router.post('/log', async (req, res) => {
   const VALID = ['breakfast', 'lunch', 'dinner', 'snack'];
   const finalMealType = VALID.includes(meal_type) ? meal_type : parsed.meal_type;
 
-  const today = req.body.date || new Date().toISOString().slice(0, 10);
+  const today = req.body.date || colombiaToday();
   await db.query(
     `INSERT INTO food_logs (id, user_id, input_text, parsed_items, calories, protein_g, carbs_g, fat_g, meal_type, logged_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -78,7 +83,7 @@ router.post('/log', async (req, res) => {
 
 // GET /food/today
 router.get('/today', async (req, res) => {
-  const today = req.query.date || new Date().toISOString().slice(0, 10);
+  const today = req.query.date || colombiaToday();
   const [logs] = await db.query(
     `SELECT * FROM food_logs WHERE user_id = ? AND logged_at = ? ORDER BY created_at DESC`,
     [req.user.id, today]

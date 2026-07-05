@@ -5,10 +5,14 @@ const { requireAuth } = require('../middleware/auth');
 
 router.use(requireAuth);
 
+function colombiaToday() {
+  return new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
 // GET /dashboard
 router.get('/', async (req, res) => {
   const uid = req.user.id;
-  const today = req.query.date || new Date().toISOString().slice(0, 10);
+  const today = req.query.date || colombiaToday();
 
   const [[caloriesRow]] = await db.query(
     `SELECT COALESCE(SUM(calories),0) AS consumed,

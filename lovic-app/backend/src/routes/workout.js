@@ -6,6 +6,10 @@ const { requireAuth } = require('../middleware/auth');
 
 router.use(requireAuth);
 
+function colombiaToday() {
+  return new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
 // GET /workout/plan — cliente ve su plan estructurado
 router.get('/plan', async (req, res) => {
   const uid = req.user.id;
@@ -40,7 +44,7 @@ router.get('/plan', async (req, res) => {
 // POST /workout/complete — cliente marca rutina del día como completada
 router.post('/complete', async (req, res) => {
   const uid = req.user.id;
-  const today = req.body.date || new Date().toLocaleDateString('en-CA');
+  const today = req.body.date || colombiaToday();
   await db.query(
     `INSERT INTO daily_tracking (id, user_id, tracked_date, workout_done)
      VALUES (?, ?, ?, 1)
@@ -53,7 +57,7 @@ router.post('/complete', async (req, res) => {
 // GET /workout/today-done — check si ya completó rutina hoy
 router.get('/today-done', async (req, res) => {
   const uid = req.user.id;
-  const today = req.query.date || new Date().toLocaleDateString('en-CA');
+  const today = req.query.date || colombiaToday();
   const [[row]] = await db.query(
     'SELECT workout_done FROM daily_tracking WHERE user_id=? AND tracked_date=?',
     [uid, today]
@@ -65,7 +69,7 @@ router.get('/today-done', async (req, res) => {
 router.post('/complete-day', async (req, res) => {
   const uid = req.user.id;
   const { day_id, done, date } = req.body;
-  const today = date || new Date().toLocaleDateString('en-CA');
+  const today = date || colombiaToday();
   if (done) {
     await db.query(
       `INSERT INTO workout_day_completions (id, user_id, day_id, completed_date)
@@ -118,7 +122,7 @@ router.post('/log', async (req, res) => {
   const { exercise_id, logged_date, sets } = req.body;
   // sets = [{ set_number, weight_kg, reps_done }]
   if (!exercise_id || !Array.isArray(sets)) return res.status(400).json({ error: 'Datos requeridos' });
-  const date = logged_date || new Date().toLocaleDateString('en-CA');
+  const date = logged_date || colombiaToday();
 
   // Delete previous logs for this exercise on this date
   await db.query('DELETE FROM workout_logs WHERE exercise_id=? AND user_id=? AND logged_date=?',
@@ -160,7 +164,7 @@ router.get('/history/:exerciseId', async (req, res) => {
 router.post('/activity', async (req, res) => {
   const uid = req.user.id;
   const { day_id, type, activity_name, duration_mins, date } = req.body;
-  const session_date = date || new Date().toLocaleDateString('en-CA');
+  const session_date = date || colombiaToday();
   await db.query(
     `INSERT INTO workout_activity_logs (id, user_id, day_id, session_date, type, activity_name, duration_mins)
      VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -186,7 +190,7 @@ router.post('/free', async (req, res) => {
   const { exercises, note, date } = req.body;
   if (!Array.isArray(exercises) || exercises.length === 0)
     return res.status(400).json({ error: 'Se requiere al menos un ejercicio' });
-  const session_date = date || new Date().toLocaleDateString('en-CA');
+  const session_date = date || colombiaToday();
 
   const id = uuidv4();
   await db.query(
