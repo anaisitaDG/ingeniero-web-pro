@@ -45,6 +45,7 @@ export default function ClientDetail() {
   // New tabs state
   const [progress, setProgress]         = useState(null);
   const [adherenceDetail, setAdherence] = useState(null);
+  const [lightbox, setLightbox]         = useState(null);
   const [workoutLogs, setWorkoutLogs]   = useState(null);
   const [notes, setNotes]               = useState('');
   const [savingNotes, setSavingNotes]   = useState(false);
@@ -647,7 +648,7 @@ export default function ClientDetail() {
                   <p style={{ fontWeight: 700, marginBottom: 12 }}>📸 Fotos de progreso</p>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
                     {progress.photos.map(p => (
-                      <div key={p.id}>
+                      <div key={p.id} style={{ cursor: 'zoom-in' }} onClick={() => setLightbox(photoUrl(p.image_url))}>
                         <img src={photoUrl(p.image_url)} alt="" style={{ width: '100%', aspectRatio: '3/4', objectFit: 'cover', borderRadius: 10 }} />
                         <p style={{ fontSize: 10, color: 'var(--muted)', textAlign: 'center', marginTop: 4 }}>
                           {new Date(p.taken_at).toLocaleDateString('es', { day: 'numeric', month: 'short' })}
@@ -1001,5 +1002,17 @@ function SessionCard({ session, prevSession }) {
         })}
       </div>
     </div>
+
+    {lightbox && (
+      <div
+        onClick={() => setLightbox(null)}
+        style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)',
+          zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, cursor: 'zoom-out',
+        }}
+      >
+        <img src={lightbox} alt="" style={{ maxWidth: '100%', maxHeight: '90vh', borderRadius: 12, objectFit: 'contain' }} />
+      </div>
+    )}
   );
 }
