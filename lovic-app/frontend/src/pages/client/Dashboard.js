@@ -181,6 +181,7 @@ export default function Dashboard() {
   const { user } = useAuth();
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(false);
   const [saving, setSaving]   = useState(false);
   const [tracking, setTracking] = useState({ workout_done: false, diet_followed: false, water_glasses: 0, mood: null, sleep_hours: null });
 
@@ -196,6 +197,7 @@ export default function Dashboard() {
           sleep_hours:   d.tracking?.sleep_hours || null,
         });
       })
+      .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, []);
 
@@ -208,6 +210,7 @@ export default function Dashboard() {
   }
 
   if (loading) return <div style={{ textAlign: 'center', padding: 48 }}><div className="spinner" style={{ borderTopColor: 'var(--coral)', borderColor: 'var(--border)', width: 32, height: 32 }} /></div>;
+  if (error) return <div className="empty-state"><div className="icon">📡</div><p>No se pudo cargar. Revisa tu conexión.</p><button className="btn-primary" style={{ marginTop: 16 }} onClick={() => { setError(false); setLoading(true); api.dashboard.get().then(d => { setData(d); setTracking({ workout_done: !!d.tracking?.workout_done, diet_followed: !!d.tracking?.diet_followed, water_glasses: d.tracking?.water_glasses || 0, mood: d.tracking?.mood || null, sleep_hours: d.tracking?.sleep_hours || null }); }).catch(() => setError(true)).finally(() => setLoading(false)); }}>Reintentar</button></div>;
 
   const { calories, macros, bio, weight_history, adherence, routine, streak } = data || {};
   const pct = calories ? Math.min(Math.round((calories.consumed / calories.target) * 100), 100) : 0;
@@ -501,14 +504,20 @@ function WaterTracker({ tracking, bio, onSave }) {
       <div style={{ height: 8, background: 'var(--border)', borderRadius: 8, overflow: 'hidden', marginBottom: 8 }}>
         <div style={{ height: '100%', width: `${pct}%`, background: '#4A90D9', borderRadius: 8, transition: 'width 0.3s' }} />
       </div>
-      <div style={{ display: 'flex', gap: 6, marginBottom: bioMsg ? 10 : 0 }}>
-        {Array.from({ length: goal }, (_, i) => (
-          <button key={i} onClick={() => onSave({ water_glasses: glasses === i + 1 ? i : i + 1 })} style={{
-            flex: 1, height: 28, borderRadius: 6, border: 'none', cursor: 'pointer',
-            background: i < glasses ? '#4A90D9' : 'var(--border)',
-            transition: 'background 0.15s',
-          }} />
-        ))}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: bioMsg ? 10 : 0 }}>
+        <button onClick={() => onSave({ water_glasses: Math.max(0, glasses - 1) })}
+          style={{ width: 36, height: 36, borderRadius: 10, border: 'none', cursor: 'pointer', background: 'var(--border)', fontSize: 18, fontWeight: 800, flexShrink: 0 }}>−</button>
+        <div style={{ flex: 1, display: 'flex', gap: 4 }}>
+          {Array.from({ length: goal }, (_, i) => (
+            <button key={i} onClick={() => onSave({ water_glasses: i + 1 })} style={{
+              flex: 1, height: 28, borderRadius: 5, border: 'none', cursor: 'pointer',
+              background: i < glasses ? '#4A90D9' : 'var(--border)',
+              transition: 'background 0.15s', minWidth: 0,
+            }} />
+          ))}
+        </div>
+        <button onClick={() => onSave({ water_glasses: Math.min(goal, glasses + 1) })}
+          style={{ width: 36, height: 36, borderRadius: 10, border: 'none', cursor: 'pointer', background: '#4A90D9', color: '#fff', fontSize: 18, fontWeight: 800, flexShrink: 0 }}>+</button>
       </div>
       {bioMsg && (
         <div style={{

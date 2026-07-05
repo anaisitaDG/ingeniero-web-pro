@@ -164,7 +164,7 @@ function CompareView({ a, b, onClose }) {
   const [activeAngle, setActiveAngle] = useState('frente');
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'var(--bg)', zIndex: 200, overflowY: 'auto', padding: '16px 16px 40px' }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'var(--bg)', zIndex: 1000, overflowY: 'auto', padding: '16px 16px 40px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
         <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: 'var(--text)' }}>←</button>
         <h2 style={{ fontSize: 16, fontWeight: 700 }}>Comparar registros</h2>

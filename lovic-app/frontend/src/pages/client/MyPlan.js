@@ -7,6 +7,7 @@ export default function MyPlan() {
   const [plan, setPlan]       = useState(null);
   const [nutrition, setNutrition] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [streak, setStreak]   = useState(0);
 
   const [completedDays, setCompletedDays] = useState({});
@@ -15,6 +16,7 @@ export default function MyPlan() {
   const load = useCallback(async (showSpinner = true) => {
     if (showSpinner) setLoading(true);
     try {
+      setLoadError(false);
       const [wRes, dRes, cRes] = await Promise.all([api.workout.plan(), api.dashboard.get(), api.workout.completedDays()]);
       setPlan(wRes.plan);
       setNutrition(dRes.nutrition_plan);
@@ -25,7 +27,8 @@ export default function MyPlan() {
         else map[r.day_id] = r.last_completed ? String(r.last_completed).slice(0, 10) : true;
       });
       setCompletedDays(map);
-    } finally { if (showSpinner) setLoading(false); }
+    } catch { setLoadError(true); }
+    finally { if (showSpinner) setLoading(false); }
   }, []);
 
   async function toggleDay(dayId, dayName, kcal, date) {
@@ -44,6 +47,7 @@ export default function MyPlan() {
   useEffect(() => { load(); }, [load]);
 
   if (loading) return <div style={{ textAlign: 'center', padding: 48 }}><div className="spinner" style={{ borderTopColor: 'var(--coral)', borderColor: 'var(--border)', width: 28, height: 28 }} /></div>;
+  if (loadError) return <div className="empty-state"><div className="icon">📡</div><p>No se pudo cargar tu plan. Revisa tu conexión.</p><button className="btn-primary" style={{ marginTop: 16 }} onClick={() => load()}>Reintentar</button></div>;
 
   return (
     <div>

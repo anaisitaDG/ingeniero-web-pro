@@ -28,6 +28,7 @@ export default function Measurements() {
   const [rows, setRows]         = useState([]);
   const [form, setForm]         = useState(EMPTY);
   const [saving, setSaving]     = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [open, setOpen]         = useState(false);
   const [tab, setTab]           = useState('current');
   const [bioList, setBioList]   = useState([]);
@@ -37,10 +38,12 @@ export default function Measurements() {
   useEffect(() => { load(); }, []);
 
   async function load() {
-    const d = await api.measurements.list(20);
-    setRows(d.measurements);
-    const b = await api.bioimpedance.list();
-    setBioList(b.bioimpedance || []);
+    setLoadError(false);
+    try {
+      const [d, b] = await Promise.all([api.measurements.list(20), api.bioimpedance.list()]);
+      setRows(d.measurements);
+      setBioList(b.bioimpedance || []);
+    } catch { setLoadError(true); }
   }
 
   async function handleSubmit(e) {
@@ -75,6 +78,8 @@ export default function Measurements() {
     date: fmtDate(r.logged_at),
     ...FIELDS.reduce((acc, f) => ({ ...acc, [f.key]: r[f.key] ?? null }), {}),
   }));
+
+  if (loadError) return <div className="empty-state"><div className="icon">📡</div><p>No se pudo cargar. Revisa tu conexión.</p><button className="btn-primary" style={{ marginTop: 16 }} onClick={load}>Reintentar</button></div>;
 
   return (
     <div>

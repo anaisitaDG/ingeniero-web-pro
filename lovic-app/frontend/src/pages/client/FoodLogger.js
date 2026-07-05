@@ -81,6 +81,7 @@ export default function FoodLogger() {
   }
 
   async function handleDelete(id) {
+    if (!window.confirm('¿Eliminar este registro de comida?')) return;
     await api.food.remove(id);
     fetchToday();
   }
