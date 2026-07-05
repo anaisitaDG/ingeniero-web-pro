@@ -73,20 +73,28 @@ export default function MyPlan() {
       )}
 
       {tab === 'routine' && (
-        plan ? (
-          <div>
-            {plan.days.map(day => (
-              <DayCard key={day.id} day={day} onLogged={load}
-                completedDate={completedDays[day.id]}
-                onToggleComplete={(kcal) => toggleDay(day.id, day.day_name, kcal)} />
-            ))}
-          </div>
-        ) : (
-          <div className="empty-state">
-            <div className="icon">💪</div>
-            <p>Tu entrenadora aún no ha asignado una rutina.<br />¡Pronto la tendrás!</p>
-          </div>
-        )
+        <>
+          {plan ? (
+            <div>
+              {plan.days.map(day => (
+                <DayCard key={day.id} day={day} onLogged={load}
+                  completedDate={completedDays[day.id]}
+                  onToggleComplete={(kcal) => toggleDay(day.id, day.day_name, kcal)} />
+              ))}
+            </div>
+          ) : (
+            <div className="empty-state">
+              <div className="icon">💪</div>
+              <p>Tu entrenadora aún no ha asignado una rutina.<br />¡Pronto la tendrás!</p>
+            </div>
+          )}
+          <FreeWorkout onCompleted={(kcal) => {
+            api.dashboard.get().then(d => {
+              setCelebration({ dayName: 'Entrenamiento libre', kcal, streak: d.streak || streak });
+              setStreak(d.streak || streak);
+            }).catch(() => setCelebration({ dayName: 'Entrenamiento libre', kcal, streak }));
+          }} />
+        </>
       )}
 
       {tab === 'nutrition' && (
@@ -506,6 +514,214 @@ function ExerciseCard({ exercise: ex, onLogged, onKcalChange }) {
               ))}
             </>
           )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const EXERCISE_TYPES = [
+  { key: 'strength', label: '🏋️ Fuerza', fields: ['sets', 'reps', 'weight_kg'] },
+  { key: 'time',     label: '⏱️ Tiempo', fields: ['sets', 'duration_secs'] },
+  { key: 'cardio',   label: '🏃 Cardio',  fields: ['duration_mins'] },
+];
+
+function emptyExercise() {
+  return { name: '', type: 'strength', sets: '', reps: '', weight_kg: '', duration_secs: '', duration_mins: '' };
+}
+
+function FreeWorkout({ onCompleted }) {
+  const [open, setOpen] = useState(false);
+  const [exercises, setExercises] = useState([emptyExercise()]);
+  const [note, setNote] = useState('');
+  const [date, setDate] = useState(new Date().toLocaleDateString('en-CA'));
+  const [saving, setSaving] = useState(false);
+  const [sessions, setSessions] = useState(null);
+  const [showHistory, setShowHistory] = useState(false);
+
+  useEffect(() => {
+    api.workout.getFree().then(r => setSessions(r.sessions || [])).catch(() => {});
+  }, []);
+
+  function updateEx(i, field, value) {
+    setExercises(prev => prev.map((e, j) => j === i ? { ...e, [field]: value } : e));
+  }
+
+  function addExercise() { setExercises(prev => [...prev, emptyExercise()]); }
+  function removeExercise(i) { setExercises(prev => prev.filter((_, j) => j !== i)); }
+
+  async function save() {
+    const valid = exercises.filter(e => e.name.trim());
+    if (valid.length === 0) return;
+    setSaving(true);
+    try {
+      const payload = valid.map(e => {
+        const base = { name: e.name.trim(), type: e.type };
+        if (e.type === 'strength') { base.sets = Number(e.sets)||null; base.reps = Number(e.reps)||null; base.weight_kg = Number(e.weight_kg)||null; }
+        if (e.type === 'time')     { base.sets = Number(e.sets)||null; base.duration_secs = Number(e.duration_secs)||null; }
+        if (e.type === 'cardio')   { base.duration_mins = Number(e.duration_mins)||null; }
+        return base;
+      });
+      await api.workout.saveFree(payload, note || null, date);
+      // refresh history
+      const r = await api.workout.getFree(); setSessions(r.sessions || []);
+      // calc kcal approx
+      const kcal = payload.reduce((sum, e) => {
+        if (e.type === 'cardio') return sum + (e.duration_mins || 0) * 7;
+        if (e.type === 'time')   return sum + ((e.sets || 1) * (e.duration_secs || 0) / 60) * 4;
+        return sum + ((e.sets || 3) * (e.reps || 10) * (e.weight_kg || 0) * 0.1);
+      }, 0);
+      setExercises([emptyExercise()]); setNote(''); setOpen(false);
+      onCompleted(Math.round(kcal));
+    } catch (e) { alert(e.message); }
+    finally { setSaving(false); }
+  }
+
+  return (
+    <div className="card" style={{ marginTop: 8, marginBottom: 24 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: open ? 16 : 0 }}>
+        <div>
+          <p style={{ fontWeight: 800, fontSize: 15 }}>🆓 Entrenamiento libre</p>
+          {!open && <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>Ejercicios fuera de tu rutina</p>}
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {sessions && sessions.length > 0 && (
+            <button onClick={() => setShowHistory(h => !h)} style={{
+              background: 'var(--bg)', border: 'none', borderRadius: 10, padding: '7px 12px',
+              fontSize: 13, fontWeight: 700, color: 'var(--muted)', cursor: 'pointer',
+            }}>📋</button>
+          )}
+          <button onClick={() => setOpen(o => !o)} style={{
+            background: open ? 'var(--coral)' : 'var(--coral-light)', border: 'none', borderRadius: 10,
+            padding: '7px 14px', fontSize: 13, fontWeight: 700,
+            color: open ? '#fff' : 'var(--coral)', cursor: 'pointer',
+          }}>
+            {open ? '✕ Cancelar' : '➕ Registrar'}
+          </button>
+        </div>
+      </div>
+
+      {showHistory && sessions && (
+        <div style={{ marginBottom: 16 }}>
+          <p style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600, marginBottom: 8 }}>SESIONES ANTERIORES</p>
+          {sessions.map(s => {
+            const exs = typeof s.exercises === 'string' ? JSON.parse(s.exercises) : s.exercises;
+            const dateLabel = new Date(`${String(s.session_date).slice(0,10)}T00:00:00`)
+              .toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'short' });
+            return (
+              <div key={s.id} style={{ background: 'var(--bg)', borderRadius: 12, padding: '12px 14px', marginBottom: 8 }}>
+                <p style={{ fontWeight: 700, fontSize: 13, color: 'var(--coral)', marginBottom: 6, textTransform: 'capitalize' }}>{dateLabel}</p>
+                {s.note && <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6, fontStyle: 'italic' }}>"{s.note}"</p>}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {exs.map((e, i) => (
+                    <p key={i} style={{ fontSize: 13 }}>
+                      <span style={{ fontWeight: 600 }}>{e.name}</span>
+                      {e.type === 'strength' && e.sets && ` · ${e.sets}×${e.reps||'?'}${e.weight_kg ? ` a ${e.weight_kg}kg` : ''}`}
+                      {e.type === 'time'     && e.sets && ` · ${e.sets}×${e.duration_secs||'?'}seg`}
+                      {e.type === 'cardio'   && e.duration_mins && ` · ${e.duration_mins} min`}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {open && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {/* Date picker */}
+          <div>
+            <label style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600, display: 'block', marginBottom: 4 }}>FECHA</label>
+            <input className="input" type="date" value={date} onChange={e => setDate(e.target.value)}
+              style={{ fontSize: 13, padding: '8px 10px' }} />
+          </div>
+
+          {exercises.map((ex, i) => (
+            <div key={i} style={{ background: 'var(--bg)', borderRadius: 14, padding: '14px' }}>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                <input className="input" placeholder="Nombre del ejercicio" value={ex.name}
+                  onChange={e => updateEx(i, 'name', e.target.value)}
+                  style={{ flex: 1, fontSize: 13, padding: '8px 10px', fontWeight: 600 }} />
+                {exercises.length > 1 && (
+                  <button onClick={() => removeExercise(i)} style={{
+                    background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: 18, flexShrink: 0,
+                  }}>✕</button>
+                )}
+              </div>
+
+              {/* Type selector */}
+              <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+                {EXERCISE_TYPES.map(t => (
+                  <button key={t.key} onClick={() => updateEx(i, 'type', t.key)} style={{
+                    flex: 1, padding: '6px 4px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                    fontSize: 11, fontWeight: 700,
+                    background: ex.type === t.key ? 'var(--coral)' : 'var(--card)',
+                    color: ex.type === t.key ? '#fff' : 'var(--muted)',
+                  }}>{t.label}</button>
+                ))}
+              </div>
+
+              {/* Fields por tipo */}
+              <div style={{ display: 'flex', gap: 8 }}>
+                {ex.type === 'strength' && (
+                  <>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ fontSize: 10, color: 'var(--muted)', display: 'block', marginBottom: 3 }}>Series</label>
+                      <input className="input" type="number" min="1" placeholder="3" value={ex.sets}
+                        onChange={e => updateEx(i, 'sets', e.target.value)} style={{ padding: '7px', textAlign: 'center' }} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ fontSize: 10, color: 'var(--muted)', display: 'block', marginBottom: 3 }}>Reps</label>
+                      <input className="input" type="number" min="1" placeholder="12" value={ex.reps}
+                        onChange={e => updateEx(i, 'reps', e.target.value)} style={{ padding: '7px', textAlign: 'center' }} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ fontSize: 10, color: 'var(--muted)', display: 'block', marginBottom: 3 }}>Peso (kg)</label>
+                      <input className="input" type="number" min="0" step="0.5" placeholder="0" value={ex.weight_kg}
+                        onChange={e => updateEx(i, 'weight_kg', e.target.value)} style={{ padding: '7px', textAlign: 'center' }} />
+                    </div>
+                  </>
+                )}
+                {ex.type === 'time' && (
+                  <>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ fontSize: 10, color: 'var(--muted)', display: 'block', marginBottom: 3 }}>Series</label>
+                      <input className="input" type="number" min="1" placeholder="3" value={ex.sets}
+                        onChange={e => updateEx(i, 'sets', e.target.value)} style={{ padding: '7px', textAlign: 'center' }} />
+                    </div>
+                    <div style={{ flex: 2 }}>
+                      <label style={{ fontSize: 10, color: 'var(--muted)', display: 'block', marginBottom: 3 }}>Duración (seg)</label>
+                      <input className="input" type="number" min="1" placeholder="30" value={ex.duration_secs}
+                        onChange={e => updateEx(i, 'duration_secs', e.target.value)} style={{ padding: '7px', textAlign: 'center' }} />
+                    </div>
+                  </>
+                )}
+                {ex.type === 'cardio' && (
+                  <div style={{ flex: 1 }}>
+                    <label style={{ fontSize: 10, color: 'var(--muted)', display: 'block', marginBottom: 3 }}>Duración (min)</label>
+                    <input className="input" type="number" min="1" placeholder="20" value={ex.duration_mins}
+                      onChange={e => updateEx(i, 'duration_mins', e.target.value)} style={{ padding: '7px', textAlign: 'center' }} />
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+
+          <button onClick={addExercise} style={{
+            background: 'var(--bg)', border: '2px dashed var(--border)', borderRadius: 12,
+            padding: '10px', fontSize: 13, fontWeight: 700, color: 'var(--muted)', cursor: 'pointer',
+          }}>
+            ➕ Agregar otro ejercicio
+          </button>
+
+          <input className="input" placeholder="Nota opcional (ej: Hotel en Madrid)" value={note}
+            onChange={e => setNote(e.target.value)} style={{ fontSize: 13, padding: '9px 12px' }} />
+
+          <button className="btn-primary" onClick={save} disabled={saving}
+            style={{ width: '100%', justifyContent: 'center' }}>
+            {saving ? <><span className="spinner" /> Guardando…</> : '✓ Guardar entrenamiento'}
+          </button>
         </div>
       )}
     </div>

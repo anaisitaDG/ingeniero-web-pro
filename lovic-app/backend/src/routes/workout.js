@@ -168,4 +168,39 @@ router.get('/activity/:dayId', async (req, res) => {
   res.json({ activities: rows });
 });
 
+// POST /workout/free — guardar sesión de entrenamiento libre
+router.post('/free', async (req, res) => {
+  const uid = req.user.id;
+  const { exercises, note, date } = req.body;
+  if (!Array.isArray(exercises) || exercises.length === 0)
+    return res.status(400).json({ error: 'Se requiere al menos un ejercicio' });
+  const session_date = date || new Date().toLocaleDateString('en-CA');
+
+  const id = uuidv4();
+  await db.query(
+    `INSERT INTO free_workout_logs (id, user_id, session_date, note, exercises)
+     VALUES (?, ?, ?, ?, ?)`,
+    [id, uid, session_date, note || null, JSON.stringify(exercises)]
+  );
+
+  // Marca workout_done en daily_tracking
+  await db.query(
+    `INSERT INTO daily_tracking (id, user_id, tracked_date, workout_done) VALUES (?, ?, ?, 1)
+     ON DUPLICATE KEY UPDATE workout_done=1`,
+    [uuidv4(), uid, session_date]
+  );
+
+  res.json({ ok: true, id });
+});
+
+// GET /workout/free — historial de entrenamientos libres
+router.get('/free', async (req, res) => {
+  const uid = req.user.id;
+  const [rows] = await db.query(
+    `SELECT * FROM free_workout_logs WHERE user_id=? ORDER BY session_date DESC LIMIT 30`,
+    [uid]
+  );
+  res.json({ sessions: rows });
+});
+
 module.exports = router;
