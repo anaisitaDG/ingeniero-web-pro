@@ -73,7 +73,17 @@ export const api = {
     update: (data) => request('/profile', { method: 'PUT', body: JSON.stringify(data) }),
   },
   progressPhotos: {
-    list:   ()         => request('/progress-photos'),
+    list:           ()         => request('/progress-photos'),
+    removeRegister: (id)       => request(`/progress-photos/register/${id}`, { method: 'DELETE' }),
+    uploadRegister: (formData) => {
+      const token = getToken();
+      return fetch(`${BASE}/progress-photos/register`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      }).then(r => r.json());
+    },
+    // legacy
     remove: (id)       => request(`/progress-photos/${id}`, { method: 'DELETE' }),
     upload: (formData) => {
       const token = getToken();
