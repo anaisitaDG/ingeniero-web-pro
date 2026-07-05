@@ -50,6 +50,8 @@ export default function ClientDetail() {
   const [workoutLogs, setWorkoutLogs]   = useState(null);
   const [notes, setNotes]               = useState('');
   const [savingNotes, setSavingNotes]   = useState(false);
+  const [billing, setBilling]           = useState({ monthly_fee: '', next_payment_date: '', notes: '' });
+  const [savingBilling, setSavingBilling] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -103,6 +105,10 @@ export default function ClientDetail() {
     if (tab === 'adherencia' && !adherenceDetail) api.trainer.getAdherence(id).then(d => setAdherence(d.days));
     if (tab === 'logs' && !workoutLogs) api.trainer.getWorkoutLogs(id).then(d => setWorkoutLogs(d));
     if (tab === 'notas' && notes === '') api.trainer.getNotes(id).then(d => setNotes(d.notes || ''));
+    if (tab === 'facturacion') api.trainer.getBilling().then(res => {
+      const c = (res.clients || []).find(c => c.id === id);
+      if (c) setBilling({ monthly_fee: c.monthly_fee != null ? String(c.monthly_fee) : '', next_payment_date: c.next_payment_date ? String(c.next_payment_date).slice(0, 10) : '', notes: c.notes || '' });
+    });
   }, [tab]); // eslint-disable-line
 
   async function saveTargets() {
@@ -254,6 +260,7 @@ export default function ClientDetail() {
     { key: 'adherencia', label: '🗓 Adherencia' },
     { key: 'logs',       label: '🏋️ Registros' },
     { key: 'notas',      label: '📓 Notas' },
+    { key: 'facturacion', label: '💰 Facturación' },
   ];
 
   return (
@@ -792,6 +799,43 @@ export default function ClientDetail() {
             try { await api.trainer.saveNotes(id, notes); } finally { setSavingNotes(false); }
           }} disabled={savingNotes} style={{ width: '100%', justifyContent: 'center' }}>
             {savingNotes ? <span className="spinner" /> : '💾 Guardar notas'}
+          </button>
+        </div>
+      )}
+
+      {tab === 'facturacion' && (
+        <div className="card">
+          <p style={{ fontWeight: 700, marginBottom: 4 }}>💰 Facturación de {user.name}</p>
+          <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 16 }}>Esta información aparece en el panel de ingresos.</p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+            <div>
+              <label className="label">Cuota mensual (COP $)</label>
+              <input className="input" type="number" min="0" placeholder="Ej: 150000"
+                value={billing.monthly_fee}
+                onChange={e => setBilling(b => ({ ...b, monthly_fee: e.target.value }))} />
+            </div>
+            <div>
+              <label className="label">Próximo pago</label>
+              <input className="input" type="date"
+                value={billing.next_payment_date}
+                onChange={e => setBilling(b => ({ ...b, next_payment_date: e.target.value }))} />
+            </div>
+          </div>
+          <div style={{ marginBottom: 14 }}>
+            <label className="label">Notas (opcional)</label>
+            <input className="input" type="text" placeholder="Ej: Paga el 1 de cada mes"
+              value={billing.notes}
+              onChange={e => setBilling(b => ({ ...b, notes: e.target.value }))} />
+          </div>
+          <button className="btn-primary" disabled={savingBilling} style={{ width: '100%', justifyContent: 'center' }} onClick={async () => {
+            setSavingBilling(true);
+            try {
+              await api.trainer.saveBilling(id, { monthly_fee: billing.monthly_fee ? Number(billing.monthly_fee) : null, next_payment_date: billing.next_payment_date || null, notes: billing.notes || null });
+              alert('Guardado ✓');
+            } catch(e) { alert(e.message); }
+            finally { setSavingBilling(false); }
+          }}>
+            {savingBilling ? <span className="spinner" /> : '💾 Guardar'}
           </button>
         </div>
       )}
