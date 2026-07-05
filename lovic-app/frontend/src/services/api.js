@@ -91,7 +91,7 @@ export const api = {
     complete:       ()              => request('/workout/complete', { method: 'POST', body: JSON.stringify({ date: new Date().toLocaleDateString('en-CA') }) }),
     todayDone:      ()              => request(`/workout/today-done?date=${new Date().toLocaleDateString('en-CA')}`),
     completedDays:  ()              => request(`/workout/completed-days`),
-    completeDay:    (day_id, done)  => request('/workout/complete-day', { method: 'POST', body: JSON.stringify({ day_id, done, date: new Date().toLocaleDateString('en-CA') }) }),
+    completeDay:    (day_id, done, date)  => request('/workout/complete-day', { method: 'POST', body: JSON.stringify({ day_id, done, date: date || new Date().toLocaleDateString('en-CA') }) }),
     saveActivity:   (day_id, type, activity_name, duration_mins) => request('/workout/activity', { method: 'POST', body: JSON.stringify({ day_id, type, activity_name, duration_mins, date: new Date().toLocaleDateString('en-CA') }) }),
     getActivity:    (dayId) => request(`/workout/activity/${dayId}`),
     saveFree:       (exercises, note, date) => request('/workout/free', { method: 'POST', body: JSON.stringify({ exercises, note, date }) }),

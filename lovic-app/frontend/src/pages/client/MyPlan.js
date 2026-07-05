@@ -28,11 +28,11 @@ export default function MyPlan() {
     } finally { if (showSpinner) setLoading(false); }
   }, []);
 
-  async function toggleDay(dayId, dayName, kcal) {
+  async function toggleDay(dayId, dayName, kcal, date) {
     const done = !completedDays[dayId];
-    const today = new Date().toLocaleDateString('en-CA');
-    setCompletedDays(prev => ({ ...prev, [dayId]: done ? today : undefined }));
-    try { await api.workout.completeDay(dayId, done); } catch (_) {}
+    const useDate = date || new Date().toLocaleDateString('en-CA');
+    setCompletedDays(prev => ({ ...prev, [dayId]: done ? useDate : undefined }));
+    try { await api.workout.completeDay(dayId, done, useDate); } catch (_) {}
     if (done) {
       const dRes = await api.dashboard.get().catch(() => null);
       const newStreak = dRes?.streak || streak + 1;
@@ -79,7 +79,7 @@ export default function MyPlan() {
               {plan.days.map(day => (
                 <DayCard key={day.id} day={day} onLogged={load}
                   completedDate={completedDays[day.id]}
-                  onToggleComplete={(kcal) => toggleDay(day.id, day.day_name, kcal)} />
+                  onToggleComplete={(kcal, date) => toggleDay(day.id, day.day_name, kcal, date)} />
               ))}
             </div>
           ) : (
@@ -228,6 +228,8 @@ function DayCard({ day, onLogged, completedDate, onToggleComplete }) {
   const [cardioDone, setCardioDone]     = useState(false);
   const [activityLoaded, setActivityLoaded] = useState(false);
   const [allActivities, setAllActivities] = useState([]);
+  const [confirmingDate, setConfirmingDate] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date().toLocaleDateString('en-CA'));
 
   const today = new Date().toLocaleDateString('en-CA');
 
@@ -331,14 +333,39 @@ function DayCard({ day, onLogged, completedDate, onToggleComplete }) {
             </div>
             <p style={{ fontSize: 28, fontWeight: 900, color: 'var(--coral)' }}>~{totalKcal}</p>
           </div>
-          <button onClick={() => onToggleComplete(totalKcal)} style={{
-            width: '100%', padding: '11px', borderRadius: 12, border: 'none', cursor: 'pointer',
-            fontWeight: 700, fontSize: 14, transition: 'all 0.2s',
-            background: completedDate ? '#065f46' : 'var(--coral)',
-            color: '#fff',
-          }}>
-            {completedDate ? '✅ Día completado — desmarcar' : '🏁 Marcar día como completado'}
-          </button>
+          {completedDate ? (
+            <button onClick={() => onToggleComplete(totalKcal, today)} style={{
+              width: '100%', padding: '11px', borderRadius: 12, border: 'none', cursor: 'pointer',
+              fontWeight: 700, fontSize: 14, background: '#065f46', color: '#fff',
+            }}>
+              ✅ Día completado — desmarcar
+            </button>
+          ) : confirmingDate ? (
+            <div style={{ background: 'var(--bg)', borderRadius: 12, padding: '14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <p style={{ fontSize: 13, fontWeight: 700 }}>¿Cuándo hiciste este entrenamiento?</p>
+              <input className="input" type="date" value={selectedDate}
+                max={today}
+                onChange={e => setSelectedDate(e.target.value)}
+                style={{ fontSize: 13, padding: '8px 10px' }} />
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => setConfirmingDate(false)} style={{
+                  flex: 1, padding: '10px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                  fontWeight: 700, fontSize: 13, background: 'var(--border)', color: 'var(--muted)',
+                }}>Cancelar</button>
+                <button onClick={() => { setConfirmingDate(false); onToggleComplete(totalKcal, selectedDate); }} style={{
+                  flex: 2, padding: '10px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                  fontWeight: 700, fontSize: 13, background: 'var(--coral)', color: '#fff',
+                }}>🏁 Confirmar</button>
+              </div>
+            </div>
+          ) : (
+            <button onClick={() => setConfirmingDate(true)} style={{
+              width: '100%', padding: '11px', borderRadius: 12, border: 'none', cursor: 'pointer',
+              fontWeight: 700, fontSize: 14, background: 'var(--coral)', color: '#fff',
+            }}>
+              🏁 Marcar día como completado
+            </button>
+          )}
         </div>
       )}
     </div>
