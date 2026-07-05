@@ -84,6 +84,18 @@ router.post('/complete-day', async (req, res) => {
       'DELETE FROM workout_day_completions WHERE user_id=? AND day_id=? AND completed_date=?',
       [uid, day_id, today]
     );
+    // Check if any other day was completed today; if not, reset workout_done
+    const [[remaining]] = await db.query(
+      `SELECT COUNT(*) as cnt FROM workout_day_completions WHERE user_id=? AND completed_date=?`,
+      [uid, today]
+    );
+    if (remaining.cnt === 0) {
+      await db.query(
+        `INSERT INTO daily_tracking (id, user_id, tracked_date, workout_done) VALUES (?, ?, ?, 0)
+         ON DUPLICATE KEY UPDATE workout_done=0`,
+        [uuidv4(), uid, today]
+      );
+    }
   }
   res.json({ ok: true });
 });

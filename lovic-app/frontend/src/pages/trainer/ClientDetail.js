@@ -52,6 +52,7 @@ export default function ClientDetail() {
   const [savingNotes, setSavingNotes]   = useState(false);
   const [billing, setBilling]           = useState({ monthly_fee: '', next_payment_date: '', notes: '' });
   const [savingBilling, setSavingBilling] = useState(false);
+  const [saveMsg, setSaveMsg]           = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -120,8 +121,8 @@ export default function ClientDetail() {
         carbs_target_g:   targets.carbs_target_g   ? Number(targets.carbs_target_g)   : null,
         fat_target_g:     targets.fat_target_g      ? Number(targets.fat_target_g)     : null,
       });
-      alert('Metas guardadas');
-    } catch(e) { alert(e.message); }
+      setSaveMsg('✅ Metas guardadas'); setTimeout(() => setSaveMsg(''), 3000);
+    } catch(e) { setSaveMsg('❌ ' + e.message); setTimeout(() => setSaveMsg(''), 4000); }
     finally { setSavingTargets(false); }
   }
 
@@ -142,19 +143,20 @@ export default function ClientDetail() {
             sets: Number(e.sets) || 3,
             reps: e.reps || '10',
             weight_kg: e.weight_kg ? Number(e.weight_kg) : null,
+            library_exercise_id: e.library_exercise_id || null,
           })),
       }));
-    if (days.length === 0) return alert('Agrega al menos un día con ejercicios');
+    if (days.length === 0) { setSaveMsg('❌ Agrega al menos un día con ejercicios'); setTimeout(() => setSaveMsg(''), 3000); return; }
     setSavingWorkout(true);
-    try { await api.trainer.saveWorkout(id, days, durationDays ? Number(durationDays) : null, startDate || null); alert('Plan de entrenamiento guardado ✓'); }
-    catch (e) { alert(e.message); }
+    try { await api.trainer.saveWorkout(id, days, durationDays ? Number(durationDays) : null, startDate || null); setSaveMsg('✅ Plan guardado'); setTimeout(() => setSaveMsg(''), 3000); }
+    catch (e) { setSaveMsg('❌ ' + e.message); setTimeout(() => setSaveMsg(''), 4000); }
     finally { setSavingWorkout(false); }
   }
 
   async function saveNutrition() {
     setSavingNutrition(true);
-    try { await api.trainer.saveNutrition(id, manualNutrition); await load(); alert('Plan guardado'); }
-    catch (e) { alert(e.message); }
+    try { await api.trainer.saveNutrition(id, manualNutrition); await load(); setSaveMsg('✅ Plan guardado'); setTimeout(() => setSaveMsg(''), 3000); }
+    catch (e) { setSaveMsg('❌ ' + e.message); setTimeout(() => setSaveMsg(''), 4000); }
     finally { setSavingNutrition(false); }
   }
 
@@ -294,6 +296,13 @@ export default function ClientDetail() {
           }}>{t.label}</button>
         ))}
       </div>
+
+      {/* Save message banner */}
+      {saveMsg && (
+        <div style={{ marginBottom: 16, padding: '10px 16px', borderRadius: 12, background: saveMsg.startsWith('✅') ? '#dcfce7' : '#fee2e2', color: saveMsg.startsWith('✅') ? '#15803d' : '#dc2626', fontWeight: 700, fontSize: 14 }}>
+          {saveMsg}
+        </div>
+      )}
 
       {/* Overview */}
       {tab === 'overview' && (
@@ -671,6 +680,41 @@ export default function ClientDetail() {
       )}
 
       {/* Bio */}
+      {tab === 'bio' && (
+        <div>
+          {(!bioimpedance || bioimpedance.length === 0) ? (
+            <div className="empty-state"><div className="icon">📊</div><p>La cliente aún no tiene registros de bioimpedancia</p></div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {bioimpedance.map(b => (
+                <div key={b.id} className="card" style={{ padding: 16 }}>
+                  <p style={{ fontWeight: 700, marginBottom: 12 }}>
+                    {new Date(b.logged_at).toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  </p>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    {b.body_fat_pct != null && <BioRow label="Grasa corporal" value={`${b.body_fat_pct}%`} />}
+                    {b.muscle_mass_kg != null && <BioRow label="Masa muscular" value={`${b.muscle_mass_kg} kg`} />}
+                    {b.visceral_fat != null && <BioRow label="Grasa visceral" value={b.visceral_fat} />}
+                    {b.bmr_kcal != null && <BioRow label="Metabolismo basal" value={`${b.bmr_kcal} kcal`} />}
+                    {b.body_water_pct != null && <BioRow label="Agua corporal" value={`${b.body_water_pct}%`} />}
+                    {b.bone_mass_kg != null && <BioRow label="Masa ósea" value={`${b.bone_mass_kg} kg`} />}
+                  </div>
+                  {(b.target_muscle_kg != null || b.target_fat_loss_kg != null) && (
+                    <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+                      <p style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600, marginBottom: 8 }}>OBJETIVOS</p>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                        {b.target_muscle_kg != null && <BioRow label="Músculo a ganar" value={`+${b.target_muscle_kg} kg`} />}
+                        {b.target_fat_loss_kg != null && <BioRow label="Grasa a perder" value={`-${b.target_fat_loss_kg} kg`} />}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* PROGRESO */}
       {tab === 'progreso' && (
         <div>
@@ -1180,6 +1224,15 @@ function WorkoutHeatmap({ sessions }) {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function BioRow({ label, value }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border)', fontSize: 14 }}>
+      <span style={{ color: 'var(--muted)' }}>{label}</span>
+      <span style={{ fontWeight: 700 }}>{value}</span>
     </div>
   );
 }

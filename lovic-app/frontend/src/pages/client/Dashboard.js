@@ -28,6 +28,7 @@ function getVicState(streak, tracking, macros) {
   if ((water_glasses || 0) < 3)                       return 'deshidratada';
   if (!workout_done && !diet_followed)                return streak === 0 ? 'apagada' : 'triste';
   if (!workout_done || !diet_followed)                return 'triste';
+  if (workout_done && diet_followed)                  return 'celebrando';
   return 'normal';
 }
 
@@ -292,6 +293,7 @@ export default function Dashboard() {
         <p className="label" style={{ marginBottom: 12 }}>Seguimiento de hoy {saving && <span style={{ color: 'var(--muted)', fontWeight: 400 }}>guardando…</span>}</p>
         <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
           <TrackToggle label="Entrenamiento" icon="💪" active={tracking.workout_done} onChange={v => saveTracking({ workout_done: v })} />
+          <TrackToggle label="Dieta" icon="🥗" active={tracking.diet_followed} onChange={v => saveTracking({ diet_followed: v })} />
           <SleepInput value={tracking.sleep_hours} onChange={v => saveTracking({ sleep_hours: v })} />
         </div>
         <MoodSelector value={tracking.mood} onChange={v => saveTracking({ mood: v })} />
