@@ -16,6 +16,13 @@ const FIELDS = [
 
 const EMPTY = FIELDS.reduce((acc, f) => ({ ...acc, [f.key]: '' }), { notes: '' });
 
+// Parsea fechas DATE de MySQL sin conversión UTC (evita el desfase de -5h)
+function fmtDate(str, opts = { day: 'numeric', month: 'short' }) {
+  if (!str) return '';
+  const [y, m, d] = str.slice(0, 10).split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('es', opts);
+}
+
 export default function Measurements() {
   const { user } = useAuth();
   const [rows, setRows]         = useState([]);
@@ -65,7 +72,7 @@ export default function Measurements() {
 
   // Build chart data per field from all rows (oldest first)
   const chartData = [...rows].reverse().map(r => ({
-    date: new Date(r.logged_at).toLocaleDateString('es', { day: 'numeric', month: 'short' }),
+    date: fmtDate(r.logged_at),
     ...FIELDS.reduce((acc, f) => ({ ...acc, [f.key]: r[f.key] ?? null }), {}),
   }));
 
@@ -147,7 +154,7 @@ export default function Measurements() {
                 {rows.slice(1).map(row => (
                   <div key={row.id} className="card" style={{ padding: '12px 16px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                      <span style={{ fontWeight: 700 }}>{new Date(row.logged_at).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                      <span style={{ fontWeight: 700 }}>{fmtDate(row.logged_at, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                       {row.weight_kg && <span className="pill pill-coral">{row.weight_kg} kg</span>}
                     </div>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -201,7 +208,7 @@ export default function Measurements() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {bioList.map(b => (
               <div key={b.id} className="card" style={{ padding: 16 }}>
-                <p style={{ fontWeight: 700, marginBottom: 10 }}>{new Date(b.logged_at).toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                <p style={{ fontWeight: 700, marginBottom: 10 }}>{fmtDate(b.logged_at, { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   {b.body_fat_pct != null && <InfoRow label="Grasa corporal" value={`${b.body_fat_pct}%`} />}
                   {b.muscle_mass_kg != null && <InfoRow label="Masa muscular" value={`${b.muscle_mass_kg} kg`} />}

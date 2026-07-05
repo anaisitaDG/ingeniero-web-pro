@@ -4,6 +4,11 @@ import { api } from '../../services/api';
 import { AreaChart, Area, LineChart, Line, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 const API_BASE = process.env.REACT_APP_API_URL || '';
+function fmtDate(str, opts = { day: 'numeric', month: 'short' }) {
+  if (!str) return '';
+  const [y, m, d] = str.slice(0, 10).split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('es', opts);
+}
 function photoUrl(p) {
   if (!p) return '';
   return p.startsWith('http') ? p : `${API_BASE}/${p}`;
@@ -689,7 +694,7 @@ export default function ClientDetail() {
               {bioimpedance.map(b => (
                 <div key={b.id} className="card" style={{ padding: 16 }}>
                   <p style={{ fontWeight: 700, marginBottom: 12 }}>
-                    {new Date(b.logged_at).toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    {fmtDate(b.logged_at, { day: 'numeric', month: 'long', year: 'numeric' })}
                   </p>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                     {b.body_fat_pct != null && <BioRow label="Grasa corporal" value={`${b.body_fat_pct}%`} />}
@@ -966,7 +971,7 @@ export default function ClientDetail() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {bioimpedance.map(b => (
                 <div key={b.id} className="card" style={{ padding: 16 }}>
-                  <p style={{ fontWeight: 700, marginBottom: 10 }}>{new Date(b.logged_at).toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                  <p style={{ fontWeight: 700, marginBottom: 10 }}>{fmtDate(b.logged_at, { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                     <InfoRow label="Grasa corporal" value={b.body_fat_pct != null ? `${b.body_fat_pct}%` : '—'} />
                     <InfoRow label="Masa muscular" value={b.muscle_mass_kg != null ? `${b.muscle_mass_kg} kg` : '—'} />
@@ -1046,7 +1051,7 @@ const PROG_FIELDS = [
 
 function TrainerProgressCharts({ measurements }) {
   const chartData = [...measurements].reverse().map(r => ({
-    date: new Date(r.logged_at).toLocaleDateString('es', { day: 'numeric', month: 'short' }),
+    date: fmtDate(r.logged_at),
     ...PROG_FIELDS.reduce((acc, f) => ({ ...acc, [f.key]: r[f.key] ?? null }), {}),
   }));
 

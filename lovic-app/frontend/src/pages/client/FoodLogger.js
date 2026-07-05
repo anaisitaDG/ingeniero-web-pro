@@ -52,7 +52,7 @@ export default function FoodLogger() {
     try {
       const d = await api.food.history(14);
       setHistory(d.history.map(r => ({
-        date: new Date(r.logged_at).toLocaleDateString('es', { day: 'numeric', month: 'short' }),
+        date: (() => { const [,m,d] = r.logged_at.slice(0,10).split('-').map(Number); return `${d} ${'ene feb mar abr may jun jul ago sep oct nov dic'.split(' ')[m-1]}`; })(),
         kcal: Math.round(r.calories),
         prot: Math.round(r.protein_g),
         carbs: Math.round(r.carbs_g),
