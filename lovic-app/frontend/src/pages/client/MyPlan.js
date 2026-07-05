@@ -756,7 +756,7 @@ function FreeWorkout({ onCompleted }) {
 }
 
 function CelebrationModal({ dayName, kcal, streak, onClose }) {
-  const cardRef = useRef(null);
+  const shareRef = useRef(null);
   const today = new Date();
   const dateLabel = today.toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' });
 
@@ -770,11 +770,16 @@ function CelebrationModal({ dayName, kcal, streak, onClose }) {
   async function handleShare() {
     try {
       const html2canvas = (await import('html2canvas')).default;
-      const canvas = await html2canvas(cardRef.current, { backgroundColor: null, scale: 2 });
+      const canvas = await html2canvas(shareRef.current, {
+        backgroundColor: '#1a1a1a',
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+      });
       canvas.toBlob(async blob => {
         const file = new File([blob], 'lovic-entrenamiento.png', { type: 'image/png' });
         if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({ files: [file], title: '¡Entrené hoy! 💪', text: `Rutina de ${dayName} completada. ¡${streak} día${streak !== 1 ? 's' : ''} de racha! #LovicGym` });
+          await navigator.share({ files: [file], title: '¡Entrené hoy! 💪', text: `#LovicGym #YoEntreno` });
         } else {
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a'); a.href = url; a.download = 'lovic-entrenamiento.png'; a.click();
@@ -794,62 +799,71 @@ function CelebrationModal({ dayName, kcal, streak, onClose }) {
       background: 'rgba(0,0,0,0.85)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: '20px',
+      overflowY: 'auto',
     }}>
       <div style={{ width: '100%', maxWidth: 380, display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 64, marginBottom: 8 }}>🏆</div>
-          <h2 style={{ color: '#fff', fontSize: 26, fontWeight: 900, marginBottom: 4 }}>¡Rutina completada!</h2>
-          <p style={{ color: 'var(--coral)', fontWeight: 600, fontSize: 14, textTransform: 'capitalize' }}>{dateLabel}</p>
-        </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 4px' }}>
-          {weekDays.map((d, i) => (
-            <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
-              <span style={{ fontSize: 11, color: '#666', fontWeight: 600 }}>{d.label}</span>
-              <div style={{
-                width: 38, height: 38, borderRadius: '50%',
-                background: d.isToday ? 'var(--coral)' : '#2a2a2a',
-                boxShadow: d.isToday ? '0 0 0 3px rgba(255,107,74,0.3)' : 'none',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: d.isToday ? '#fff' : '#555', fontWeight: 700, fontSize: 13,
-              }}>
-                {d.isToday ? '✓' : d.date}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div ref={cardRef} style={{
-          background: 'linear-gradient(135deg, #FF6B4A 0%, #e8440f 100%)',
-          borderRadius: 24, padding: '28px 24px',
-          boxShadow: '0 8px 32px rgba(255,107,74,0.4)',
-          position: 'relative', overflow: 'hidden',
+        {/* Todo lo que va en la imagen al compartir */}
+        <div ref={shareRef} style={{
+          background: '#1a1a1a',
+          borderRadius: 24,
+          padding: '28px 24px',
         }}>
-          <div style={{ position: 'absolute', top: -40, right: -40, width: 160, height: 160, background: 'rgba(255,255,255,0.08)', borderRadius: '50%' }} />
-          <div style={{ position: 'absolute', bottom: -60, left: -30, width: 200, height: 200, background: 'rgba(255,255,255,0.05)', borderRadius: '50%' }} />
-          <p style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.7)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 16 }}>LOVIC GYM</p>
-          <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.85)', fontWeight: 600, marginBottom: 4, textTransform: 'capitalize' }}>{today.toLocaleDateString('es', { weekday: 'long' })} · Rutina del día</p>
-          <p style={{ fontSize: 24, fontWeight: 900, color: '#fff', marginBottom: 20 }}>{dayName} 💪</p>
-          <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
-            <div style={{ background: 'rgba(255,255,255,0.15)', borderRadius: 14, padding: '12px 16px', flex: 1 }}>
-              <p style={{ fontSize: 26, fontWeight: 900, color: '#fff', lineHeight: 1 }}>🔥 {streak}</p>
-              <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.75)', fontWeight: 600, marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>días de racha</p>
-            </div>
-            {kcal > 0 && (
-              <div style={{ background: 'rgba(255,255,255,0.15)', borderRadius: 14, padding: '12px 16px', flex: 1 }}>
-                <p style={{ fontSize: 26, fontWeight: 900, color: '#fff', lineHeight: 1 }}>~{kcal}</p>
-                <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.75)', fontWeight: 600, marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>kcal quemadas</p>
-              </div>
-            )}
+          {/* Trofeo y título */}
+          <div style={{ textAlign: 'center', marginBottom: 20 }}>
+            <div style={{ fontSize: 60, lineHeight: 1, marginBottom: 10 }}>🏆</div>
+            <h2 style={{ color: '#ffffff', fontSize: 24, fontWeight: 900, marginBottom: 4 }}>¡Rutina completada!</h2>
+            <p style={{ color: '#FF6B4A', fontWeight: 600, fontSize: 13, textTransform: 'capitalize' }}>{dateLabel}</p>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', fontWeight: 600 }}>#LovicGym #YoEntreno</span>
-            <span style={{ fontSize: 16, fontWeight: 900, color: '#fff' }}>LOVIC</span>
+
+          {/* Semana */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
+            {weekDays.map((d, i) => (
+              <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
+                <span style={{ fontSize: 11, color: '#666', fontWeight: 600 }}>{d.label}</span>
+                <div style={{
+                  width: 36, height: 36, borderRadius: '50%',
+                  background: d.isToday ? '#FF6B4A' : '#2a2a2a',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: d.isToday ? '#ffffff' : '#555', fontWeight: 700, fontSize: 13,
+                }}>
+                  {d.isToday ? '✓' : d.date}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Tarjeta naranja */}
+          <div style={{
+            background: 'linear-gradient(135deg, #FF6B4A 0%, #e8440f 100%)',
+            borderRadius: 20, padding: '24px 20px',
+            position: 'relative', overflow: 'hidden',
+          }}>
+            <div style={{ position: 'absolute', top: -30, right: -30, width: 130, height: 130, background: 'rgba(255,255,255,0.08)', borderRadius: '50%' }} />
+            <p style={{ fontSize: 10, fontWeight: 800, color: 'rgba(255,255,255,0.7)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 12 }}>LOVIC GYM</p>
+            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', fontWeight: 600, marginBottom: 4, textTransform: 'capitalize' }}>{today.toLocaleDateString('es', { weekday: 'long' })} · Rutina del día</p>
+            <p style={{ fontSize: 22, fontWeight: 900, color: '#ffffff', marginBottom: 16 }}>{dayName} 💪</p>
+            <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+              <div style={{ background: 'rgba(255,255,255,0.15)', borderRadius: 12, padding: '10px 14px', flex: 1 }}>
+                <p style={{ fontSize: 24, fontWeight: 900, color: '#ffffff', lineHeight: 1 }}>🔥 {streak}</p>
+                <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.75)', fontWeight: 600, marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>días de racha</p>
+              </div>
+              {kcal > 0 && (
+                <div style={{ background: 'rgba(255,255,255,0.15)', borderRadius: 12, padding: '10px 14px', flex: 1 }}>
+                  <p style={{ fontSize: 24, fontWeight: 900, color: '#ffffff', lineHeight: 1 }}>~{kcal}</p>
+                  <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.75)', fontWeight: 600, marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>kcal quemadas</p>
+                </div>
+              )}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontWeight: 600 }}>#LovicGym #YoEntreno</span>
+              <span style={{ fontSize: 14, fontWeight: 900, color: '#ffffff' }}>LOVIC</span>
+            </div>
           </div>
         </div>
 
         <button onClick={handleShare} style={{
-          background: 'var(--coral)', color: '#fff', border: 'none', borderRadius: 16,
+          background: '#FF6B4A', color: '#fff', border: 'none', borderRadius: 16,
           padding: '16px', fontSize: 16, fontWeight: 800, cursor: 'pointer',
           boxShadow: '0 4px 20px rgba(255,107,74,0.4)',
         }}>
