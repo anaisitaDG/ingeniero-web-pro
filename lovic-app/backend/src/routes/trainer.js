@@ -18,8 +18,11 @@ router.use(requireTrainer);
 router.get('/clients', async (req, res) => {
   const [clients] = await db.query(
     `SELECT u.id, u.name, u.email, u.created_at,
-       q.main_goal, q.weight_kg, q.height_cm,
-       (SELECT logged_at FROM measurements WHERE user_id=u.id ORDER BY logged_at DESC LIMIT 1) AS last_measurement
+       q.main_goal, q.weight_kg AS initial_weight_kg, q.height_cm,
+       (SELECT weight_kg FROM measurements WHERE user_id=u.id ORDER BY logged_at DESC LIMIT 1) AS current_weight_kg,
+       (SELECT logged_at FROM measurements WHERE user_id=u.id ORDER BY logged_at DESC LIMIT 1) AS last_measurement,
+       (SELECT MAX(tracked_date) FROM daily_tracking WHERE user_id=u.id AND workout_done=1) AS last_trained,
+       (SELECT COUNT(*) FROM daily_tracking WHERE user_id=u.id AND workout_done=1 AND tracked_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)) AS workouts_this_week
      FROM users u
      LEFT JOIN questionnaire_data q ON q.user_id = u.id
      WHERE u.role = 'client'
