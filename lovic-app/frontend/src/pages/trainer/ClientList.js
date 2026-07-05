@@ -48,6 +48,8 @@ export default function ClientList() {
   const [inviteEmail, setInviteEmail]   = useState('');
   const [inviteSending, setInviteSending] = useState(false);
   const [inviteDone, setInviteDone]     = useState(false);
+  const [sendingSummary, setSendingSummary] = useState(false);
+  const [summaryMsg, setSummaryMsg]     = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -55,6 +57,18 @@ export default function ClientList() {
       .then(d => setClients(d.clients))
       .finally(() => setLoading(false));
   }, []);
+
+  async function sendWeeklySummary() {
+    setSendingSummary(true);
+    try {
+      await api.trainer.weeklySummary();
+      setSummaryMsg('✅ Resumen enviado a todos los clientes activos');
+    } catch (e) { setSummaryMsg('❌ ' + e.message); }
+    finally {
+      setSendingSummary(false);
+      setTimeout(() => setSummaryMsg(''), 4000);
+    }
+  }
 
   async function sendInvite() {
     if (!inviteName.trim() || !inviteEmail.trim()) return;
@@ -77,15 +91,25 @@ export default function ClientList() {
   return (
     <div>
       {/* Header */}
-      <div className="page-header" style={{ marginBottom: 20 }}>
+      <div className="page-header" style={{ marginBottom: summaryMsg ? 10 : 20 }}>
         <div>
           <h1 className="page-title">Clientes 👥</h1>
           <p style={{ color: 'var(--muted)', fontSize: 14 }}>{clients.length} en total</p>
         </div>
-        <button onClick={() => setShowInvite(v => !v)} className="btn-primary" style={{ flexShrink: 0 }}>
-          + Enviar valoración
-        </button>
+        <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+          <button onClick={sendWeeklySummary} disabled={sendingSummary} className="btn-ghost" style={{ fontSize: 13, padding: '10px 14px', border: '1.5px solid var(--border)' }}>
+            {sendingSummary ? <span className="spinner" /> : '📧 Resumen semanal'}
+          </button>
+          <button onClick={() => setShowInvite(v => !v)} className="btn-primary">
+            + Enviar valoración
+          </button>
+        </div>
       </div>
+      {summaryMsg && (
+        <div style={{ marginBottom: 16, padding: '10px 16px', borderRadius: 12, background: summaryMsg.startsWith('✅') ? '#dcfce7' : '#fee2e2', color: summaryMsg.startsWith('✅') ? '#15803d' : '#dc2626', fontWeight: 700, fontSize: 14 }}>
+          {summaryMsg}
+        </div>
+      )}
 
       {/* Invite form */}
       {showInvite && (

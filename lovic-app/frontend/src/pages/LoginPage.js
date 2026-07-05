@@ -107,15 +107,28 @@ export default function LoginPage() {
                 <button className="btn-primary" type="submit" disabled={loading} style={{ width: '100%', justifyContent: 'center' }}>
                   {loading ? <span className="spinner" /> : 'Entrar'}
                 </button>
+                <p style={{ textAlign: 'center', marginTop: 16, fontSize: 13, color: 'var(--muted)' }}>
+                  ¿Eres clienta nueva o no recuerdas tu contraseña?{' '}
+                  <button type="button" onClick={() => { setMode('magic'); setError(''); }}
+                    style={{ color: 'var(--coral)', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer', fontSize: 13 }}>
+                    Accede con tu correo →
+                  </button>
+                </p>
               </form>
             ) : (
               <form onSubmit={handleMagicLink}>
+                <div style={{ background: 'var(--coral-light)', borderRadius: 12, padding: '12px 14px', marginBottom: 16, borderLeft: '3px solid var(--coral)' }}>
+                  <p style={{ fontSize: 13, color: 'var(--coral)', fontWeight: 700, marginBottom: 4 }}>¿Primera vez aquí? 👋</p>
+                  <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.5 }}>
+                    Si Lorena te acaba de agregar, usa tu correo para recibir un enlace de acceso directo. No necesitas contraseña.
+                  </p>
+                </div>
                 <label className="label">Correo electrónico</label>
                 <input className="input" type="email" placeholder="tu@correo.com" value={email}
                   onChange={e => setEmail(e.target.value)} required style={{ marginBottom: 16 }} />
                 {error && <p style={styles.error}>{error}</p>}
                 <button className="btn-primary" type="submit" disabled={loading} style={{ width: '100%', justifyContent: 'center' }}>
-                  {loading ? <span className="spinner" /> : 'Enviar enlace'}
+                  {loading ? <span className="spinner" /> : 'Enviar enlace de acceso'}
                 </button>
               </form>
             )}

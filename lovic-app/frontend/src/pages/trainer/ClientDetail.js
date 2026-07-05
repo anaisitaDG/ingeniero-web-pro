@@ -47,6 +47,9 @@ export default function ClientDetail() {
   const [nutritionMode, setNutritionMode]     = useState('manual');
   const [genNutritionLoading, setGenNutritionLoading] = useState(false);
   const [aiPrompt, setAiPrompt] = useState('');
+  const [genRoutineLoading, setGenRoutineLoading] = useState(false);
+  const [routinePrompt, setRoutinePrompt]         = useState('');
+  const [sendingSummary, setSendingSummary]       = useState(false);
 
   // New tabs state
   const [progress, setProgress]         = useState(null);
@@ -176,10 +179,31 @@ export default function ClientDetail() {
     finally { setGenNutritionLoading(false); }
   }
 
+  async function genRoutine() {
+    setGenRoutineLoading(true);
+    try {
+      await api.trainer.genRoutine(id, routinePrompt || undefined);
+      await loadWorkout();
+      setSaveMsg('✅ Rutina generada con IA');
+      setTimeout(() => setSaveMsg(''), 3000);
+    } catch (e) { setSaveMsg('❌ ' + e.message); setTimeout(() => setSaveMsg(''), 4000); }
+    finally { setGenRoutineLoading(false); }
+  }
+
+  async function sendWeeklySummary() {
+    setSendingSummary(true);
+    try {
+      await api.trainer.weeklySummary();
+      setSaveMsg('✅ Resumen semanal enviado a todos los clientes');
+      setTimeout(() => setSaveMsg(''), 4000);
+    } catch (e) { setSaveMsg('❌ ' + e.message); setTimeout(() => setSaveMsg(''), 4000); }
+    finally { setSendingSummary(false); }
+  }
+
   async function sendInvite() {
     setInviting(true);
-    try { await api.trainer.invite(id); alert('Invitación enviada'); }
-    catch (e) { alert(e.message); }
+    try { await api.trainer.invite(id); setSaveMsg('✅ Invitación enviada'); setTimeout(() => setSaveMsg(''), 3000); }
+    catch (e) { setSaveMsg('❌ ' + e.message); setTimeout(() => setSaveMsg(''), 4000); }
     finally { setInviting(false); }
   }
 
@@ -633,6 +657,17 @@ export default function ClientDetail() {
             <button className="btn-primary" onClick={saveWorkout} disabled={savingWorkout} style={{ width: '100%', justifyContent: 'center', padding: '14px' }}>
               {savingWorkout ? <><span className="spinner" /> Guardando…</> : '💾 Guardar plan de entrenamiento'}
             </button>
+
+            {/* Generar rutina con IA */}
+            <div className="card" style={{ marginTop: 16, background: 'var(--gold-light)', border: '1.5px solid var(--gold)' }}>
+              <p style={{ fontWeight: 700, marginBottom: 8, color: 'var(--gold)' }}>✨ Generar rutina con IA</p>
+              <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>La IA creará un plan basado en el perfil y objetivos de la cliente. Puedes darle instrucciones adicionales.</p>
+              <textarea className="input" rows={2} placeholder="Instrucciones adicionales (opcional)... Ej: enfocada en piernas, sin sentadilla por rodilla"
+                value={routinePrompt} onChange={e => setRoutinePrompt(e.target.value)} style={{ marginBottom: 10, resize: 'vertical' }} />
+              <button className="btn-primary" onClick={genRoutine} disabled={genRoutineLoading} style={{ width: '100%', justifyContent: 'center', background: 'var(--gold)' }}>
+                {genRoutineLoading ? <><span className="spinner" /> Generando…</> : '✨ Generar rutina con IA'}
+              </button>
+            </div>
           </div>
         )
       )}

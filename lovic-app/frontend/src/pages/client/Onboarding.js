@@ -32,7 +32,7 @@ export default function Onboarding() {
   const [form, setForm] = useState({
     age: '', height_cm: '', weight_kg: '', city: '', phone: '',
     main_goal: [], goal_timeframe: '',
-    trained_before: null, training_days_week: '',
+    trained_before: null, training_days_week: '', training_detail: '',
     has_injury: null, injury_detail: '',
     takes_medication: null, medication_detail: '',
     energy_level: '',
