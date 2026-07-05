@@ -298,10 +298,63 @@ export default function ClientDetail() {
       {/* Overview */}
       {tab === 'overview' && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
+
+          {/* Measurements — full width, on top */}
+          {measurements[0] && (
+            <div style={{ gridColumn: '1 / -1', background: 'linear-gradient(135deg, #FF6B6B 0%, #FF8E53 100%)', borderRadius: 16, padding: '20px 24px', color: '#fff' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
+                <div>
+                  <p style={{ fontWeight: 800, fontSize: 16 }}>📏 Última medición</p>
+                  <p style={{ fontSize: 13, opacity: 0.85, marginTop: 2 }}>
+                    {new Date(measurements[0].logged_at).toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                  </p>
+                </div>
+                {measurements.length > 1 && q?.weight_kg && measurements[0].weight_kg && (
+                  <div style={{ background: 'rgba(255,255,255,0.2)', borderRadius: 12, padding: '8px 16px', textAlign: 'center' }}>
+                    {(() => {
+                      const diff = Number(measurements[0].weight_kg) - Number(q.weight_kg);
+                      const lost = diff < 0;
+                      return <>
+                        <p style={{ fontSize: 22, fontWeight: 800 }}>{lost ? '▼' : '▲'} {Math.abs(diff).toFixed(1)} kg</p>
+                        <p style={{ fontSize: 12, opacity: 0.85 }}>desde el inicio</p>
+                      </>;
+                    })()}
+                  </div>
+                )}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 10 }}>
+                {[
+                  { label: 'Peso', cur: measurements[0].weight_kg, prev: measurements[1]?.weight_kg, unit: 'kg' },
+                  { label: 'Cintura', cur: measurements[0].waist_cm, prev: measurements[1]?.waist_cm, unit: 'cm' },
+                  { label: 'Cadera', cur: measurements[0].hip_cm, prev: measurements[1]?.hip_cm, unit: 'cm' },
+                  { label: 'Brazo', cur: measurements[0].arm_cm, prev: measurements[1]?.arm_cm, unit: 'cm' },
+                  { label: 'Muslo', cur: measurements[0].thigh_cm, prev: measurements[1]?.thigh_cm, unit: 'cm' },
+                  { label: 'Pecho', cur: measurements[0].chest_cm, prev: measurements[1]?.chest_cm, unit: 'cm' },
+                  { label: 'Pantorrilla', cur: measurements[0].calf_cm, prev: measurements[1]?.calf_cm, unit: 'cm' },
+                  { label: 'Antebrazo', cur: measurements[0].forearm_cm, prev: measurements[1]?.forearm_cm, unit: 'cm' },
+                ].filter(m => m.cur).map(m => {
+                  const diff = m.prev ? Number(m.cur) - Number(m.prev) : null;
+                  const lost = diff !== null && diff < 0;
+                  return (
+                    <div key={m.label} style={{ background: 'rgba(255,255,255,0.15)', borderRadius: 10, padding: '10px 12px' }}>
+                      <p style={{ fontSize: 11, opacity: 0.8, marginBottom: 4 }}>{m.label}</p>
+                      <p style={{ fontWeight: 800, fontSize: 18 }}>{Number(m.cur).toFixed(1)} <span style={{ fontSize: 12, fontWeight: 400 }}>{m.unit}</span></p>
+                      {diff !== null && Math.abs(diff) >= 0.1 && (
+                        <p style={{ fontSize: 12, marginTop: 2, opacity: 0.9 }}>
+                          {lost ? '▼' : '▲'} {Math.abs(diff).toFixed(1)} {m.unit}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <div className="card">
             <p style={{ fontWeight: 700, marginBottom: 12 }}>📋 Datos básicos</p>
             <InfoRow label="Edad" value={q?.age} />
-            <InfoRow label="Peso" value={q?.weight_kg && `${q.weight_kg} kg`} />
+            <InfoRow label="Peso inicial" value={q?.weight_kg && `${q.weight_kg} kg`} />
             <InfoRow label="Talla" value={q?.height_cm && `${q.height_cm} cm`} />
             <InfoRow label="Ciudad" value={q?.city} />
             <InfoRow label="Objetivo" value={parseJson(q?.main_goal)} />
@@ -313,16 +366,6 @@ export default function ClientDetail() {
               <InfoRow label="Entrenamientos" value={`${adherence.workout_days}/${adherence.total_days}`} />
               <InfoRow label="Dieta" value={`${adherence.diet_days}/${adherence.total_days}`} />
               <InfoRow label="% Workout" value={`${Math.round((adherence.workout_days/adherence.total_days)*100)}%`} />
-            </div>
-          )}
-
-          {measurements[0] && (
-            <div className="card">
-              <p style={{ fontWeight: 700, marginBottom: 12 }}>📏 Última medición</p>
-              <InfoRow label="Peso" value={measurements[0].weight_kg && `${measurements[0].weight_kg} kg`} />
-              <InfoRow label="Cintura" value={measurements[0].waist_cm && `${measurements[0].waist_cm} cm`} />
-              <InfoRow label="Cadera" value={measurements[0].hip_cm && `${measurements[0].hip_cm} cm`} />
-              <InfoRow label="Brazo" value={measurements[0].arm_cm && `${measurements[0].arm_cm} cm`} />
             </div>
           )}
 
