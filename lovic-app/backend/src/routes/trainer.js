@@ -261,6 +261,7 @@ router.get('/clients/:id/adherence-detail', async (req, res) => {
 
 // GET /trainer/clients/:id/workout-logs — sesiones agrupadas por fecha + resumen
 router.get('/clients/:id/workout-logs', async (req, res) => {
+  try {
   const uid = req.params.id;
 
   // Logs de ejercicios
@@ -337,6 +338,10 @@ router.get('/clients/:id/workout-logs', async (req, res) => {
   }
 
   res.json({ sessions, summary: { streak, days_this_month: daysThisMonth, total_sessions: sessions.length } });
+  } catch (err) {
+    console.error('workout-logs error:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // GET/PUT /trainer/clients/:id/notes — notas privadas del entrenador
