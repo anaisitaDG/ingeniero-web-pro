@@ -644,18 +644,35 @@ export default function ClientDetail() {
                 );
               })()}
               {progress.photos.length > 0 ? (
-                <div className="card">
+                <div>
                   <p style={{ fontWeight: 700, marginBottom: 12 }}>📸 Fotos de progreso</p>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-                    {progress.photos.map(p => (
-                      <div key={p.id} style={{ cursor: 'zoom-in' }} onClick={() => setLightbox(photoUrl(p.image_url))}>
-                        <img src={photoUrl(p.image_url)} alt="" style={{ width: '100%', aspectRatio: '3/4', objectFit: 'cover', borderRadius: 10 }} />
-                        <p style={{ fontSize: 10, color: 'var(--muted)', textAlign: 'center', marginTop: 4 }}>
-                          {new Date(p.taken_at).toLocaleDateString('es', { day: 'numeric', month: 'short' })}
-                        </p>
+                  {progress.photos.map(reg => (
+                    <div key={reg.id} className="card" style={{ marginBottom: 12 }}>
+                      <p style={{ fontWeight: 700, fontSize: 13, marginBottom: 10 }}>
+                        {new Date(reg.date).toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' })}
+                        {reg.note ? <span style={{ fontWeight: 400, color: 'var(--muted)', marginLeft: 8 }}>{reg.note}</span> : null}
+                      </p>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                        {['frente','espalda','perfil'].map(angle => (
+                          <div key={angle}>
+                            {reg.photos[angle] ? (
+                              <img
+                                src={photoUrl(reg.photos[angle].image_url)}
+                                alt={angle}
+                                onClick={() => setLightbox(photoUrl(reg.photos[angle].image_url))}
+                                style={{ width: '100%', aspectRatio: '3/4', objectFit: 'cover', borderRadius: 10, cursor: 'zoom-in', display: 'block' }}
+                              />
+                            ) : (
+                              <div style={{ width: '100%', aspectRatio: '3/4', borderRadius: 10, background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <span style={{ fontSize: 10, color: 'var(--muted)' }}>Sin foto</span>
+                              </div>
+                            )}
+                            <p style={{ fontSize: 10, color: 'var(--muted)', textAlign: 'center', marginTop: 3, textTransform: 'capitalize' }}>{angle}</p>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ))}
                 </div>
               ) : (
                 <div className="empty-state"><div className="icon">📸</div><p>La cliente aún no ha subido fotos de progreso</p></div>

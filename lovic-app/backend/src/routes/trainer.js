@@ -252,17 +252,27 @@ router.get('/clients/:id/progress', async (req, res) => {
   const [measurements] = await db.query(
     'SELECT * FROM measurements WHERE user_id=? ORDER BY logged_at DESC LIMIT 30', [uid]
   );
-  const [photos] = await db.query(
-    'SELECT * FROM progress_photos WHERE user_id=? ORDER BY taken_at DESC LIMIT 20', [uid]
+  const [registers] = await db.query(
+    'SELECT * FROM progress_registers WHERE user_id=? ORDER BY date DESC LIMIT 20', [uid]
   );
-  // Normalize image_url: strip absolute path prefix, keep only uploads/filename
-  const normalizedPhotos = photos.map(p => ({
-    ...p,
-    image_url: p.image_url
-      ? p.image_url.replace(/^.*\/uploads\//, 'uploads/')
-      : p.image_url,
-  }));
-  res.json({ measurements, photos: normalizedPhotos });
+  let photos = [];
+  if (registers.length) {
+    const ids = registers.map(r => r.id);
+    const placeholders = ids.map(() => '?').join(',');
+    const [rawPhotos] = await db.query(
+      `SELECT * FROM progress_photos WHERE register_id IN (${placeholders})`, ids
+    );
+    const byRegister = {};
+    for (const p of rawPhotos) {
+      if (!byRegister[p.register_id]) byRegister[p.register_id] = {};
+      byRegister[p.register_id][p.angle] = {
+        ...p,
+        image_url: p.image_url ? p.image_url.replace(/^.*\/uploads\//, 'uploads/') : p.image_url,
+      };
+    }
+    photos = registers.map(r => ({ ...r, photos: byRegister[r.id] || {} }));
+  }
+  res.json({ measurements, photos });
 });
 
 // GET /trainer/clients/:id/adherence-detail — día a día últimos 60 días
