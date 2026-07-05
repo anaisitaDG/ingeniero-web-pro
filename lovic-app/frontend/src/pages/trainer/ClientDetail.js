@@ -649,7 +649,7 @@ export default function ClientDetail() {
                 <div style={{ display: 'flex', gap: 10, marginBottom: 4 }}>
                   {[
                     { label: 'Racha actual', value: `🔥 ${workoutLogs.summary.streak} días` },
-                    { label: 'Este mes', value: `📅 ${workoutLogs.summary.days_this_month} días` },
+                    { label: 'Últimos 30 días', value: `📅 ${workoutLogs.summary.days_this_month} días` },
                     { label: 'Total sesiones', value: `🏋️ ${workoutLogs.summary.total_sessions}` },
                   ].map(s => (
                     <div key={s.label} className="card" style={{ flex: 1, padding: '12px', textAlign: 'center', margin: 0 }}>

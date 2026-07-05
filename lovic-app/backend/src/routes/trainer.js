@@ -321,9 +321,9 @@ router.get('/clients/:id/workout-logs', async (req, res) => {
 
   // Resumen
   const trainedDates = new Set([...trackRows.map(r => r.d), ...sessions.map(s => s.date)]);
-  const thisMonth = new Date(); thisMonth.setDate(1);
-  const monthStr = thisMonth.toISOString().slice(0,7);
-  const daysThisMonth = [...trainedDates].filter(d => d.startsWith(monthStr)).length;
+  const thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const thirtyStr = thirtyDaysAgo.toISOString().slice(0,10);
+  const daysThisMonth = [...trainedDates].filter(d => d >= thirtyStr).length;
 
   // Racha
   const sorted = [...trainedDates].sort().reverse();
