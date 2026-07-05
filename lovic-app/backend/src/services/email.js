@@ -161,4 +161,29 @@ async function sendWeeklySummary(trainerEmail, trainerName, clients) {
   });
 }
 
-module.exports = { sendMagicLink, sendWelcome, notifyTrainerOnboarding, sendWeeklySummary };
+async function sendRenewalReminder(clientEmail, clientName, daysLeft, trainerEmail, trainerName) {
+  const subject = `⏰ Tu plan vence en ${daysLeft} días — Lovic Athletica`;
+  const html = `
+    <div style="font-family:sans-serif;max-width:520px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden">
+      <div style="background:#FF6B6B;padding:28px 32px">
+        <h1 style="color:#fff;margin:0;font-size:22px">¡Hola, ${clientName}! 👋</h1>
+      </div>
+      <div style="padding:32px">
+        <p style="font-size:16px;color:#333">Tu plan de entrenamiento vence en <strong>${daysLeft} días</strong>.</p>
+        <p style="font-size:15px;color:#666">Habla con Lorena para renovar y seguir avanzando hacia tus objetivos. ¡No pares ahora! 💪</p>
+        <a href="${process.env.APP_URL}" style="display:inline-block;margin-top:20px;background:#FF6B6B;color:#fff;padding:14px 28px;border-radius:10px;text-decoration:none;font-weight:700">Ver mi plan →</a>
+      </div>
+    </div>`;
+
+  await resend.emails.send({ from: FROM, to: clientEmail, subject, html });
+
+  // Notificar también a Lorena
+  await resend.emails.send({
+    from: FROM,
+    to: trainerEmail,
+    subject: `⏰ Plan de ${clientName} vence en ${daysLeft} días`,
+    html: `<p style="font-family:sans-serif">Hola ${trainerName}, el plan de <strong>${clientName}</strong> vence en <strong>${daysLeft} días</strong>. Es un buen momento para contactarle y renovar.</p>`,
+  });
+}
+
+module.exports = { sendMagicLink, sendWelcome, notifyTrainerOnboarding, sendWeeklySummary, sendRenewalReminder };

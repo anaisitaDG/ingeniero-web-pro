@@ -97,6 +97,18 @@ const db = require('./database/db');
     await db.query(`ALTER TABLE bioimpedance ADD COLUMN IF NOT EXISTS body_water_pct DECIMAL(4,1) DEFAULT NULL`).catch(() => {});
     await db.query(`ALTER TABLE daily_tracking ADD COLUMN IF NOT EXISTS sleep_hours DECIMAL(3,1) DEFAULT NULL`).catch(() => {});
     await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(100) DEFAULT NULL`).catch(() => {});
+    await db.query(`ALTER TABLE workout_plans ADD COLUMN IF NOT EXISTS start_date DATE DEFAULT NULL`).catch(() => {});
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS client_billing (
+        id               VARCHAR(36) PRIMARY KEY,
+        client_id        VARCHAR(36) NOT NULL UNIQUE,
+        monthly_fee      DECIMAL(10,2) DEFAULT 0,
+        next_payment_date DATE DEFAULT NULL,
+        notes            TEXT,
+        updated_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (client_id) REFERENCES users(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `).catch(() => {});
     await db.query(`
       CREATE TABLE IF NOT EXISTS workout_day_completions (
         id VARCHAR(36) PRIMARY KEY,
@@ -186,6 +198,62 @@ app.use('/workout',         require('./routes/workout'));
 
 // Health
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }));
+
+// ── Daily renewal reminder ────────────────────────────────────────────────────
+async function sendRenewalRemindersJob() {
+  try {
+    const { sendRenewalReminder } = require('./services/email');
+    const [[trainer]] = await db.query(`SELECT * FROM users WHERE role='trainer' LIMIT 1`);
+    if (!trainer) return;
+
+    const today = new Date();
+    const in7   = new Date(today); in7.setDate(in7.getDate() + 7);
+    const in7str = in7.toISOString().slice(0, 10);
+
+    // Plans expiring in exactly 7 days
+    const [expiring] = await db.query(
+      `SELECT u.name, u.email, wp.start_date, wp.duration_days
+       FROM workout_plans wp
+       JOIN users u ON u.id = wp.user_id
+       WHERE wp.is_active = TRUE AND wp.start_date IS NOT NULL AND wp.duration_days IS NOT NULL
+         AND DATE_ADD(wp.start_date, INTERVAL wp.duration_days DAY) = ?`,
+      [in7str]
+    );
+    for (const c of expiring) {
+      await sendRenewalReminder(c.email, c.name, 7, trainer.email, trainer.name).catch(e => console.error('[renewal]', e.message));
+    }
+
+    // Payment renewals in exactly 7 days
+    const [payments] = await db.query(
+      `SELECT u.name, u.email FROM client_billing cb
+       JOIN users u ON u.id = cb.client_id
+       WHERE cb.next_payment_date = ?`,
+      [in7str]
+    );
+    for (const c of payments) {
+      await sendRenewalReminder(c.email, c.name, 7, trainer.email, trainer.name).catch(e => console.error('[renewal-payment]', e.message));
+    }
+
+    if (expiring.length || payments.length) console.log(`[renewal] Enviados ${expiring.length + payments.length} recordatorios`);
+  } catch (e) { console.error('[renewal] Error:', e.message); }
+}
+
+(function scheduleRenewalReminders() {
+  function msUntilTomorrow9am() {
+    const now  = new Date();
+    const next = new Date(now);
+    next.setDate(next.getDate() + (now.getHours() >= 9 ? 1 : 0));
+    next.setHours(9, 0, 0, 0);
+    return next.getTime() - now.getTime();
+  }
+  function schedule() {
+    setTimeout(async () => {
+      await sendRenewalRemindersJob();
+      setInterval(sendRenewalRemindersJob, 24 * 60 * 60 * 1000);
+    }, msUntilTomorrow9am());
+  }
+  schedule();
+})();
 
 // ── Weekly summary scheduler ──────────────────────────────────────────────────
 async function sendWeeklySummaryJob() {

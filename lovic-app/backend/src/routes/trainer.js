@@ -106,12 +106,15 @@ router.get('/clients/:id/workout', async (req, res) => {
 // PUT /trainer/clients/:id/workout — guarda plan estructurado completo
 router.put('/clients/:id/workout', async (req, res) => {
   const uid = req.params.id;
-  const { days, duration_days } = req.body;
+  const { days, duration_days, start_date } = req.body;
   if (!Array.isArray(days)) return res.status(400).json({ error: 'days requerido' });
 
   await db.query('UPDATE workout_plans SET is_active=FALSE WHERE user_id=?', [uid]);
   const planId = uuidv4();
-  await db.query('INSERT INTO workout_plans (id, user_id, is_active, duration_days) VALUES (?, ?, TRUE, ?)', [planId, uid, duration_days || null]);
+  await db.query(
+    'INSERT INTO workout_plans (id, user_id, is_active, duration_days, start_date) VALUES (?, ?, TRUE, ?, ?)',
+    [planId, uid, duration_days || null, start_date || null]
+  );
 
   for (let di = 0; di < days.length; di++) {
     const day = days[di];
@@ -510,6 +513,33 @@ router.delete('/library/:id', async (req, res) => {
     await db.query('DELETE FROM exercise_library WHERE id=? AND trainer_id=?', [req.params.id, trainerId]);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /trainer/billing — panel de ingresos
+router.get('/billing', requireTrainer, async (req, res) => {
+  const [clients] = await db.query(
+    `SELECT u.id, u.name, u.email,
+       cb.monthly_fee, cb.next_payment_date, cb.notes,
+       wp.duration_days, wp.start_date
+     FROM users u
+     LEFT JOIN client_billing cb ON cb.client_id = u.id
+     LEFT JOIN workout_plans wp ON wp.user_id = u.id AND wp.is_active = TRUE
+     WHERE u.role = 'client'
+     ORDER BY u.name`
+  );
+  res.json({ clients });
+});
+
+// PUT /trainer/billing/:clientId — actualizar facturación de cliente
+router.put('/billing/:clientId', requireTrainer, async (req, res) => {
+  const { monthly_fee, next_payment_date, notes } = req.body;
+  await db.query(
+    `INSERT INTO client_billing (id, client_id, monthly_fee, next_payment_date, notes)
+     VALUES (?, ?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE monthly_fee=VALUES(monthly_fee), next_payment_date=VALUES(next_payment_date), notes=VALUES(notes)`,
+    [uuidv4(), req.params.clientId, monthly_fee || 0, next_payment_date || null, notes || '']
+  );
+  res.json({ ok: true });
 });
 
 function extractCalorieTarget(content) {
