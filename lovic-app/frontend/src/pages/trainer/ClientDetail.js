@@ -283,11 +283,11 @@ export default function ClientDetail() {
         </button>
       </div>
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 24, overflowX: 'auto', paddingBottom: 4 }}>
+      {/* Tabs — two rows */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 24 }}>
         {tabs.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)} style={{
-            padding: '8px 16px', borderRadius: 10, fontWeight: 700, fontSize: 13, border: 'none', whiteSpace: 'nowrap',
+            padding: '8px 14px', borderRadius: 10, fontWeight: 700, fontSize: 13, border: 'none', whiteSpace: 'nowrap',
             background: tab === t.key ? 'var(--coral)' : 'var(--card)',
             color: tab === t.key ? '#fff' : 'var(--muted)',
             boxShadow: 'var(--shadow)', cursor: 'pointer',
