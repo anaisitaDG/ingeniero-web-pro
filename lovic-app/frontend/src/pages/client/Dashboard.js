@@ -4,6 +4,132 @@ import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
+/* ── VIC MASCOT ──────────────────────────────────────────────────── */
+const VIC_STATES = {
+  bestia:       { name: 'Modo Bestia 🔥',    accent: '#FF5A36', msg: '¡Imparable! Llevas una racha increíble.',        size: 105, dimmed: false },
+  racha:        { name: 'En Racha 😊',        accent: '#FFB347', msg: '¡Vas muy bien! Sigue así y no pares.',          size: 105, dimmed: false },
+  celebrando:   { name: 'Celebrando 🎉',      accent: '#60D394', msg: '¡LO LOGRASTE! Eres una bestia absoluta.',       size: 108, dimmed: false },
+  normal:       { name: 'Todo bien 😐',        accent: '#AAAACC', msg: 'Algo pendiente, pero tú puedes.',               size: 100, dimmed: false },
+  inflamada:    { name: 'Inflamada 😮',        accent: '#FF8844', msg: 'Muchos carbohidratos y sin entrenar… 🫃',       size: 118, dimmed: false },
+  ojeras:       { name: 'Ojeras 😴',           accent: '#9966CC', msg: 'Necesitas dormir más. Yo también estoy agotada.', size: 100, dimmed: false },
+  triste:       { name: 'Triste 😢',           accent: '#6B8FD4', msg: 'Te extraño. ¿Volvemos juntas?',                size: 100, dimmed: false },
+  deshidratada: { name: 'Deshidratada 🏜️',   accent: '#DD8833', msg: '¡Agua! Por favor. Me estoy apagando.',          size:  90, dimmed: false },
+  apagada:      { name: 'Apagada 💀',          accent: '#666688', msg: '…ni me hables. Estoy muerta por dentro.',      size:  95, dimmed: true  },
+};
+
+function getVicState(streak, tracking, macros) {
+  const { workout_done, diet_followed, water_glasses, sleep_hours } = tracking || {};
+  const carbsOver = macros?.carbs > 0 && macros?.carbs_target > 0 && macros.carbs > macros.carbs_target * 1.35;
+
+  if (streak >= 7)                                    return 'bestia';
+  if (streak >= 3)                                    return 'racha';
+  if (sleep_hours != null && sleep_hours < 6)         return 'ojeras';
+  if (carbsOver && !workout_done)                     return 'inflamada';
+  if ((water_glasses || 0) < 3)                       return 'deshidratada';
+  if (!workout_done && !diet_followed)                return streak === 0 ? 'apagada' : 'triste';
+  if (!workout_done || !diet_followed)                return 'triste';
+  return 'normal';
+}
+
+const CX=60, EY=78, MY=96, ER=8.5, ELX=42, ERX=78;
+function vicFace(stateKey) {
+  const eyes = {
+    bestia:       `<ellipse cx="${ELX}" cy="${EY}" rx="${ER+3}" ry="${ER}" fill="#DD1515" opacity=".92" stroke="#881000" stroke-width="1.5"/><ellipse cx="${ELX-3}" cy="${EY-3}" rx="4" ry="2.5" fill="rgba(255,200,200,.4)"/><ellipse cx="${ERX}" cy="${EY}" rx="${ER+3}" ry="${ER}" fill="#DD1515" opacity=".92" stroke="#881000" stroke-width="1.5"/><ellipse cx="${ERX-3}" cy="${EY-3}" rx="4" ry="2.5" fill="rgba(255,200,200,.4)"/><line x1="${ELX+ER+3}" y1="${EY}" x2="${ERX-ER-3}" y2="${EY}" stroke="#881000" stroke-width="2"/>`,
+    normal:       `<circle cx="${ELX}" cy="${EY}" r="${ER}" fill="#1a0800"/><circle cx="${ELX+3}" cy="${EY-3}" r="3" fill="white"/><circle cx="${ERX}" cy="${EY}" r="${ER}" fill="#1a0800"/><circle cx="${ERX+3}" cy="${EY-3}" r="3" fill="white"/><line x1="${ELX-8}" y1="${EY-13}" x2="${ELX+8}" y2="${EY-13}" stroke="#1a0800" stroke-width="2.5" stroke-linecap="round"/><line x1="${ERX-8}" y1="${EY-13}" x2="${ERX+8}" y2="${EY-13}" stroke="#1a0800" stroke-width="2.5" stroke-linecap="round"/>`,
+    sad:          `<circle cx="${ELX}" cy="${EY}" r="${ER}" fill="#1a0800"/><circle cx="${ELX+3}" cy="${EY-3}" r="3" fill="white"/><circle cx="${ERX}" cy="${EY}" r="${ER}" fill="#1a0800"/><circle cx="${ERX+3}" cy="${EY-3}" r="3" fill="white"/><line x1="${ELX-8}" y1="${EY-12}" x2="${ELX+8}" y2="${EY-8}" stroke="#1a0800" stroke-width="2.5" stroke-linecap="round"/><line x1="${ERX-8}" y1="${EY-8}" x2="${ERX+8}" y2="${EY-12}" stroke="#1a0800" stroke-width="2.5" stroke-linecap="round"/>`,
+    tired:        `<circle cx="${ELX}" cy="${EY}" r="${ER}" fill="#1a0800"/><circle cx="${ELX+3}" cy="${EY-3}" r="2.5" fill="white"/><circle cx="${ERX}" cy="${EY}" r="${ER}" fill="#1a0800"/><circle cx="${ERX+3}" cy="${EY-3}" r="2.5" fill="white"/><path d="M ${ELX-ER} ${EY-2} Q ${ELX} ${EY-ER-3} ${ELX+ER} ${EY-2}" fill="#E06000"/><path d="M ${ERX-ER} ${EY-2} Q ${ERX} ${EY-ER-3} ${ERX+ER} ${EY-2}" fill="#E06000"/><ellipse cx="${ELX}" cy="${EY+ER+1}" rx="${ER}" ry="3.5" fill="rgba(20,5,0,.3)"/><ellipse cx="${ERX}" cy="${EY+ER+1}" rx="${ER}" ry="3.5" fill="rgba(20,5,0,.3)"/>`,
+    dead:         `<line x1="${ELX-7}" y1="${EY-7}" x2="${ELX+7}" y2="${EY+7}" stroke="#1a0800" stroke-width="3.5" stroke-linecap="round"/><line x1="${ELX+7}" y1="${EY-7}" x2="${ELX-7}" y2="${EY+7}" stroke="#1a0800" stroke-width="3.5" stroke-linecap="round"/><line x1="${ERX-7}" y1="${EY-7}" x2="${ERX+7}" y2="${EY+7}" stroke="#1a0800" stroke-width="3.5" stroke-linecap="round"/><line x1="${ERX+7}" y1="${EY-7}" x2="${ERX-7}" y2="${EY+7}" stroke="#1a0800" stroke-width="3.5" stroke-linecap="round"/>`,
+    star:         `<text x="${ELX}" y="${EY+6}" text-anchor="middle" font-size="18">⭐</text><text x="${ERX}" y="${EY+6}" text-anchor="middle" font-size="18">⭐</text>`,
+    happy:        `<circle cx="${ELX}" cy="${EY}" r="${ER}" fill="#1a0800"/><circle cx="${ELX+3.5}" cy="${EY-3.5}" r="3" fill="white"/><circle cx="${ERX}" cy="${EY}" r="${ER}" fill="#1a0800"/><circle cx="${ERX+3.5}" cy="${EY-3.5}" r="3" fill="white"/>`,
+  };
+  const mouths = {
+    smile:   `<path d="M ${CX-10} ${MY-1} Q ${CX} ${MY+11} ${CX+10} ${MY-1}" fill="#CC1800" stroke="#881000" stroke-width="1.5"/>`,
+    smug:    `<path d="M ${CX-9} ${MY+2} Q ${CX+6} ${MY-4} ${CX+9} ${MY-2}" fill="none" stroke="#881000" stroke-width="2.5" stroke-linecap="round"/>`,
+    flat:    `<line x1="${CX-9}" y1="${MY}" x2="${CX+9}" y2="${MY}" stroke="#881000" stroke-width="2.5" stroke-linecap="round"/>`,
+    frown:   `<path d="M ${CX-10} ${MY+7} Q ${CX} ${MY-5} ${CX+10} ${MY+7}" fill="none" stroke="#881000" stroke-width="2.5" stroke-linecap="round"/>`,
+    tongue:  `<path d="M ${CX-9} ${MY-1} Q ${CX} ${MY+9} ${CX+9} ${MY-1}" fill="#CC1800"/><ellipse cx="${CX}" cy="${MY+14}" rx="8" ry="9" fill="#FF5050" stroke="#881000" stroke-width="1.5"/>`,
+    open:    `<path d="M ${CX-12} ${MY-3} Q ${CX} ${MY+14} ${CX+12} ${MY-3}" fill="#CC1800" stroke="#881000" stroke-width="1.5"/><ellipse cx="${CX}" cy="${MY-1}" rx="9" ry="3.5" fill="rgba(255,255,255,.75)"/>`,
+    cry:     `<path d="M ${CX-10} ${MY+7} Q ${CX} ${MY-5} ${CX+10} ${MY+7}" fill="none" stroke="#881000" stroke-width="2.5" stroke-linecap="round"/><path d="M ${ELX+2} ${EY+ER+1} C ${ELX+4} ${EY+ER+7} ${ELX+3} ${EY+ER+13} ${ELX} ${EY+ER+15} C ${ELX-3} ${EY+ER+13} ${ELX-2} ${EY+ER+7} ${ELX+2} ${EY+ER+1}Z" fill="rgba(100,160,255,.85)"/><path d="M ${ERX+2} ${EY+ER+1} C ${ERX+4} ${EY+ER+7} ${ERX+3} ${EY+ER+13} ${ERX} ${EY+ER+15} C ${ERX-3} ${EY+ER+13} ${ERX-2} ${EY+ER+7} ${ERX+2} ${EY+ER+1}Z" fill="rgba(100,160,255,.85)"/>`,
+  };
+  const extras = {
+    bestia:       `<text x="4" y="22" font-size="13">✨</text><text x="92" y="20" font-size="13">✨</text>`,
+    racha:        `<ellipse cx="${ELX-9}" cy="${MY-2}" rx="9" ry="5.5" fill="rgba(255,100,40,.35)"/><ellipse cx="${ERX+9}" cy="${MY-2}" rx="9" ry="5.5" fill="rgba(255,100,40,.35)"/>`,
+    inflamada:    `<ellipse cx="${ELX-16}" cy="${MY-1}" rx="18" ry="13" fill="rgba(255,140,60,.52)"/><ellipse cx="${ERX+16}" cy="${MY-1}" rx="18" ry="13" fill="rgba(255,140,60,.52)"/>`,
+    apagada:      `<text x="85" y="25" font-size="16">💀</text>`,
+    celebrando:   `<text x="4" y="18" font-size="13">⭐</text><text x="95" y="16" font-size="13">⭐</text>`,
+    deshidratada: `<line x1="50" y1="55" x2="54" y2="66" stroke="rgba(80,25,0,.55)" stroke-width="2" stroke-linecap="round"/><line x1="54" y1="66" x2="49" y2="75" stroke="rgba(80,25,0,.55)" stroke-width="2" stroke-linecap="round"/><line x1="68" y1="60" x2="72" y2="72" stroke="rgba(80,25,0,.55)" stroke-width="2" stroke-linecap="round"/><ellipse cx="${ELX}" cy="${EY+ER+3}" rx="10" ry="4" fill="rgba(30,8,0,.28)"/><ellipse cx="${ERX}" cy="${EY+ER+3}" rx="10" ry="4" fill="rgba(30,8,0,.28)"/>`,
+  };
+  const map = {
+    bestia:       { e: 'bestia',  m: 'smug',   x: 'bestia' },
+    racha:        { e: 'happy',   m: 'smile',  x: 'racha' },
+    celebrando:   { e: 'star',    m: 'open',   x: 'celebrando' },
+    normal:       { e: 'normal',  m: 'flat',   x: '' },
+    inflamada:    { e: 'sad',     m: 'frown',  x: 'inflamada' },
+    ojeras:       { e: 'tired',   m: 'flat',   x: '' },
+    triste:       { e: 'sad',     m: 'cry',    x: '' },
+    deshidratada: { e: 'sad',     m: 'tongue', x: 'deshidratada' },
+    apagada:      { e: 'dead',    m: 'flat',   x: 'apagada' },
+  };
+  const { e, m, x } = map[stateKey] || map.normal;
+  return `<svg viewBox="0 0 120 130" xmlns="http://www.w3.org/2000/svg" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none">
+    ${extras[x] || ''}${eyes[e] || ''}${mouths[m] || ''}
+  </svg>`;
+}
+
+function Vic({ streak, tracking, macros }) {
+  const stateKey = getVicState(streak, tracking, macros);
+  const state = VIC_STATES[stateKey];
+  const badgeMap = {
+    bestia:       ['💪', '💪'],
+    racha:        ['👍'],
+    celebrando:   ['🥳', '🎊'],
+    inflamada:    ['🍔', '🍩'],
+    ojeras:       ['💤', '🌙'],
+    triste:       [],
+    deshidratada: ['💧', '💧'],
+    apagada:      [],
+    normal:       [],
+  };
+  const badgeStyles = {
+    bestia:       ['top:56px;left:-22px;transform:scaleX(-1)', 'top:56px;right:-22px'],
+    racha:        ['top:62px;right:-18px'],
+    celebrando:   ['top:-10px;left:16px;font-size:24px', 'top:14px;right:-16px'],
+    inflamada:    ['top:20px;right:-20px', 'top:72px;right:-20px'],
+    ojeras:       ['top:14px;right:-8px', 'top:4px;left:-4px;font-size:18px'],
+    deshidratada: ['top:38px;left:-18px;font-size:16px;opacity:0.5', 'top:60px;right:-16px;font-size:14px;opacity:0.4'],
+  };
+
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20,
+      background: 'var(--card)', borderRadius: 20, padding: '16px 18px',
+      border: `1.5px solid ${state.accent}44`,
+    }}>
+      <div style={{ position: 'relative', width: 80, height: 88, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <span style={{
+          fontSize: Math.round(state.size * 0.72) + 'px',
+          lineHeight: 1,
+          display: 'block',
+          filter: state.dimmed ? 'grayscale(60%) brightness(0.65)' : 'none',
+        }}>🔥</span>
+        <div dangerouslySetInnerHTML={{ __html: vicFace(stateKey) }} />
+        {(badgeMap[stateKey] || []).map((b, i) => (
+          <span key={i} style={{
+            position: 'absolute', fontSize: 18, pointerEvents: 'none',
+            ...(Object.fromEntries((badgeStyles[stateKey]?.[i] || '').split(';').filter(Boolean).map(p => {
+              const [k, v] = p.split(':'); return [k.trim().replace(/-([a-z])/g, (_,c) => c.toUpperCase()), v.trim()];
+            }))),
+          }}>{b}</span>
+        ))}
+      </div>
+      <div style={{ flex: 1 }}>
+        <p style={{ fontWeight: 800, fontSize: 15, color: state.accent, marginBottom: 3 }}>{state.name}</p>
+        <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.45 }}>{state.msg}</p>
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const { user } = useAuth();
   const [data, setData]       = useState(null);
@@ -58,6 +184,9 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+
+      {/* Vic mascot */}
+      <Vic streak={streak} tracking={tracking} macros={macros} />
 
       {/* Pending reminders */}
       {(() => {
