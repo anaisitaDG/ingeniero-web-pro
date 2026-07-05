@@ -48,15 +48,7 @@ export default function ClientList() {
   const [inviteEmail, setInviteEmail]   = useState('');
   const [inviteSending, setInviteSending] = useState(false);
   const [inviteDone, setInviteDone]     = useState(false);
-  const [sendingSummary, setSendingSummary] = useState(false);
   const navigate = useNavigate();
-
-  async function sendSummary() {
-    setSendingSummary(true);
-    try { await api.trainer.weeklySummary(); alert('✅ Resumen enviado a tu correo'); }
-    catch (e) { alert(e.message); }
-    finally { setSendingSummary(false); }
-  }
 
   useEffect(() => {
     api.trainer.clients()
@@ -90,16 +82,9 @@ export default function ClientList() {
           <h1 className="page-title">Clientes 👥</h1>
           <p style={{ color: 'var(--muted)', fontSize: 14 }}>{clients.length} en total</p>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={sendSummary} disabled={sendingSummary} style={{
-            padding: '10px 14px', borderRadius: 10, border: 'none', cursor: 'pointer',
-            background: 'var(--card)', color: 'var(--muted)', fontWeight: 700, fontSize: 13,
-            boxShadow: 'var(--shadow)', flexShrink: 0,
-          }}>{sendingSummary ? '⏳' : '📊 Resumen'}</button>
-          <button onClick={() => setShowInvite(v => !v)} className="btn-primary" style={{ flexShrink: 0 }}>
-            + Enviar valoración
-          </button>
-        </div>
+        <button onClick={() => setShowInvite(v => !v)} className="btn-primary" style={{ flexShrink: 0 }}>
+          + Enviar valoración
+        </button>
       </div>
 
       {/* Invite form */}

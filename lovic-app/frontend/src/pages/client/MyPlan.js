@@ -89,22 +89,21 @@ export default function MyPlan() {
               <p>Tu entrenadora aún no ha asignado una rutina.<br />¡Pronto la tendrás!</p>
             </div>
           )}
-          <FreeWorkout onCompleted={(kcal) => {
-            api.dashboard.get().then(d => {
-              setCelebration({ dayName: 'Entrenamiento libre', kcal, streak: d.streak || streak });
-              setStreak(d.streak || streak);
-            }).catch(() => setCelebration({ dayName: 'Entrenamiento libre', kcal, streak }));
-          }} />
+          <div style={{ marginTop: 20, borderTop: '2px dashed var(--border)', paddingTop: 20 }}>
+            <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>🆓 ¿Entrenaste algo diferente hoy?</p>
+            <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 14 }}>Registra aquí cualquier actividad fuera de tu rutina asignada.</p>
+            <FreeWorkout onCompleted={(kcal) => {
+              api.dashboard.get().then(d => {
+                setCelebration({ dayName: 'Entrenamiento libre', kcal, streak: d.streak || streak });
+                setStreak(d.streak || streak);
+              }).catch(() => setCelebration({ dayName: 'Entrenamiento libre', kcal, streak }));
+            }} />
+          </div>
         </>
       )}
 
       {tab === 'nutrition' && (
-        nutrition ? (
-          <div className="card">
-            <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: 14, lineHeight: 1.7 }}>{nutrition.content}</pre>
-            <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 12 }}>Actualizado: {new Date(nutrition.created_at).toLocaleDateString('es')}</p>
-          </div>
-        ) : (
+        nutrition ? <NutritionView content={nutrition.content} updatedAt={nutrition.created_at} /> : (
           <div className="empty-state">
             <div className="icon">🥗</div>
             <p>Tu entrenadora aún no ha asignado un plan nutricional.<br />¡Pronto lo tendrás!</p>
@@ -126,6 +125,82 @@ function calcKcal(table, type, mins) {
   if (!type || !mins) return null;
   const rate = table[type];
   return rate ? Math.round(rate * mins) : null;
+}
+
+const MEAL_KEYWORDS = {
+  'desayuno': { icon: '🌅', color: '#FF8E53' },
+  'almuerzo': { icon: '☀️', color: '#C99A1E' },
+  'cena':     { icon: '🌙', color: '#2D6EA0' },
+  'merienda': { icon: '🍎', color: '#16a34a' },
+  'snack':    { icon: '🍎', color: '#16a34a' },
+  'colación': { icon: '🍎', color: '#16a34a' },
+};
+
+function NutritionView({ content, updatedAt }) {
+  const [showRaw, setShowRaw] = useState(false);
+
+  // Try to parse into meal blocks by detecting lines that start with a meal keyword
+  const lines = content.split('\n');
+  const blocks = [];
+  let current = null;
+
+  lines.forEach(line => {
+    const trimmed = line.trim();
+    if (!trimmed) return;
+    const lc = trimmed.toLowerCase();
+    const mealKey = Object.keys(MEAL_KEYWORDS).find(k => lc.startsWith(k) || lc.includes(`**${k}`) || lc.includes(`# ${k}`));
+    if (mealKey) {
+      if (current) blocks.push(current);
+      current = { meal: mealKey, icon: MEAL_KEYWORDS[mealKey].icon, color: MEAL_KEYWORDS[mealKey].color, title: trimmed.replace(/[#*]/g, '').trim(), items: [] };
+    } else if (current) {
+      current.items.push(trimmed);
+    } else {
+      blocks.push({ meal: 'info', icon: 'ℹ️', color: '#6b7280', title: null, items: [trimmed] });
+    }
+  });
+  if (current) blocks.push(current);
+
+  const hasMeals = blocks.some(b => b.meal !== 'info');
+
+  if (!hasMeals || showRaw) {
+    return (
+      <div className="card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <p style={{ fontWeight: 700 }}>🥗 Plan nutricional</p>
+          {hasMeals && <button className="btn-ghost" onClick={() => setShowRaw(false)} style={{ fontSize: 12 }}>Ver visual</button>}
+        </div>
+        <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: 14, lineHeight: 1.7 }}>{content}</pre>
+        <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 12 }}>Actualizado: {new Date(updatedAt).toLocaleDateString('es')}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <p style={{ fontWeight: 800, fontSize: 17 }}>🥗 Plan nutricional</p>
+        <button className="btn-ghost" onClick={() => setShowRaw(true)} style={{ fontSize: 12 }}>Ver texto</button>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {blocks.map((b, i) => (
+          <div key={i} className="card" style={{ borderLeft: `4px solid ${b.color}`, padding: '14px 18px' }}>
+            {b.title && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: b.items.length ? 10 : 0 }}>
+                <span style={{ fontSize: 22 }}>{b.icon}</span>
+                <p style={{ fontWeight: 800, fontSize: 15, color: b.color }}>{b.title}</p>
+              </div>
+            )}
+            {b.items.map((item, j) => (
+              <p key={j} style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--text)', paddingLeft: b.title ? 30 : 0 }}>
+                {item.startsWith('-') || item.startsWith('•') ? item : `• ${item}`}
+              </p>
+            ))}
+          </div>
+        ))}
+      </div>
+      <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 12, textAlign: 'right' }}>Actualizado: {new Date(updatedAt).toLocaleDateString('es')}</p>
+    </div>
+  );
 }
 
 function PlanProgress({ startDate, durationDays }) {

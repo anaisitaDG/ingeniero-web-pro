@@ -744,39 +744,91 @@ export default function ClientDetail() {
         </div>
       )}
 
-      {/* ADHERENCIA */}
+      {/* ADHERENCIA — heatmap */}
       {tab === 'adherencia' && (
         <div>
           {!adherenceDetail ? <div style={{ textAlign: 'center', padding: 48 }}><div className="spinner" style={{ borderTopColor: 'var(--coral)', borderColor: 'var(--border)', width: 28, height: 28 }} /></div> : (
             adherenceDetail.length === 0 ? (
               <div className="empty-state"><div className="icon">🗓</div><p>Sin registros de adherencia aún</p></div>
-            ) : (
-              <div className="card">
-                <p style={{ fontWeight: 700, marginBottom: 16 }}>Últimos 60 días</p>
-                <div style={{ display: 'flex', gap: 16, marginBottom: 12 }}>
-                  <span style={{ fontSize: 12 }}>💪 Entrenamiento</span>
-                  <span style={{ fontSize: 12 }}>🥗 Dieta</span>
-                  <span style={{ fontSize: 12 }}>💧 Agua</span>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {adherenceDetail.map(row => {
-                    const d = row.tracked_date instanceof Date ? row.tracked_date.toISOString().slice(0,10) : String(row.tracked_date).slice(0,10);
-                    return (
-                      <div key={d} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
-                        <span style={{ fontSize: 12, color: 'var(--muted)', width: 80, flexShrink: 0 }}>
-                          {new Date(d).toLocaleDateString('es', { weekday: 'short', day: 'numeric', month: 'short' })}
-                        </span>
-                        <span style={{ fontSize: 16 }}>{row.workout_done ? '✅' : '⬜'}</span>
-                        <span style={{ fontSize: 16 }}>{row.diet_followed ? '✅' : '⬜'}</span>
-                        <span style={{ fontSize: 13, color: '#4A90D9', fontWeight: 600 }}>
-                          {row.water_glasses > 0 ? `💧${row.water_glasses}` : ''}
-                        </span>
+            ) : (() => {
+              const byDate = {};
+              adherenceDetail.forEach(r => {
+                const d = String(r.tracked_date).slice(0, 10);
+                byDate[d] = r;
+              });
+              const workoutDays = adherenceDetail.filter(r => r.workout_done).length;
+              const dietDays    = adherenceDetail.filter(r => r.diet_followed).length;
+              const total       = adherenceDetail.length;
+
+              // build 10-week grid (70 days back)
+              const cells = [];
+              for (let i = 69; i >= 0; i--) {
+                const d = new Date(); d.setDate(d.getDate() - i);
+                cells.push(d.toISOString().slice(0, 10));
+              }
+              const weeks = [];
+              for (let w = 0; w < 10; w++) weeks.push(cells.slice(w * 7, w * 7 + 7));
+
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  {/* Summary pills */}
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    {[
+                      { label: 'Entrenos', value: workoutDays, total, color: '#FF6B6B' },
+                      { label: 'Dieta', value: dietDays, total, color: '#16a34a' },
+                    ].map(s => (
+                      <div key={s.label} className="card" style={{ flex: 1, textAlign: 'center', padding: '14px 10px' }}>
+                        <p style={{ fontSize: 24, fontWeight: 900, color: s.color }}>{s.value}<span style={{ fontSize: 14, color: 'var(--muted)', fontWeight: 400 }}>/{s.total}</span></p>
+                        <p style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>{s.label}</p>
+                        <div style={{ background: 'var(--border)', borderRadius: 99, height: 6, marginTop: 8, overflow: 'hidden' }}>
+                          <div style={{ width: `${Math.round((s.value / s.total) * 100)}%`, height: '100%', background: s.color, borderRadius: 99 }} />
+                        </div>
                       </div>
-                    );
-                  })}
+                    ))}
+                  </div>
+
+                  {/* Heatmap */}
+                  <div className="card">
+                    <p style={{ fontWeight: 700, marginBottom: 14 }}>Últimos 70 días</p>
+                    <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
+                      {['D','L','M','X','J','V','S'].map(d => (
+                        <div key={d} style={{ flex: 1, fontSize: 10, color: 'var(--muted)', textAlign: 'center' }}>{d}</div>
+                      ))}
+                    </div>
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      {weeks.map((week, wi) => (
+                        <div key={wi} style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          {week.map(day => {
+                            const r = byDate[day];
+                            const bg = !r ? 'var(--border)'
+                              : r.workout_done && r.diet_followed ? '#16a34a'
+                              : r.workout_done ? '#FF6B6B'
+                              : r.diet_followed ? '#C99A1E'
+                              : '#f3f4f6';
+                            return (
+                              <div key={day} title={day} style={{ aspectRatio: '1', borderRadius: 4, background: bg }} />
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ display: 'flex', gap: 12, marginTop: 12, flexWrap: 'wrap' }}>
+                      {[
+                        { color: '#16a34a', label: 'Entreno + dieta' },
+                        { color: '#FF6B6B', label: 'Solo entreno' },
+                        { color: '#C99A1E', label: 'Solo dieta' },
+                        { color: 'var(--border)', label: 'Sin registro' },
+                      ].map(l => (
+                        <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                          <div style={{ width: 12, height: 12, borderRadius: 3, background: l.color }} />
+                          <span style={{ fontSize: 11, color: 'var(--muted)' }}>{l.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            )
+              );
+            })()
           )}
         </div>
       )}
@@ -813,10 +865,12 @@ export default function ClientDetail() {
               {/* Heatmap */}
               <WorkoutHeatmap sessions={workoutLogs.sessions} />
 
-              {/* Sesiones */}
+              {/* Sesiones — collapsed by default, show last 3 open */}
+              <p style={{ fontWeight: 700, fontSize: 14, marginTop: 4 }}>Últimas sesiones</p>
               {workoutLogs.sessions.map((session, idx) => (
                 <SessionCard key={session.date + session.day_name}
                   session={session}
+                  defaultOpen={idx < 2}
                   prevSession={workoutLogs.sessions.slice(idx + 1).find(s => s.day_name === session.day_name)} />
               ))}
             </div>
@@ -1043,7 +1097,8 @@ function WorkoutHeatmap({ sessions }) {
   );
 }
 
-function SessionCard({ session, prevSession }) {
+function SessionCard({ session, prevSession, defaultOpen = false }) {
+  const [open, setOpen] = useState(defaultOpen);
   const [expanded, setExpanded] = useState({});
   const dateLabel = new Date(`${session.date}T00:00:00`).toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' });
   const isFree = session.type === 'free';
@@ -1072,22 +1127,19 @@ function SessionCard({ session, prevSession }) {
       background: 'var(--card)',
     }}>
       {/* Header con color del día */}
-      <div style={{ background: color, padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div onClick={() => setOpen(o => !o)} style={{ background: color, padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}>
         <div>
           <p style={{ fontWeight: 800, fontSize: 15, color: '#fff', textTransform: 'capitalize' }}>{dateLabel}</p>
           <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)', marginTop: 2, fontWeight: 600 }}>
-            {isFree ? '🆓 Entrenamiento libre' : session.day_name}
+            {isFree ? '🆓 Entrenamiento libre' : session.day_name} · {session.exercises.length} ejercicios
           </p>
           {session.note && <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', marginTop: 2, fontStyle: 'italic' }}>"{session.note}"</p>}
         </div>
-        <div style={{ background: 'rgba(255,255,255,0.2)', borderRadius: 10, padding: '6px 12px', textAlign: 'center' }}>
-          <p style={{ fontSize: 18, fontWeight: 900, color: '#fff', lineHeight: 1 }}>{session.exercises.length}</p>
-          <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.8)', fontWeight: 600 }}>EJERC.</p>
-        </div>
+        <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: 18 }}>{open ? '▲' : '▼'}</span>
       </div>
 
       {/* Ejercicios */}
-      <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+      {open && <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 4 }}>
         {session.exercises.map((ex, i) => {
           const isOpen = expanded[i];
           const badge = progressBadge(ex.name, ex.max_weight);
@@ -1129,8 +1181,7 @@ function SessionCard({ session, prevSession }) {
             </div>
           );
         })}
-      </div>
+      </div>}
     </div>
-
   );
 }

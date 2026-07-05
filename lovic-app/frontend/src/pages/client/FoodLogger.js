@@ -209,19 +209,30 @@ export default function FoodLogger() {
 
             <p className="label" style={{ marginBottom: 10 }}>Detalle por día</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {[...history].reverse().map((r, i) => (
-                <div key={i} className="card" style={{ padding: '12px 16px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontWeight: 700 }}>{r.date}</span>
-                    <span className="pill pill-coral">{r.kcal} kcal</span>
+              {[...history].reverse().map((r, i) => {
+                const target = r.target || 0;
+                const pct = target ? r.kcal / target : 0;
+                const status = !target ? null
+                  : pct < 0.8 ? { color: '#2D6EA0', bg: '#EFF6FF', label: 'Bajo' }
+                  : pct <= 1.1 ? { color: '#16a34a', bg: '#dcfce7', label: '✓' }
+                  : { color: '#dc2626', bg: '#fee2e2', label: 'Exceso' };
+                return (
+                  <div key={i} className="card" style={{ padding: '12px 16px', borderLeft: status ? `4px solid ${status.color}` : undefined }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <span style={{ fontWeight: 700 }}>{r.date}</span>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        {status && <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 99, background: status.bg, color: status.color }}>{status.label}</span>}
+                        <span style={{ fontWeight: 800, color: status?.color || 'var(--coral)' }}>{r.kcal} kcal</span>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 10, fontSize: 12, color: 'var(--muted)' }}>
+                      <span>P <strong>{r.prot}g</strong></span>
+                      <span>C <strong>{r.carbs}g</strong></span>
+                      <span>G <strong>{r.fat}g</strong></span>
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', gap: 10, fontSize: 12, color: 'var(--muted)' }}>
-                    <span>P <strong>{r.prot}g</strong></span>
-                    <span>C <strong>{r.carbs}g</strong></span>
-                    <span>G <strong>{r.fat}g</strong></span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </>
         )
