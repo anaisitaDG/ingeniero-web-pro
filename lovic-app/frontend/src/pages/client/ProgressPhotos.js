@@ -86,7 +86,7 @@ function UploadPanel({ onSaved }) {
                 </div>
               )}
             </div>
-            <input type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={e => pickAngle(key, e)} />
+            <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => pickAngle(key, e)} />
           </label>
         ))}
       </div>
