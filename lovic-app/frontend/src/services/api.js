@@ -109,6 +109,11 @@ export const api = {
     saveFree:       (exercises, note, date) => request('/workout/free', { method: 'POST', body: JSON.stringify({ exercises, note, date }) }),
     getFree:        () => request('/workout/free'),
   },
+  mealPlan: {
+    today:    ()                       => request('/meal-plan'),
+    week:     ()                       => request('/meal-plan/week'),
+    complete: (meal_type, date, done)  => request('/meal-plan/complete', { method: 'POST', body: JSON.stringify({ meal_type, date, done }) }),
+  },
   trainer: {
     clients:       ()     => request('/trainer/clients'),
     client:        (id)   => request(`/trainer/clients/${id}`),
@@ -130,6 +135,8 @@ export const api = {
     getNotes:      (id) => request(`/trainer/clients/${id}/notes`),
     saveNotes:     (id, notes) => request(`/trainer/clients/${id}/notes`, { method: 'PUT', body: JSON.stringify({ notes }) }),
     weeklySummary: ()           => request('/trainer/weekly-summary', { method: 'POST' }),
+    getMealPlan:   (id)         => request(`/trainer/clients/${id}/meal-plan`),
+    saveMealPlan:  (id, days)   => request(`/trainer/clients/${id}/meal-plan`, { method: 'PUT', body: JSON.stringify({ days }) }),
     getLibrary:    ()           => request('/trainer/library'),
     addLibrary:    (body)       => request('/trainer/library', { method: 'POST', body: JSON.stringify(body) }),
     updateLibrary: (id, body)   => request(`/trainer/library/${id}`, { method: 'PUT', body: JSON.stringify(body) }),

@@ -438,6 +438,62 @@ router.post('/weekly-summary', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── Meal Planner ──────────────────────────────────────────────────────────────
+
+// GET /trainer/clients/:id/meal-plan
+router.get('/clients/:id/meal-plan', async (req, res) => {
+  try {
+    const uid = req.params.id;
+    const [days] = await db.query(
+      'SELECT * FROM meal_plan_days WHERE client_id=? ORDER BY day_of_week', [uid]
+    );
+    const result = {};
+    for (const day of days) {
+      const [items] = await db.query(
+        'SELECT * FROM meal_plan_items WHERE day_id=? ORDER BY sort_order, meal_type', [day.id]
+      );
+      result[day.day_of_week] = items;
+    }
+    res.json({ plan: result });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// PUT /trainer/clients/:id/meal-plan
+// body: { days: { "1": [{ meal_type, description }], ... } }
+router.put('/clients/:id/meal-plan', async (req, res) => {
+  try {
+    const uid = req.params.id;
+    const { days } = req.body;
+    if (!days || typeof days !== 'object') return res.status(400).json({ error: 'days requerido' });
+
+    for (const [dow, meals] of Object.entries(days)) {
+      // upsert day
+      const [[existing]] = await db.query(
+        'SELECT id FROM meal_plan_days WHERE client_id=? AND day_of_week=?', [uid, dow]
+      );
+      let dayId;
+      if (existing) {
+        dayId = existing.id;
+        await db.query('DELETE FROM meal_plan_items WHERE day_id=?', [dayId]);
+      } else {
+        dayId = uuidv4();
+        await db.query(
+          'INSERT INTO meal_plan_days (id, client_id, day_of_week) VALUES (?,?,?)', [dayId, uid, dow]
+        );
+      }
+      for (let i = 0; i < meals.length; i++) {
+        const { meal_type, description } = meals[i];
+        if (!description?.trim()) continue;
+        await db.query(
+          'INSERT INTO meal_plan_items (id, day_id, meal_type, description, sort_order) VALUES (?,?,?,?,?)',
+          [uuidv4(), dayId, meal_type, description.trim(), i]
+        );
+      }
+    }
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── Exercise Library ──────────────────────────────────────────────────────────
 
 // GET /trainer/library

@@ -62,6 +62,13 @@ export default function ClientDetail() {
   const [savingBilling, setSavingBilling] = useState(false);
   const [saveMsg, setSaveMsg]           = useState('');
 
+  // Meal planner state
+  const [mealPlan, setMealPlan]           = useState(null); // { 1: [...], 2: [...], ... }
+  const [mealPlanDraft, setMealPlanDraft] = useState(null); // editing state
+  const [savingMealPlan, setSavingMealPlan] = useState(false);
+  const [mealPlanDow, setMealPlanDow]     = useState(1); // selected day 1-7
+  const [nutritionSubTab, setNutritionSubTab] = useState('planner'); // 'planner' | 'text'
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -114,6 +121,10 @@ export default function ClientDetail() {
     if (tab === 'adherencia' && !adherenceDetail) api.trainer.getAdherence(id).then(d => setAdherence(d.days));
     if (tab === 'logs' && !workoutLogs) api.trainer.getWorkoutLogs(id).then(d => setWorkoutLogs(d));
     if (tab === 'notas' && notes === '') api.trainer.getNotes(id).then(d => setNotes(d.notes || ''));
+    if (tab === 'nutrition' && !mealPlan) api.trainer.getMealPlan(id).then(res => {
+      setMealPlan(res.plan || {});
+      setMealPlanDraft(JSON.parse(JSON.stringify(res.plan || {})));
+    });
     if (tab === 'facturacion') api.trainer.getBilling().then(res => {
       const c = (res.clients || []).find(c => c.id === id);
       if (c) setBilling({ monthly_fee: c.monthly_fee != null ? String(c.monthly_fee) : '', next_payment_date: c.next_payment_date ? String(c.next_payment_date).slice(0, 10) : '', notes: c.notes || '' });
@@ -166,6 +177,16 @@ export default function ClientDetail() {
     try { await api.trainer.saveNutrition(id, manualNutrition); await load(); setSaveMsg('✅ Plan guardado'); setTimeout(() => setSaveMsg(''), 3000); }
     catch (e) { setSaveMsg('❌ ' + e.message); setTimeout(() => setSaveMsg(''), 4000); }
     finally { setSavingNutrition(false); }
+  }
+
+  async function saveMealPlan() {
+    setSavingMealPlan(true);
+    try {
+      await api.trainer.saveMealPlan(id, mealPlanDraft);
+      setMealPlan(JSON.parse(JSON.stringify(mealPlanDraft)));
+      setSaveMsg('✅ Planner guardado'); setTimeout(() => setSaveMsg(''), 3000);
+    } catch (e) { setSaveMsg('❌ ' + e.message); setTimeout(() => setSaveMsg(''), 4000); }
+    finally { setSavingMealPlan(false); }
   }
 
   async function genNutrition() {
@@ -673,51 +694,158 @@ export default function ClientDetail() {
       )}
 
       {/* Nutrición */}
-      {tab === 'nutrition' && (
-        <div>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-            {[['manual', '✏️ Editar manualmente'], ['ai', '✨ Generar con IA']].map(([key, label]) => (
-              <button key={key} onClick={() => setNutritionMode(key)} style={{
-                flex: 1, padding: '10px', borderRadius: 10, fontWeight: 700, fontSize: 13, border: 'none', cursor: 'pointer',
-                background: nutritionMode === key ? 'var(--gold)' : 'var(--card)',
-                color: nutritionMode === key ? '#fff' : 'var(--muted)',
-                boxShadow: 'var(--shadow)',
-              }}>{label}</button>
-            ))}
-          </div>
+      {tab === 'nutrition' && (() => {
+        const DAYS_LABELS_T = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+        const MEAL_META_T = {
+          breakfast: { label: 'Desayuno',    icon: '🌅' },
+          lunch:     { label: 'Almuerzo',    icon: '☀️' },
+          snack:     { label: 'Media tarde', icon: '🍎' },
+          dinner:    { label: 'Cena',        icon: '🌙' },
+        };
+        const MEAL_ORDER_T = ['breakfast', 'lunch', 'snack', 'dinner'];
 
-          {nutritionMode === 'manual' && (
-            <div className="card">
-              <p style={{ fontWeight: 700, marginBottom: 10 }}>✏️ Plan de alimentación</p>
-              <textarea className="input" rows={16}
-                placeholder={"Lunes\nDesayuno: Avena con frutas — 350 kcal\nAlmuerzo: Pollo con arroz — 550 kcal\nMerienda: Yogur griego — 150 kcal\nCena: Ensalada con atún — 400 kcal\n\nMartes\n..."}
-                value={manualNutrition}
-                onChange={e => setManualNutrition(e.target.value)}
-                style={{ marginBottom: 10, resize: 'vertical', fontFamily: 'monospace', fontSize: 13 }}
-              />
-              <button className="btn-primary" onClick={saveNutrition} disabled={savingNutrition || !manualNutrition.trim()} style={{ width: '100%', justifyContent: 'center', background: 'var(--gold)' }}>
-                {savingNutrition ? <><span className="spinner" /> Guardando…</> : '💾 Guardar plan'}
-              </button>
+        const draft = mealPlanDraft || {};
+        const dayDraft = draft[mealPlanDow] || [];
+
+        function setDayMeals(dow, meals) {
+          setMealPlanDraft(prev => ({ ...(prev || {}), [dow]: meals }));
+        }
+
+        function updateItem(idx, field, value) {
+          const updated = [...dayDraft];
+          updated[idx] = { ...updated[idx], [field]: value };
+          setDayMeals(mealPlanDow, updated);
+        }
+
+        function addItem(meal_type) {
+          setDayMeals(mealPlanDow, [...dayDraft, { meal_type, description: '' }]);
+        }
+
+        function removeItem(idx) {
+          setDayMeals(mealPlanDow, dayDraft.filter((_, i) => i !== idx));
+        }
+
+        function copyDayTo(fromDow, toDow) {
+          setMealPlanDraft(prev => ({ ...(prev || {}), [toDow]: JSON.parse(JSON.stringify((prev || {})[fromDow] || [])) }));
+        }
+
+        return (
+          <div>
+            {/* Sub-tab switcher */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 16, background: 'var(--border)', padding: 4, borderRadius: 12 }}>
+              {[['planner', '📅 Planner semanal'], ['text', '📝 Plan en texto'], ['ai', '✨ Generar con IA']].map(([k, l]) => (
+                <button key={k} onClick={() => setNutritionSubTab(k)} style={{
+                  flex: 1, padding: '8px 4px', borderRadius: 10, fontWeight: 700, fontSize: 12, border: 'none', cursor: 'pointer',
+                  background: nutritionSubTab === k ? 'var(--gold)' : 'transparent',
+                  color: nutritionSubTab === k ? '#fff' : 'var(--muted)',
+                  boxShadow: nutritionSubTab === k ? '0 1px 4px rgba(0,0,0,0.1)' : 'none',
+                }}>{l}</button>
+              ))}
             </div>
-          )}
 
-          {nutritionMode === 'ai' && (
-            <div className="card">
-              <p style={{ fontWeight: 700, marginBottom: 10 }}>Generar plan nutricional con IA</p>
-              <textarea className="input" rows={2} placeholder="Instrucciones adicionales (opcional)..." value={aiPrompt} onChange={e => setAiPrompt(e.target.value)} style={{ marginBottom: 10, resize: 'vertical' }} />
-              <button className="btn-primary" onClick={genNutrition} disabled={genNutritionLoading} style={{ width: '100%', justifyContent: 'center', background: 'var(--gold)' }}>
-                {genNutritionLoading ? <><span className="spinner" /> Generando…</> : '✨ Generar plan nutricional'}
-              </button>
-              {nutrition_plan && (
-                <div style={{ marginTop: 16 }}>
-                  <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: 13, lineHeight: 1.7 }}>{nutrition_plan.content}</pre>
-                  <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 8 }}>Guardado: {new Date(nutrition_plan.created_at).toLocaleDateString('es')}</p>
+            {nutritionSubTab === 'planner' && (
+              <div>
+                {/* Day navigator */}
+                <div style={{ display: 'flex', gap: 6, marginBottom: 16, overflowX: 'auto', paddingBottom: 4 }}>
+                  {[1,2,3,4,5,6,7].map(dow => {
+                    const count = (draft[dow] || []).length;
+                    return (
+                      <button key={dow} onClick={() => setMealPlanDow(dow)} style={{
+                        flexShrink: 0, padding: '8px 10px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                        fontWeight: 700, fontSize: 12, minWidth: 52, textAlign: 'center',
+                        background: mealPlanDow === dow ? 'var(--gold)' : 'var(--card)',
+                        color: mealPlanDow === dow ? '#fff' : count > 0 ? 'var(--text)' : 'var(--muted)',
+                        boxShadow: 'var(--shadow)',
+                      }}>
+                        {DAYS_LABELS_T[dow].slice(0, 3)}
+                        {count > 0 && <span style={{ display: 'block', fontSize: 9, marginTop: 2, opacity: 0.8 }}>{count} items</span>}
+                      </button>
+                    );
+                  })}
                 </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+
+                {/* Day label + copy menu */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <p style={{ fontWeight: 800, fontSize: 16 }}>{DAYS_LABELS_T[mealPlanDow]}</p>
+                  <select onChange={e => { if (e.target.value) copyDayTo(Number(e.target.value), mealPlanDow); e.target.value = ''; }}
+                    style={{ fontSize: 12, padding: '4px 8px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--muted)', cursor: 'pointer' }}>
+                    <option value="">Copiar de…</option>
+                    {[1,2,3,4,5,6,7].filter(d => d !== mealPlanDow && (draft[d]||[]).length > 0).map(d => (
+                      <option key={d} value={d}>{DAYS_LABELS_T[d]}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Meals editor by type */}
+                {MEAL_ORDER_T.map(mealType => {
+                  const meta = MEAL_META_T[mealType];
+                  const items = dayDraft.map((it, i) => ({ ...it, _idx: i })).filter(it => it.meal_type === mealType);
+                  return (
+                    <div key={mealType} className="card" style={{ marginBottom: 12, padding: 14 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                        <p style={{ fontWeight: 700, fontSize: 14 }}>{meta.icon} {meta.label}</p>
+                        <button onClick={() => addItem(mealType)} style={{
+                          background: 'var(--coral)', color: '#fff', border: 'none', borderRadius: 8,
+                          padding: '4px 10px', fontSize: 18, cursor: 'pointer', lineHeight: 1,
+                        }}>+</button>
+                      </div>
+                      {items.length === 0 && (
+                        <p style={{ fontSize: 13, color: 'var(--muted)', fontStyle: 'italic' }}>Sin items — toca + para agregar</p>
+                      )}
+                      {items.map((it) => (
+                        <div key={it._idx} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'flex-start' }}>
+                          <textarea className="input" rows={2} value={it.description}
+                            onChange={e => updateItem(it._idx, 'description', e.target.value)}
+                            placeholder="Ej: 2 huevos revueltos con espinaca, 1 arepa"
+                            style={{ flex: 1, resize: 'vertical', fontSize: 13, padding: '8px 10px' }} />
+                          <button onClick={() => removeItem(it._idx)} style={{
+                            background: 'none', border: 'none', color: '#E05252', fontSize: 20, cursor: 'pointer', padding: '4px', flexShrink: 0,
+                          }}>×</button>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
+
+                <button className="btn-primary" onClick={saveMealPlan} disabled={savingMealPlan} style={{ width: '100%', justifyContent: 'center', background: 'var(--gold)', marginTop: 4 }}>
+                  {savingMealPlan ? <><span className="spinner" /> Guardando…</> : '💾 Guardar planner'}
+                </button>
+              </div>
+            )}
+
+            {nutritionSubTab === 'text' && (
+              <div className="card">
+                <p style={{ fontWeight: 700, marginBottom: 10 }}>✏️ Plan de alimentación (texto libre)</p>
+                <textarea className="input" rows={16}
+                  placeholder={"Lunes\nDesayuno: Avena con frutas — 350 kcal\nAlmuerzo: Pollo con arroz — 550 kcal\n..."}
+                  value={manualNutrition}
+                  onChange={e => setManualNutrition(e.target.value)}
+                  style={{ marginBottom: 10, resize: 'vertical', fontFamily: 'monospace', fontSize: 13 }}
+                />
+                <button className="btn-primary" onClick={saveNutrition} disabled={savingNutrition || !manualNutrition.trim()} style={{ width: '100%', justifyContent: 'center', background: 'var(--gold)' }}>
+                  {savingNutrition ? <><span className="spinner" /> Guardando…</> : '💾 Guardar plan'}
+                </button>
+              </div>
+            )}
+
+            {nutritionSubTab === 'ai' && (
+              <div className="card">
+                <p style={{ fontWeight: 700, marginBottom: 10 }}>✨ Generar plan nutricional con IA</p>
+                <textarea className="input" rows={2} placeholder="Instrucciones adicionales (opcional)..." value={aiPrompt} onChange={e => setAiPrompt(e.target.value)} style={{ marginBottom: 10, resize: 'vertical' }} />
+                <button className="btn-primary" onClick={genNutrition} disabled={genNutritionLoading} style={{ width: '100%', justifyContent: 'center', background: 'var(--gold)' }}>
+                  {genNutritionLoading ? <><span className="spinner" /> Generando…</> : '✨ Generar plan nutricional'}
+                </button>
+                {nutrition_plan && (
+                  <div style={{ marginTop: 16 }}>
+                    <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: 13, lineHeight: 1.7 }}>{nutrition_plan.content}</pre>
+                    <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 8 }}>Guardado: {new Date(nutrition_plan.created_at).toLocaleDateString('es')}</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Bio */}
       {tab === 'bio' && (

@@ -107,12 +107,7 @@ export default function MyPlan() {
       )}
 
       {tab === 'nutrition' && (
-        nutrition ? <NutritionView content={nutrition.content} updatedAt={nutrition.created_at} /> : (
-          <div className="empty-state">
-            <div className="icon">🥗</div>
-            <p>Tu entrenadora aún no ha asignado un plan nutricional.<br />¡Pronto lo tendrás!</p>
-          </div>
-        )
+        <MealPlanView legacyNutrition={nutrition} />
       )}
     </div>
   );
@@ -129,6 +124,238 @@ function calcKcal(table, type, mins) {
   if (!type || !mins) return null;
   const rate = table[type];
   return rate ? Math.round(rate * mins) : null;
+}
+
+// ── Meal Plan View ────────────────────────────────────────────────────────────
+const DAYS_LABELS = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+const MEAL_META = {
+  breakfast: { label: 'Desayuno',    icon: '🌅', color: '#FF8E53' },
+  lunch:     { label: 'Almuerzo',    icon: '☀️',  color: '#C99A1E' },
+  snack:     { label: 'Media tarde', icon: '🍎',  color: '#16a34a' },
+  dinner:    { label: 'Cena',        icon: '🌙',  color: '#2D6EA0' },
+};
+const MEAL_ORDER = ['breakfast', 'lunch', 'snack', 'dinner'];
+
+function MealPlanView({ legacyNutrition }) {
+  const [meals, setMeals]           = useState(null); // today's meals
+  const [weekPlan, setWeekPlan]     = useState(null);
+  const [completed, setCompleted]   = useState([]);
+  const [todayDow, setTodayDow]     = useState(null);
+  const [viewDow, setViewDow]       = useState(null); // which day the user is browsing
+  const [mode, setMode]             = useState('today'); // 'today' | 'week'
+  const [loading, setLoading]       = useState(true);
+  const [toggling, setToggling]     = useState({});
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const [todayRes, weekRes] = await Promise.all([api.mealPlan.today(), api.mealPlan.week()]);
+        setMeals(todayRes.meals || []);
+        setCompleted(todayRes.completed || []);
+        setTodayDow(todayRes.dow);
+        setViewDow(todayRes.dow);
+        setWeekPlan(weekRes.plan || {});
+      } catch (_) {}
+      setLoading(false);
+    })();
+  }, []);
+
+  async function toggleMeal(meal_type) {
+    const isDone = completed.includes(meal_type);
+    setToggling(t => ({ ...t, [meal_type]: true }));
+    const next = isDone ? completed.filter(m => m !== meal_type) : [...completed, meal_type];
+    setCompleted(next);
+    try {
+      await api.mealPlan.complete(meal_type, null, !isDone);
+    } catch (_) {
+      setCompleted(isDone ? [...completed] : completed.filter(m => m !== meal_type));
+    }
+    setToggling(t => ({ ...t, [meal_type]: false }));
+  }
+
+  if (loading) return <div style={{ textAlign: 'center', padding: 48 }}><div className="spinner" style={{ borderTopColor: 'var(--coral)', borderColor: 'var(--border)', width: 28, height: 28 }} /></div>;
+
+  const hasMealPlan = meals !== null && (meals.length > 0 || (weekPlan && Object.keys(weekPlan).length > 0));
+
+  if (!hasMealPlan) {
+    return legacyNutrition
+      ? <NutritionView content={legacyNutrition.content} updatedAt={legacyNutrition.created_at} />
+      : <div className="empty-state"><div className="icon">🥗</div><p>Tu entrenadora aún no ha asignado un plan nutricional.<br />¡Pronto lo tendrás!</p></div>;
+  }
+
+  // Which meals to show in day view
+  const dayMeals = mode === 'today'
+    ? meals
+    : (weekPlan[viewDow] || []);
+
+  const groupedByType = {};
+  dayMeals.forEach(m => {
+    if (!groupedByType[m.meal_type]) groupedByType[m.meal_type] = [];
+    groupedByType[m.meal_type].push(m);
+  });
+
+  const todayComplete = MEAL_ORDER.filter(t => groupedByType[t]).every(t => completed.includes(t));
+
+  return (
+    <div>
+      {/* Mode switcher */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, background: 'var(--border)', padding: 4, borderRadius: 12 }}>
+        {[{ k: 'today', l: '📅 Hoy' }, { k: 'week', l: '📆 Semana' }].map(({ k, l }) => (
+          <button key={k} onClick={() => setMode(k)} style={{
+            flex: 1, padding: '8px', borderRadius: 10, fontWeight: 700, fontSize: 13, border: 'none',
+            background: mode === k ? 'var(--card)' : 'transparent',
+            color: mode === k ? 'var(--coral)' : 'var(--muted)',
+            boxShadow: mode === k ? '0 1px 4px rgba(0,0,0,0.1)' : 'none',
+            cursor: 'pointer',
+          }}>{l}</button>
+        ))}
+      </div>
+
+      {mode === 'today' && (
+        <>
+          {/* Progress bar */}
+          {MEAL_ORDER.some(t => groupedByType[t]) && (
+            <div className="card" style={{ marginBottom: 16, padding: '14px 16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <span style={{ fontWeight: 700, fontSize: 15 }}>
+                  {todayComplete ? '🎉 ¡Dieta completada hoy!' : '🥗 Plan de hoy'}
+                </span>
+                <span style={{ fontWeight: 800, color: 'var(--coral)', fontSize: 14 }}>
+                  {MEAL_ORDER.filter(t => groupedByType[t] && completed.includes(t)).length} / {MEAL_ORDER.filter(t => groupedByType[t]).length}
+                </span>
+              </div>
+              <div style={{ height: 8, background: 'var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+                <div style={{
+                  height: '100%', borderRadius: 8,
+                  background: todayComplete ? '#16a34a' : 'var(--coral)',
+                  width: `${Math.round((MEAL_ORDER.filter(t => groupedByType[t] && completed.includes(t)).length / Math.max(1, MEAL_ORDER.filter(t => groupedByType[t]).length)) * 100)}%`,
+                  transition: 'width 0.4s',
+                }} />
+              </div>
+            </div>
+          )}
+
+          {/* Meal cards for today */}
+          {dayMeals.length === 0
+            ? <div className="empty-state"><div className="icon">📅</div><p>No hay comidas asignadas para hoy</p></div>
+            : MEAL_ORDER.map(type => {
+                const meta = MEAL_META[type] || { label: type, icon: '🍽️', color: 'var(--coral)' };
+                const items = groupedByType[type];
+                if (!items) return null;
+                const done = completed.includes(type);
+                return (
+                  <div key={type} className="card" style={{
+                    marginBottom: 12, padding: 16,
+                    borderLeft: `4px solid ${done ? '#16a34a' : meta.color}`,
+                    background: done ? 'var(--card)' : 'var(--card)',
+                    opacity: done ? 0.85 : 1,
+                    transition: 'all 0.3s',
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                          <span style={{ fontSize: 22 }}>{done ? '✅' : meta.icon}</span>
+                          <p style={{ fontWeight: 800, fontSize: 15, color: done ? '#16a34a' : meta.color }}>{meta.label}</p>
+                        </div>
+                        {items.map((item, i) => (
+                          <p key={i} style={{ fontSize: 14, lineHeight: 1.65, color: done ? 'var(--muted)' : 'var(--text)', marginBottom: 2 }}>
+                            • {item.description}
+                          </p>
+                        ))}
+                      </div>
+                      <button
+                        onClick={() => toggleMeal(type)}
+                        disabled={toggling[type]}
+                        style={{
+                          marginLeft: 12, flexShrink: 0, width: 36, height: 36, borderRadius: '50%', border: 'none',
+                          cursor: 'pointer', fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          background: done ? '#dcfce7' : 'var(--border)',
+                          color: done ? '#16a34a' : 'var(--muted)',
+                          transition: 'all 0.2s',
+                        }}
+                        title={done ? 'Marcar como pendiente' : 'Marcar como completado'}
+                      >
+                        {toggling[type] ? <span className="spinner" style={{ width: 14, height: 14, borderColor: 'var(--border)', borderTopColor: 'var(--coral)' }} /> : (done ? '✓' : '○')}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+          }
+        </>
+      )}
+
+      {mode === 'week' && (
+        <>
+          {/* Day navigator */}
+          <div style={{ display: 'flex', gap: 6, marginBottom: 16, overflowX: 'auto', paddingBottom: 4 }}>
+            {[1,2,3,4,5,6,7].map(dow => {
+              const hasMeals = weekPlan[dow]?.length > 0;
+              const isToday = dow === todayDow;
+              return (
+                <button key={dow} onClick={() => setViewDow(dow)} style={{
+                  flexShrink: 0, padding: '8px 12px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                  fontWeight: 700, fontSize: 12,
+                  background: viewDow === dow ? 'var(--coral)' : 'var(--card)',
+                  color: viewDow === dow ? '#fff' : hasMeals ? 'var(--text)' : 'var(--muted)',
+                  boxShadow: 'var(--shadow)',
+                  outline: isToday && viewDow !== dow ? '2px solid var(--coral)' : 'none',
+                }}>
+                  {DAYS_LABELS[dow].slice(0, 3)}
+                  {isToday && <span style={{ display: 'block', fontSize: 9, marginTop: 2 }}>HOY</span>}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Day label */}
+          <p style={{ fontWeight: 800, fontSize: 17, marginBottom: 14 }}>{DAYS_LABELS[viewDow]}</p>
+
+          {/* Meals for selected day */}
+          {(weekPlan[viewDow] || []).length === 0
+            ? <div className="empty-state"><div className="icon">📅</div><p>No hay comidas asignadas para este día</p></div>
+            : (() => {
+                const grouped = {};
+                (weekPlan[viewDow] || []).forEach(m => {
+                  if (!grouped[m.meal_type]) grouped[m.meal_type] = [];
+                  grouped[m.meal_type].push(m);
+                });
+                return MEAL_ORDER.map(type => {
+                  const meta = MEAL_META[type] || { label: type, icon: '🍽️', color: 'var(--coral)' };
+                  const items = grouped[type];
+                  if (!items) return null;
+                  return (
+                    <div key={type} className="card" style={{ marginBottom: 12, padding: 16, borderLeft: `4px solid ${meta.color}` }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                        <span style={{ fontSize: 20 }}>{meta.icon}</span>
+                        <p style={{ fontWeight: 800, fontSize: 14, color: meta.color }}>{meta.label}</p>
+                      </div>
+                      {items.map((item, i) => (
+                        <p key={i} style={{ fontSize: 14, lineHeight: 1.65, color: 'var(--text)', marginBottom: 2 }}>
+                          • {item.description}
+                        </p>
+                      ))}
+                    </div>
+                  );
+                });
+              })()
+          }
+        </>
+      )}
+
+      {/* Legacy text plan as reference */}
+      {legacyNutrition && (
+        <details style={{ marginTop: 20 }}>
+          <summary style={{ fontSize: 13, color: 'var(--muted)', cursor: 'pointer', padding: '8px 0' }}>
+            📄 Ver plan nutricional en texto
+          </summary>
+          <div style={{ marginTop: 10 }}>
+            <NutritionView content={legacyNutrition.content} updatedAt={legacyNutrition.created_at} />
+          </div>
+        </details>
+      )}
+    </div>
+  );
 }
 
 const MEAL_KEYWORDS = {

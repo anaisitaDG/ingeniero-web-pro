@@ -168,6 +168,33 @@ const db = require('./database/db');
         INDEX idx_user_date (user_id, session_date)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS meal_plan_days (
+        id          VARCHAR(36) PRIMARY KEY,
+        client_id   INT NOT NULL,
+        day_of_week TINYINT NOT NULL,
+        UNIQUE KEY uq_client_day (client_id, day_of_week)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS meal_plan_items (
+        id          VARCHAR(36) PRIMARY KEY,
+        day_id      VARCHAR(36) NOT NULL,
+        meal_type   VARCHAR(20) NOT NULL,
+        description TEXT NOT NULL,
+        sort_order  TINYINT DEFAULT 0,
+        INDEX idx_day (day_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS meal_completions (
+        id          VARCHAR(36) PRIMARY KEY,
+        client_id   INT NOT NULL,
+        logged_date DATE NOT NULL,
+        meal_type   VARCHAR(20) NOT NULL,
+        UNIQUE KEY uq_client_date_meal (client_id, logged_date, meal_type)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
   } catch (e) {
     console.error('Migration error:', e.message);
   }
@@ -195,6 +222,7 @@ app.use('/questionnaire', require('./routes/questionnaire'));
 app.use('/profile',         require('./routes/profile'));
 app.use('/progress-photos', require('./routes/progressPhotos'));
 app.use('/workout',         require('./routes/workout'));
+app.use('/meal-plan',       require('./routes/mealPlan'));
 
 // Health
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }));
