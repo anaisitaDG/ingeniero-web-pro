@@ -259,9 +259,11 @@ router.get('/clients/:id/adherence-detail', async (req, res) => {
   res.json({ days: rows });
 });
 
-// GET /trainer/clients/:id/workout-logs — logs de ejercicios agrupados por ejercicio
+// GET /trainer/clients/:id/workout-logs — sesiones agrupadas por fecha + resumen
 router.get('/clients/:id/workout-logs', async (req, res) => {
   const uid = req.params.id;
+
+  // Logs de ejercicios
   const [logs] = await db.query(
     `SELECT wl.logged_date, wl.set_number, wl.weight_kg, wl.reps_done,
             we.name as exercise_name, wd.day_name
@@ -269,22 +271,72 @@ router.get('/clients/:id/workout-logs', async (req, res) => {
      JOIN workout_exercises we ON we.id = wl.exercise_id
      JOIN workout_days wd ON wd.id = we.day_id
      WHERE wl.user_id=?
-     ORDER BY we.name, wl.logged_date DESC, wl.set_number ASC
-     LIMIT 300`, [uid]
+     ORDER BY wl.logged_date DESC, wd.day_name, we.name, wl.set_number ASC
+     LIMIT 500`, [uid]
   );
-  // Group by exercise
-  const byEx = {};
+
+  // Días completados (workout_done)
+  const [trackRows] = await db.query(
+    `SELECT DATE_FORMAT(tracked_date, '%Y-%m-%d') as d
+     FROM daily_tracking WHERE user_id=? AND workout_done=1
+     ORDER BY tracked_date DESC`, [uid]
+  );
+
+  // Entrenamientos libres
+  const [freeRows] = await db.query(
+    `SELECT * FROM free_workout_logs WHERE user_id=? ORDER BY session_date DESC LIMIT 50`, [uid]
+  );
+
+  // Agrupar ejercicios por fecha
+  const byDate = {};
   for (const row of logs) {
-    if (!byEx[row.exercise_name]) byEx[row.exercise_name] = { name: row.exercise_name, day_name: row.day_name, sessions: {} };
     const d = row.logged_date instanceof Date ? row.logged_date.toISOString().slice(0,10) : String(row.logged_date).slice(0,10);
-    if (!byEx[row.exercise_name].sessions[d]) byEx[row.exercise_name].sessions[d] = [];
-    byEx[row.exercise_name].sessions[d].push({ set: row.set_number, weight: row.weight_kg, reps: row.reps_done });
+    if (!byDate[d]) byDate[d] = { date: d, day_name: row.day_name, exercises: {}, type: 'routine' };
+    if (!byDate[d].exercises[row.exercise_name]) byDate[d].exercises[row.exercise_name] = [];
+    byDate[d].exercises[row.exercise_name].push({ set: row.set_number, weight: row.weight_kg, reps: row.reps_done });
   }
-  const exercises = Object.values(byEx).map(ex => ({
-    ...ex,
-    sessions: Object.entries(ex.sessions).map(([date, sets]) => ({ date, sets })).slice(0, 5),
+
+  const sessions = Object.values(byDate).map(s => ({
+    date: s.date,
+    day_name: s.day_name,
+    type: 'routine',
+    exercises: Object.entries(s.exercises).map(([name, sets]) => ({
+      name,
+      max_weight: Math.max(...sets.map(x => parseFloat(x.weight) || 0)) || null,
+      reps: sets[0]?.reps || null,
+      sets,
+    })),
   }));
-  res.json({ exercises });
+
+  // Agregar entrenamientos libres
+  for (const f of freeRows) {
+    const d = f.session_date instanceof Date ? f.session_date.toISOString().slice(0,10) : String(f.session_date).slice(0,10);
+    const exs = typeof f.exercises === 'string' ? JSON.parse(f.exercises) : f.exercises;
+    sessions.push({ date: d, day_name: 'Entrenamiento libre', type: 'free', note: f.note, exercises: exs.map(e => ({ name: e.name, type: e.type, sets: e.sets, reps: e.reps, weight_kg: e.weight_kg, duration_secs: e.duration_secs, duration_mins: e.duration_mins, max_weight: e.weight_kg || null })) });
+  }
+
+  // Ordenar por fecha desc
+  sessions.sort((a, b) => b.date.localeCompare(a.date));
+
+  // Resumen
+  const trainedDates = new Set([...trackRows.map(r => r.d), ...sessions.map(s => s.date)]);
+  const thisMonth = new Date(); thisMonth.setDate(1);
+  const monthStr = thisMonth.toISOString().slice(0,7);
+  const daysThisMonth = [...trainedDates].filter(d => d.startsWith(monthStr)).length;
+
+  // Racha
+  const sorted = [...trainedDates].sort().reverse();
+  let streak = 0;
+  const today = new Date().toISOString().slice(0,10);
+  const msPerDay = 86400000;
+  let expected = new Date(today).getTime();
+  while (true) {
+    const ds = new Date(expected).toISOString().slice(0,10);
+    if (!trainedDates.has(ds)) break;
+    streak++; expected -= msPerDay;
+  }
+
+  res.json({ sessions, summary: { streak, days_this_month: daysThisMonth, total_sessions: sessions.length } });
 });
 
 // GET/PUT /trainer/clients/:id/notes — notas privadas del entrenador

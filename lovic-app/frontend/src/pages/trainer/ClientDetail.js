@@ -82,7 +82,7 @@ export default function ClientDetail() {
   useEffect(() => {
     if (tab === 'progreso' && !progress) api.trainer.getProgress(id).then(setProgress);
     if (tab === 'adherencia' && !adherenceDetail) api.trainer.getAdherence(id).then(d => setAdherence(d.days));
-    if (tab === 'logs' && !workoutLogs) api.trainer.getWorkoutLogs(id).then(d => setWorkoutLogs(d.exercises));
+    if (tab === 'logs' && !workoutLogs) api.trainer.getWorkoutLogs(id).then(d => setWorkoutLogs(d));
     if (tab === 'notas' && notes === '') api.trainer.getNotes(id).then(d => setNotes(d.notes || ''));
   }, [tab]); // eslint-disable-line
 
@@ -638,33 +638,33 @@ export default function ClientDetail() {
       {/* LOGS DE EJERCICIOS */}
       {tab === 'logs' && (
         <div>
-          {!workoutLogs ? <div style={{ textAlign: 'center', padding: 48 }}><div className="spinner" style={{ borderTopColor: 'var(--coral)', borderColor: 'var(--border)', width: 28, height: 28 }} /></div> : (
-            workoutLogs.length === 0 ? (
-              <div className="empty-state"><div className="icon">🏋️</div><p>La cliente aún no ha registrado ningún ejercicio</p></div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {workoutLogs.map(ex => (
-                  <div key={ex.name} className="card">
-                    <p style={{ fontWeight: 700, marginBottom: 2 }}>{ex.name}</p>
-                    <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>{ex.day_name}</p>
-                    {ex.sessions.map(s => (
-                      <div key={s.date} style={{ marginBottom: 8 }}>
-                        <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--coral)', marginBottom: 4 }}>
-                          {new Date(s.date).toLocaleDateString('es', { weekday: 'short', day: 'numeric', month: 'short' })}
-                        </p>
-                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                          {s.sets.map((set, i) => (
-                            <span key={i} style={{ fontSize: 12, background: 'var(--bg)', padding: '3px 8px', borderRadius: 6, color: 'var(--text)' }}>
-                              S{set.set}: {set.weight ?? '—'}kg × {set.reps ?? '—'}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            )
+          {!workoutLogs ? (
+            <div style={{ textAlign: 'center', padding: 48 }}><div className="spinner" style={{ borderTopColor: 'var(--coral)', borderColor: 'var(--border)', width: 28, height: 28 }} /></div>
+          ) : !workoutLogs.sessions?.length ? (
+            <div className="empty-state"><div className="icon">🏋️</div><p>La cliente aún no ha registrado ningún ejercicio</p></div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {/* Resumen */}
+              {workoutLogs.summary && (
+                <div style={{ display: 'flex', gap: 10, marginBottom: 4 }}>
+                  {[
+                    { label: 'Racha actual', value: `🔥 ${workoutLogs.summary.streak} días` },
+                    { label: 'Este mes', value: `📅 ${workoutLogs.summary.days_this_month} días` },
+                    { label: 'Total sesiones', value: `🏋️ ${workoutLogs.summary.total_sessions}` },
+                  ].map(s => (
+                    <div key={s.label} className="card" style={{ flex: 1, padding: '12px', textAlign: 'center', margin: 0 }}>
+                      <p style={{ fontSize: 16, fontWeight: 800 }}>{s.value}</p>
+                      <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 3 }}>{s.label}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Sesiones */}
+              {workoutLogs.sessions.map(session => (
+                <SessionCard key={session.date + session.day_name} session={session} />
+              ))}
+            </div>
           )}
         </div>
       )}
@@ -741,4 +741,62 @@ function parseJson(v) {
     if (Array.isArray(a)) return a.map(k => GOAL_LABELS[k] || k).join(', ');
     return GOAL_LABELS[v] || v;
   } catch { return v; }
+}
+
+function SessionCard({ session }) {
+  const [expanded, setExpanded] = useState({});
+  const dateLabel = new Date(`${session.date}T00:00:00`).toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' });
+  const isFree = session.type === 'free';
+
+  return (
+    <div className="card" style={{ padding: '14px 16px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+        <div>
+          <p style={{ fontWeight: 800, fontSize: 14, textTransform: 'capitalize' }}>{dateLabel}</p>
+          <p style={{ fontSize: 12, color: isFree ? 'var(--coral)' : 'var(--muted)', marginTop: 2, fontWeight: isFree ? 600 : 400 }}>
+            {isFree ? '🆓 Entrenamiento libre' : session.day_name}
+          </p>
+          {session.note && <p style={{ fontSize: 12, color: 'var(--muted)', fontStyle: 'italic', marginTop: 2 }}>"{session.note}"</p>}
+        </div>
+        <span style={{ fontSize: 12, color: 'var(--muted)', background: 'var(--bg)', padding: '4px 10px', borderRadius: 20, whiteSpace: 'nowrap', marginLeft: 8 }}>
+          {session.exercises.length} ejerc.
+        </span>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {session.exercises.map((ex, i) => {
+          const isOpen = expanded[i];
+          let summary = ex.name;
+          if (ex.type === 'cardio') summary += ex.duration_mins ? ` · ${ex.duration_mins} min` : '';
+          else if (ex.type === 'time') summary += ex.duration_secs ? ` · ${ex.sets || 1}×${ex.duration_secs}seg` : '';
+          else if (ex.max_weight) summary += ` · ${parseFloat(ex.max_weight)}kg × ${ex.reps ?? '—'}`;
+
+          return (
+            <div key={i}>
+              <div
+                onClick={() => ex.sets?.length > 0 && setExpanded(p => ({ ...p, [i]: !p[i] }))}
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  background: 'var(--bg)', borderRadius: 10, padding: '8px 12px',
+                  cursor: ex.sets?.length > 0 ? 'pointer' : 'default' }}
+              >
+                <p style={{ fontSize: 13, fontWeight: 600 }}>{summary}</p>
+                {ex.sets?.length > 0 && (
+                  <span style={{ fontSize: 11, color: 'var(--muted)' }}>{isOpen ? '▲' : '▼'}</span>
+                )}
+              </div>
+              {isOpen && ex.sets?.length > 0 && (
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', padding: '6px 4px 2px' }}>
+                  {ex.sets.map((s, j) => (
+                    <span key={j} style={{ fontSize: 12, background: 'var(--card)', padding: '3px 10px', borderRadius: 6 }}>
+                      S{s.set ?? j+1}: {s.weight ?? s.weight_kg ?? '—'}kg × {s.reps ?? s.reps_done ?? '—'}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
