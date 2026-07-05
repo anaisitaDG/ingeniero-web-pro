@@ -76,6 +76,48 @@ function vicFace(stateKey) {
   </svg>`;
 }
 
+const VIC_ANIMATIONS = `
+  @keyframes vic-shake {
+    0%,100%{transform:rotate(0deg) scale(1)} 15%{transform:rotate(-6deg) scale(1.06)} 30%{transform:rotate(6deg) scale(1.06)} 45%{transform:rotate(-4deg) scale(1.04)} 60%{transform:rotate(4deg) scale(1.04)} 75%{transform:rotate(-2deg)} 90%{transform:rotate(2deg)}
+  }
+  @keyframes vic-bounce {
+    0%,100%{transform:translateY(0)} 40%{transform:translateY(-12px)} 60%{transform:translateY(-8px)}
+  }
+  @keyframes vic-jump {
+    0%,100%{transform:translateY(0) scale(1)} 30%{transform:translateY(-18px) scale(1.05)} 55%{transform:translateY(-10px)} 70%{transform:translateY(-14px) scale(1.03)}
+  }
+  @keyframes vic-breathe {
+    0%,100%{transform:scale(1)} 50%{transform:scale(1.08)}
+  }
+  @keyframes vic-sway {
+    0%,100%{transform:rotate(0deg)} 25%{transform:rotate(-8deg)} 75%{transform:rotate(8deg)}
+  }
+  @keyframes vic-wobble {
+    0%,100%{transform:rotate(0deg) translateX(0)} 20%{transform:rotate(-3deg) translateX(-2px)} 40%{transform:rotate(3deg) translateX(2px)} 60%{transform:rotate(-2deg) translateX(-1px)} 80%{transform:rotate(2deg) translateX(1px)}
+  }
+  @keyframes vic-pulse {
+    0%,100%{opacity:1} 50%{opacity:0.35}
+  }
+  @keyframes vic-droop {
+    0%,100%{transform:translateY(0) rotate(0deg)} 50%{transform:translateY(4px) rotate(-5deg)}
+  }
+  @keyframes vic-float {
+    0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)}
+  }
+`;
+
+const VIC_ANIM_STYLE = {
+  bestia:       { animation: 'vic-shake 0.5s ease-in-out infinite' },
+  racha:        { animation: 'vic-bounce 1.1s ease-in-out infinite' },
+  celebrando:   { animation: 'vic-jump 0.8s ease-in-out infinite' },
+  normal:       { animation: 'vic-float 3s ease-in-out infinite' },
+  inflamada:    { animation: 'vic-breathe 1.8s ease-in-out infinite' },
+  ojeras:       { animation: 'vic-sway 2.5s ease-in-out infinite' },
+  triste:       { animation: 'vic-droop 2s ease-in-out infinite' },
+  deshidratada: { animation: 'vic-wobble 1.5s ease-in-out infinite' },
+  apagada:      { animation: 'vic-pulse 2.5s ease-in-out infinite' },
+};
+
 function Vic({ streak, tracking, macros }) {
   const stateKey = getVicState(streak, tracking, macros);
   const state = VIC_STATES[stateKey];
@@ -100,6 +142,8 @@ function Vic({ streak, tracking, macros }) {
   };
 
   return (
+    <>
+    <style>{VIC_ANIMATIONS}</style>
     <div style={{
       display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20,
       background: 'var(--card)', borderRadius: 20, padding: '16px 18px',
@@ -111,6 +155,7 @@ function Vic({ streak, tracking, macros }) {
           lineHeight: 1,
           display: 'block',
           filter: state.dimmed ? 'grayscale(60%) brightness(0.65)' : 'none',
+          ...(VIC_ANIM_STYLE[stateKey] || {}),
         }}>🔥</span>
         <div dangerouslySetInnerHTML={{ __html: vicFace(stateKey) }} />
         {(badgeMap[stateKey] || []).map((b, i) => (
@@ -127,6 +172,7 @@ function Vic({ streak, tracking, macros }) {
         <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.45 }}>{state.msg}</p>
       </div>
     </div>
+    </>
   );
 }
 
