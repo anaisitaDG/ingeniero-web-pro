@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
-import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, LineChart, Line, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 const API_BASE = process.env.REACT_APP_API_URL || '';
 function photoUrl(p) {
@@ -676,35 +676,7 @@ export default function ClientDetail() {
         <div>
           {!progress ? <div style={{ textAlign: 'center', padding: 48 }}><div className="spinner" style={{ borderTopColor: 'var(--coral)', borderColor: 'var(--border)', width: 28, height: 28 }} /></div> : (
             <>
-              {progress.measurements.length > 1 && (() => {
-                const chartData = [...progress.measurements].reverse().map(r => ({
-                  date: new Date(r.logged_at).toLocaleDateString('es', { day: 'numeric', month: 'short' }),
-                  peso: r.weight_kg, cintura: r.waist_cm, cadera: r.hip_cm,
-                }));
-                return (
-                  <div className="card" style={{ marginBottom: 16 }}>
-                    <p style={{ fontWeight: 700, marginBottom: 12 }}>📉 Peso (kg)</p>
-                    <ResponsiveContainer width="100%" height={120}>
-                      <LineChart data={chartData}>
-                        <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'var(--muted)' }} axisLine={false} tickLine={false} />
-                        <Tooltip formatter={v => [`${v} kg`, 'Peso']} contentStyle={{ borderRadius: 10, border: 'none' }} />
-                        <Line type="monotone" dataKey="peso" stroke="var(--coral)" strokeWidth={2.5} dot={{ r: 3, fill: 'var(--coral)' }} connectNulls />
-                      </LineChart>
-                    </ResponsiveContainer>
-                    {chartData.some(d => d.cintura) && <>
-                      <p style={{ fontWeight: 700, margin: '12px 0 8px' }}>📐 Cintura/Cadera (cm)</p>
-                      <ResponsiveContainer width="100%" height={100}>
-                        <LineChart data={chartData}>
-                          <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'var(--muted)' }} axisLine={false} tickLine={false} />
-                          <Tooltip contentStyle={{ borderRadius: 10, border: 'none' }} />
-                          <Line type="monotone" dataKey="cintura" stroke="#2D6EA0" strokeWidth={2} dot={false} connectNulls />
-                          <Line type="monotone" dataKey="cadera" stroke="#C99A1E" strokeWidth={2} dot={false} connectNulls />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </>}
-                  </div>
-                );
-              })()}
+              {progress.measurements.length > 1 && <TrainerProgressCharts measurements={progress.measurements} />}
               {progress.photos.length > 0 ? (
                 <div>
                   <p style={{ fontWeight: 700, marginBottom: 12 }}>📸 Fotos de progreso</p>
@@ -1014,6 +986,101 @@ export default function ClientDetail() {
       </div>
     )}
     </>
+  );
+}
+
+const PROG_FIELDS = [
+  { key: 'weight_kg', label: 'Peso', unit: 'kg', icon: '⚖️' },
+  { key: 'arm_cm',    label: 'Brazo', unit: 'cm', icon: '💪' },
+  { key: 'chest_cm',  label: 'Pecho', unit: 'cm', icon: '📏' },
+  { key: 'waist_cm',  label: 'Cintura', unit: 'cm', icon: '🎯' },
+  { key: 'hip_cm',    label: 'Cadera', unit: 'cm', icon: '📐' },
+  { key: 'thigh_cm',  label: 'Muslo', unit: 'cm', icon: '🦵' },
+  { key: 'calf_cm',   label: 'Pantorrilla', unit: 'cm', icon: '🦵' },
+  { key: 'forearm_cm',label: 'Antebrazo', unit: 'cm', icon: '💪' },
+];
+
+function TrainerProgressCharts({ measurements }) {
+  const chartData = [...measurements].reverse().map(r => ({
+    date: new Date(r.logged_at).toLocaleDateString('es', { day: 'numeric', month: 'short' }),
+    ...PROG_FIELDS.reduce((acc, f) => ({ ...acc, [f.key]: r[f.key] ?? null }), {}),
+  }));
+
+  const fieldStats = PROG_FIELDS.map(f => {
+    const pts = chartData.filter(d => d[f.key] != null);
+    if (pts.length < 2) return null;
+    const first = pts[0][f.key];
+    const last  = pts[pts.length - 1][f.key];
+    const diff  = parseFloat((last - first).toFixed(1));
+    const isWeight = f.key === 'weight_kg';
+    const good = isWeight ? diff < 0 : diff > 0;
+    return { ...f, pts, first, last, diff, good };
+  }).filter(Boolean);
+
+  if (!fieldStats.length) return null;
+
+  const wins = [...fieldStats].filter(s => s.good).sort((a, b) =>
+    Math.abs(b.diff) / Math.abs(b.first) - Math.abs(a.diff) / Math.abs(a.first)
+  );
+  const bestWin = wins[0];
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 16 }}>
+      {bestWin && (
+        <div style={{ background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)', borderRadius: 18, padding: '20px 22px', color: '#fff', display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div style={{ fontSize: 40 }}>🏆</div>
+          <div>
+            <p style={{ fontSize: 11, fontWeight: 700, opacity: 0.8, letterSpacing: 1, marginBottom: 4 }}>MAYOR LOGRO</p>
+            <p style={{ fontSize: 20, fontWeight: 800, marginBottom: 2 }}>
+              {bestWin.key === 'weight_kg' ? '▼' : '▲'} {Math.abs(bestWin.diff)} {bestWin.unit} de {bestWin.label}
+            </p>
+            <p style={{ fontSize: 13, opacity: 0.85 }}>{bestWin.first} → {bestWin.last} {bestWin.unit} · {bestWin.pts.length} mediciones</p>
+          </div>
+        </div>
+      )}
+      {fieldStats.map(s => {
+        const gradId = `tgrad-${s.key}`;
+        const color = s.good ? '#16a34a' : s.diff === 0 ? '#6b7280' : '#dc2626';
+        return (
+          <div key={s.key} className="card" style={{ borderTop: `3px solid ${color}`, paddingTop: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+              <div>
+                <p style={{ fontWeight: 700, fontSize: 15 }}>{s.icon} {s.label}</p>
+                <p style={{ fontSize: 12, color, fontWeight: 700, marginTop: 2 }}>
+                  {s.diff > 0 ? '▲ +' : s.diff < 0 ? '▼ ' : ''}{s.diff} {s.unit}
+                  <span style={{ fontWeight: 400, color: 'var(--muted)', marginLeft: 6 }}>desde inicio</span>
+                </p>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <p style={{ fontSize: 22, fontWeight: 800, color }}>{s.last}<span style={{ fontSize: 12, fontWeight: 400 }}> {s.unit}</span></p>
+                <p style={{ fontSize: 11, color: 'var(--muted)' }}>antes: {s.first} {s.unit}</p>
+              </div>
+            </div>
+            <ResponsiveContainer width="100%" height={90}>
+              <AreaChart data={s.pts} margin={{ top: 5, right: 5, left: 5, bottom: 0 }}>
+                <defs>
+                  <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={color} stopOpacity={0.25} />
+                    <stop offset="95%" stopColor={color} stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'var(--muted)' }} axisLine={false} tickLine={false} />
+                <Tooltip formatter={v => [`${v} ${s.unit}`, s.label]} contentStyle={{ borderRadius: 10, border: 'none', boxShadow: '0 2px 12px rgba(0,0,0,0.12)', fontSize: 13 }} />
+                <Area type="monotone" dataKey={s.key} stroke={color} strokeWidth={2.5} fill={`url(#${gradId})`}
+                  dot={(props) => {
+                    const isFirst = props.index === 0;
+                    const isLast  = props.index === s.pts.length - 1;
+                    if (!isFirst && !isLast) return <g key={props.key} />;
+                    return <circle key={props.key} cx={props.cx} cy={props.cy} r={5} fill={color} stroke="#fff" strokeWidth={2} />;
+                  }}
+                  connectNulls
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
