@@ -4,15 +4,17 @@ import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
 const FIELDS = [
-  { key: 'weight_kg', label: 'Peso', unit: 'kg', icon: '⚖️' },
-  { key: 'arm_cm',    label: 'Brazo', unit: 'cm', icon: '💪' },
-  { key: 'chest_cm',  label: 'Pecho', unit: 'cm', icon: '📏' },
-  { key: 'waist_cm',  label: 'Cintura', unit: 'cm', icon: '🎯' },
-  { key: 'hip_cm',    label: 'Cadera', unit: 'cm', icon: '📐' },
-  { key: 'thigh_cm',  label: 'Muslo', unit: 'cm', icon: '🦵' },
-  { key: 'calf_cm',   label: 'Pantorrilla', unit: 'cm', icon: '🦵' },
-  { key: 'forearm_cm',label: 'Antebrazo', unit: 'cm', icon: '💪' },
+  { key: 'weight_kg', label: 'Peso', unit: 'kg', icon: '⚖️', zone: 'General' },
+  { key: 'chest_cm',  label: 'Pecho', unit: 'cm', icon: '📏', zone: 'Tren superior' },
+  { key: 'arm_cm',    label: 'Brazo', unit: 'cm', icon: '💪', zone: 'Tren superior' },
+  { key: 'forearm_cm',label: 'Antebrazo', unit: 'cm', icon: '💪', zone: 'Tren superior' },
+  { key: 'waist_cm',  label: 'Cintura', unit: 'cm', icon: '🎯', zone: 'Tren medio' },
+  { key: 'hip_cm',    label: 'Cadera', unit: 'cm', icon: '📐', zone: 'Tren medio' },
+  { key: 'thigh_cm',  label: 'Muslo', unit: 'cm', icon: '🦵', zone: 'Tren inferior' },
+  { key: 'calf_cm',   label: 'Pantorrilla', unit: 'cm', icon: '🦵', zone: 'Tren inferior' },
 ];
+
+const FIELD_ZONES = ['General', 'Tren superior', 'Tren medio', 'Tren inferior'];
 
 const EMPTY = FIELDS.reduce((acc, f) => ({ ...acc, [f.key]: '' }), { notes: '' });
 
@@ -109,21 +111,26 @@ export default function Measurements() {
       {tab === 'current' && open && (
         <form onSubmit={handleSubmit} className="card" style={{ marginBottom: 20 }}>
           <p style={{ fontWeight: 700, marginBottom: 16 }}>Nueva medición</p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-            {FIELDS.map(f => (
-              <div key={f.key}>
-                <label className="label">{f.icon} {f.label} ({f.unit})</label>
-                <input
-                  className="input"
-                  type="number"
-                  step="0.1"
-                  placeholder="0"
-                  value={form[f.key]}
-                  onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
-                />
+          {FIELD_ZONES.map(zone => (
+            <div key={zone} style={{ marginBottom: 14 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', letterSpacing: 0.5, marginBottom: 8, textTransform: 'uppercase' }}>{zone}</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                {FIELDS.filter(f => f.zone === zone).map(f => (
+                  <div key={f.key}>
+                    <label className="label">{f.icon} {f.label} ({f.unit})</label>
+                    <input
+                      className="input"
+                      type="number"
+                      step="0.1"
+                      placeholder="0"
+                      value={form[f.key]}
+                      onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
+                    />
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
           <label className="label">Notas</label>
           <textarea
             className="input"
@@ -143,10 +150,21 @@ export default function Measurements() {
       {tab === 'current' && (
         <>
           {latest ? (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
-              {FIELDS.filter(f => latestByField[f.key] != null).map(f => (
-                <MeasureCard key={f.key} field={f} value={latestByField[f.key]} prev={rows.slice(1).find(r => r[f.key] != null)?.[f.key]} unit={f.unit} />
-              ))}
+            <div style={{ marginBottom: 20 }}>
+              {FIELD_ZONES.map(zone => {
+                const zoneFields = FIELDS.filter(f => f.zone === zone && latestByField[f.key] != null);
+                if (zoneFields.length === 0) return null;
+                return (
+                  <div key={zone} style={{ marginBottom: 16 }}>
+                    <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', letterSpacing: 0.5, marginBottom: 8, textTransform: 'uppercase' }}>{zone}</p>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                      {zoneFields.map(f => (
+                        <MeasureCard key={f.key} field={f} value={latestByField[f.key]} prev={rows.slice(1).find(r => r[f.key] != null)?.[f.key]} unit={f.unit} />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <div className="empty-state"><div className="icon">📏</div><p>Aún no hay medidas registradas</p></div>

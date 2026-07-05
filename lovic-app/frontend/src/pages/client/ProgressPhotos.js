@@ -15,7 +15,9 @@ function imgUrl(path) {
 }
 
 function formatDate(dateStr) {
-  return new Date(dateStr).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' });
+  if (!dateStr) return '';
+  const [y, m, d] = String(dateStr).slice(0, 10).split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 // ── Upload Panel ─────────────────────────────────────────────────────────────
@@ -110,7 +112,7 @@ function UploadPanel({ onSaved }) {
 }
 
 // ── Register Card ─────────────────────────────────────────────────────────────
-function RegisterCard({ register, onDelete, onSelect, selected }) {
+function RegisterCard({ register, onDelete, onSelect, selected, onLightbox }) {
   return (
     <div
       className="card"
@@ -126,7 +128,10 @@ function RegisterCard({ register, onDelete, onSelect, selected }) {
           <p style={{ fontWeight: 700, fontSize: 14 }}>{formatDate(register.date)}</p>
           {register.note && <p style={{ fontSize: 12, color: 'var(--muted)' }}>{register.note}</p>}
         </div>
-        {selected && <span style={{ fontSize: 12, color: 'var(--coral)', fontWeight: 700 }}>Seleccionado</span>}
+        {selected
+          ? <span style={{ fontSize: 12, color: 'var(--coral)', fontWeight: 700 }}>✓ Seleccionado</span>
+          : <span style={{ fontSize: 11, color: 'var(--muted)' }}>Toca para seleccionar</span>
+        }
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
         {ANGLES.map(({ key, label }) => (
@@ -135,7 +140,8 @@ function RegisterCard({ register, onDelete, onSelect, selected }) {
               <img
                 src={imgUrl(register.photos[key].image_url)}
                 alt={label}
-                style={{ width: '100%', aspectRatio: '3/4', objectFit: 'cover', borderRadius: 8, display: 'block' }}
+                onClick={e => { e.stopPropagation(); onLightbox(imgUrl(register.photos[key].image_url), label); }}
+                style={{ width: '100%', aspectRatio: '3/4', objectFit: 'cover', borderRadius: 8, display: 'block', cursor: 'zoom-in' }}
               />
             ) : (
               <div style={{
@@ -245,6 +251,28 @@ function CompareView({ a, b, onClose }) {
   );
 }
 
+// ── Lightbox ──────────────────────────────────────────────────────────────────
+function Lightbox({ src, alt, onClose }) {
+  useEffect(() => {
+    function onKey(e) { if (e.key === 'Escape') onClose(); }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  return (
+    <div onClick={onClose} style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', zIndex: 2000,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
+    }}>
+      <img src={src} alt={alt} style={{ maxWidth: '100%', maxHeight: '100%', borderRadius: 10, objectFit: 'contain' }} />
+      <button onClick={onClose} style={{
+        position: 'absolute', top: 16, right: 16, background: 'rgba(255,255,255,0.15)',
+        border: 'none', color: '#fff', fontSize: 24, borderRadius: '50%',
+        width: 40, height: 40, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>✕</button>
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function ProgressPhotos() {
   const [registers, setRegisters] = useState([]);
@@ -252,6 +280,7 @@ export default function ProgressPhotos() {
   const [selected, setSelected]   = useState([]);
   const [comparing, setComparing] = useState(false);
   const [view, setView]           = useState('list'); // 'list' | 'upload'
+  const [lightbox, setLightbox]   = useState(null); // { src, alt }
 
   useEffect(() => { load(); }, []);
 
@@ -288,6 +317,7 @@ export default function ProgressPhotos() {
 
   return (
     <div>
+      {lightbox && <Lightbox src={lightbox.src} alt={lightbox.alt} onClose={() => setLightbox(null)} />}
       <div className="page-header">
         <h1 className="page-title">Fotos de progreso 📸</h1>
       </div>
@@ -368,6 +398,7 @@ export default function ProgressPhotos() {
                   selected={selected.includes(r.id)}
                   onSelect={() => toggleSelect(r.id)}
                   onDelete={() => handleDelete(r.id)}
+                  onLightbox={(src, alt) => setLightbox({ src, alt })}
                 />
               ))}
             </>

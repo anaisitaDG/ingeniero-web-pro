@@ -246,7 +246,7 @@ export default function Dashboard() {
         const lastWeight = weightData[weightData.length - 1];
         const accountAgeDays = Math.floor((Date.now() - new Date(data?.user_created_at || Date.now())) / 86400000);
         const daysSinceWeight = lastWeight
-          ? Math.floor((Date.now() - new Date(data?.weight_history?.slice(-1)[0]?.logged_at)) / 86400000)
+          ? Math.floor((Date.now() - new Date(data?.weight_history?.[0]?.logged_at)) / 86400000)
           : 999;
         if (daysSinceWeight > 6 && accountAgeDays > 7) reminders.push({ icon: '📏', text: 'Lleva más de una semana sin registrar medidas', to: '/measurements' });
         if (reminders.length === 0) return null;

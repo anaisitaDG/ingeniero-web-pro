@@ -569,7 +569,11 @@ const DAYS_ES = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes'
 
 function DayCard({ day, onLogged, completedDate, onToggleComplete }) {
   const todayDayEs = DAYS_ES[new Date().getDay()];
-  const isToday = day.day_name.toLowerCase().startsWith(todayDayEs);
+  const dayNameLc = day.day_name.toLowerCase();
+  // Match if the day name contains the current weekday name (handles "Lunes — Pecho", "Día 1 Lunes", etc.)
+  const isToday = DAYS_ES.some(d => dayNameLc.includes(d))
+    ? dayNameLc.includes(todayDayEs)
+    : false;
   const [open, setOpen] = useState(isToday);
 
   const [warmupChoice, setWarmupChoice] = useState('');

@@ -63,7 +63,8 @@ router.get('/clients/:id', async (req, res) => {
     [uid]
   );
 
-  res.json({ user, questionnaire, measurements, bioimpedance, routine, nutrition_plan: nutrition, adherence: adherence[0] });
+  const { password_hash, ...safeUser } = user;
+  res.json({ user: safeUser, questionnaire, measurements, bioimpedance, routine, nutrition_plan: nutrition, adherence: adherence[0] });
 });
 
 // POST /trainer/suggest-day-name — sugiere nombre de día según ejercicios

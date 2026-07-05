@@ -171,11 +171,12 @@ const db = require('./database/db');
     await db.query(`
       CREATE TABLE IF NOT EXISTS meal_plan_days (
         id          VARCHAR(36) PRIMARY KEY,
-        client_id   INT NOT NULL,
+        client_id   VARCHAR(36) NOT NULL,
         day_of_week TINYINT NOT NULL,
         UNIQUE KEY uq_client_day (client_id, day_of_week)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
+    await db.query(`ALTER TABLE meal_plan_days MODIFY COLUMN client_id VARCHAR(36) NOT NULL`).catch(() => {});
     await db.query(`
       CREATE TABLE IF NOT EXISTS meal_plan_items (
         id          VARCHAR(36) PRIMARY KEY,
@@ -189,12 +190,13 @@ const db = require('./database/db');
     await db.query(`
       CREATE TABLE IF NOT EXISTS meal_completions (
         id          VARCHAR(36) PRIMARY KEY,
-        client_id   INT NOT NULL,
+        client_id   VARCHAR(36) NOT NULL,
         logged_date DATE NOT NULL,
         meal_type   VARCHAR(20) NOT NULL,
         UNIQUE KEY uq_client_date_meal (client_id, logged_date, meal_type)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
+    await db.query(`ALTER TABLE meal_completions MODIFY COLUMN client_id VARCHAR(36) NOT NULL`).catch(() => {});
   } catch (e) {
     console.error('Migration error:', e.message);
   }

@@ -50,13 +50,19 @@ export default function ClientList() {
   const [inviteDone, setInviteDone]     = useState(false);
   const [sendingSummary, setSendingSummary] = useState(false);
   const [summaryMsg, setSummaryMsg]     = useState('');
+  const [loadError, setLoadError]       = useState(false);
   const navigate = useNavigate();
 
-  useEffect(() => {
+  function loadClients() {
+    setLoading(true);
+    setLoadError(false);
     api.trainer.clients()
       .then(d => setClients(d.clients))
+      .catch(() => setLoadError(true))
       .finally(() => setLoading(false));
-  }, []);
+  }
+
+  useEffect(() => { loadClients(); }, []);
 
   async function sendWeeklySummary() {
     setSendingSummary(true);
@@ -149,6 +155,8 @@ export default function ClientList() {
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: 48 }}><div className="spinner" style={{ borderTopColor: 'var(--coral)', borderColor: 'var(--border)', width: 28, height: 28 }} /></div>
+      ) : loadError ? (
+        <div className="empty-state"><div className="icon">📡</div><p>No se pudo cargar la lista. Revisa tu conexión.</p><button className="btn-primary" style={{ marginTop: 16 }} onClick={loadClients}>Reintentar</button></div>
       ) : filtered.length === 0 ? (
         <div className="empty-state"><div className="icon">👥</div><p>No hay clientes todavía</p></div>
       ) : view === 'cards' ? (

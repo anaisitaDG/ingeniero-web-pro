@@ -51,13 +51,14 @@ export default function FoodLogger() {
     setHistLoading(true);
     try {
       const d = await api.food.history(14);
+      const target = d.target;
       setHistory(d.history.map(r => ({
-        date: (() => { const [,m,d] = r.logged_at.slice(0,10).split('-').map(Number); return `${d} ${'ene feb mar abr may jun jul ago sep oct nov dic'.split(' ')[m-1]}`; })(),
+        date: (() => { const [,m,dy] = r.logged_at.slice(0,10).split('-').map(Number); return `${dy} ${'ene feb mar abr may jun jul ago sep oct nov dic'.split(' ')[m-1]}`; })(),
         kcal: Math.round(r.calories),
         prot: Math.round(r.protein_g),
         carbs: Math.round(r.carbs_g),
         fat: Math.round(r.fat_g),
-        target: d.target,
+        target,
       })));
     } finally {
       setHistLoading(false);

@@ -117,16 +117,16 @@ export default function ClientDetail() {
   useEffect(() => { load(); }, [load]);
   useEffect(() => { if (tab === 'routine') loadWorkout(); }, [tab, loadWorkout]);
   useEffect(() => {
-    if (tab === 'progreso' && !progress) api.trainer.getProgress(id).then(setProgress);
-    if (tab === 'adherencia' && !adherenceDetail) api.trainer.getAdherence(id).then(d => setAdherence(d.days));
-    if (tab === 'logs' && !workoutLogs) api.trainer.getWorkoutLogs(id).then(d => setWorkoutLogs(d));
-    if (tab === 'notas' && notes === '') api.trainer.getNotes(id).then(d => setNotes(d.notes || ''));
-    if (tab === 'nutrition' && !mealPlan) api.trainer.getMealPlan(id).then(res => {
+    if (tab === 'progreso') api.trainer.getProgress(id).then(setProgress);
+    if (tab === 'adherencia') api.trainer.getAdherence(id).then(d => setAdherence(d.days));
+    if (tab === 'logs') api.trainer.getWorkoutLogs(id).then(d => setWorkoutLogs(d));
+    if (tab === 'notas') api.trainer.getNotes(id).then(d => setNotes(d.notes || ''));
+    if (tab === 'nutrition') api.trainer.getMealPlan(id).then(res => {
       setMealPlan(res.plan || {});
       setMealPlanDraft(JSON.parse(JSON.stringify(res.plan || {})));
     });
     if (tab === 'facturacion') api.trainer.getBilling().then(res => {
-      const c = (res.clients || []).find(c => c.id === id);
+      const c = (res.clients || []).find(c => String(c.id) === String(id));
       if (c) setBilling({ monthly_fee: c.monthly_fee != null ? String(c.monthly_fee) : '', next_payment_date: c.next_payment_date ? String(c.next_payment_date).slice(0, 10) : '', notes: c.notes || '' });
     });
   }, [tab]); // eslint-disable-line
