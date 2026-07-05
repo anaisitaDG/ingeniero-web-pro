@@ -722,6 +722,13 @@ export default function ClientDetail() {
       {/* Bio */}
       {tab === 'bio' && (
         <div>
+          <div className="card" style={{ marginBottom: 16 }}>
+            <p style={{ fontWeight: 700, marginBottom: 10 }}>📊 Subir bioimpedancia</p>
+            <input type="file" accept="image/*" onChange={e => setBioFile(e.target.files[0])} style={{ marginBottom: 10 }} />
+            <button className="btn-primary" onClick={uploadBio} disabled={!bioFile || bioUploading} style={{ width: '100%', justifyContent: 'center' }}>
+              {bioUploading ? <><span className="spinner" /> Procesando…</> : 'Subir y analizar'}
+            </button>
+          </div>
           {(!bioimpedance || bioimpedance.length === 0) ? (
             <div className="empty-state"><div className="icon">📊</div><p>La cliente aún no tiene registros de bioimpedancia</p></div>
           ) : (
@@ -990,35 +997,6 @@ export default function ClientDetail() {
           }}>
             {savingBilling ? <span className="spinner" /> : '💾 Guardar'}
           </button>
-        </div>
-      )}
-
-      {tab === 'bio' && (
-        <div>
-          <div className="card" style={{ marginBottom: 16 }}>
-            <p style={{ fontWeight: 700, marginBottom: 10 }}>📊 Subir bioimpedancia</p>
-            <input type="file" accept="image/*" onChange={e => setBioFile(e.target.files[0])} style={{ marginBottom: 10 }} />
-            <button className="btn-primary" onClick={uploadBio} disabled={!bioFile || bioUploading} style={{ width: '100%', justifyContent: 'center' }}>
-              {bioUploading ? <><span className="spinner" /> Procesando…</> : 'Subir y analizar'}
-            </button>
-          </div>
-          {bioimpedance.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {bioimpedance.map(b => (
-                <div key={b.id} className="card" style={{ padding: 16 }}>
-                  <p style={{ fontWeight: 700, marginBottom: 10 }}>{fmtDate(b.logged_at, { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                    <InfoRow label="Grasa corporal" value={b.body_fat_pct != null ? `${b.body_fat_pct}%` : '—'} />
-                    <InfoRow label="Masa muscular" value={b.muscle_mass_kg != null ? `${b.muscle_mass_kg} kg` : '—'} />
-                    <InfoRow label="Grasa visceral" value={b.visceral_fat ?? '—'} />
-                    <InfoRow label="Metabolismo" value={b.bmr_kcal != null ? `${b.bmr_kcal} kcal` : '—'} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="empty-state"><div className="icon">📊</div><p>No hay registros de bioimpedancia</p></div>
-          )}
         </div>
       )}
 
