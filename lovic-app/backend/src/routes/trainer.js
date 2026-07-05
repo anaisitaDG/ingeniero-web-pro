@@ -255,7 +255,14 @@ router.get('/clients/:id/progress', async (req, res) => {
   const [photos] = await db.query(
     'SELECT * FROM progress_photos WHERE user_id=? ORDER BY taken_at DESC LIMIT 20', [uid]
   );
-  res.json({ measurements, photos });
+  // Normalize image_url: strip absolute path prefix, keep only uploads/filename
+  const normalizedPhotos = photos.map(p => ({
+    ...p,
+    image_url: p.image_url
+      ? p.image_url.replace(/^.*\/uploads\//, 'uploads/')
+      : p.image_url,
+  }));
+  res.json({ measurements, photos: normalizedPhotos });
 });
 
 // GET /trainer/clients/:id/adherence-detail — día a día últimos 60 días
