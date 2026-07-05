@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, LineChart, Line, XAxis, Tooltip, ResponsiveContainer, ReferenceDot } from 'recharts';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
@@ -168,32 +168,7 @@ export default function Measurements() {
         chartData.length < 2 ? (
           <div className="empty-state"><div className="icon">📈</div><p>Necesitas al menos 2 registros para ver el progreso</p></div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {FIELDS.filter(f => chartData.some(d => d[f.key] != null)).map(f => (
-              <div key={f.key} className="card">
-                <p style={{ fontWeight: 700, marginBottom: 4 }}>{f.icon} {f.label}</p>
-                {(() => {
-                  const first = chartData.find(d => d[f.key] != null)?.[f.key];
-                  const last  = [...chartData].reverse().find(d => d[f.key] != null)?.[f.key];
-                  const diff  = first != null && last != null ? (last - first).toFixed(1) : null;
-                  const isWeight = f.key === 'weight_kg';
-                  const good = diff != null ? (isWeight ? diff < 0 : diff > 0) : null;
-                  return diff != null && (
-                    <p style={{ fontSize: 12, color: good ? '#2D7A2D' : diff == 0 ? 'var(--muted)' : '#E05252', marginBottom: 8 }}>
-                      {diff > 0 ? '+' : ''}{diff} {f.unit} desde el primer registro
-                    </p>
-                  );
-                })()}
-                <ResponsiveContainer width="100%" height={100}>
-                  <LineChart data={chartData.filter(d => d[f.key] != null)}>
-                    <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'var(--muted)' }} axisLine={false} tickLine={false} />
-                    <Tooltip formatter={v => [`${v} ${f.unit}`, f.label]} contentStyle={{ borderRadius: 10, border: 'none', boxShadow: '0 2px 12px rgba(0,0,0,0.1)' }} />
-                    <Line type="monotone" dataKey={f.key} stroke="var(--coral)" strokeWidth={2.5} dot={{ r: 3, fill: 'var(--coral)' }} connectNulls />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            ))}
-          </div>
+          <ProgressTab chartData={chartData} />
         )
       )}
 
@@ -249,6 +224,104 @@ export default function Measurements() {
           <div className="empty-state"><div className="icon">📊</div><p>No hay registros de bioimpedancia</p></div>
         )}
       </div>}
+    </div>
+  );
+}
+
+function ProgressTab({ chartData }) {
+  // Compute per-field stats
+  const fieldStats = FIELDS.map(f => {
+    const pts = chartData.filter(d => d[f.key] != null);
+    if (pts.length < 2) return null;
+    const first = pts[0][f.key];
+    const last  = pts[pts.length - 1][f.key];
+    const diff  = parseFloat((last - first).toFixed(1));
+    const isWeight = f.key === 'weight_kg';
+    const good = isWeight ? diff < 0 : diff > 0;
+    return { ...f, pts, first, last, diff, good };
+  }).filter(Boolean);
+
+  if (!fieldStats.length) return <div className="empty-state"><div className="icon">📈</div><p>Sin datos suficientes</p></div>;
+
+  // Find the biggest "win" to highlight
+  const wins = fieldStats.filter(s => s.good);
+  const bestWin = wins.sort((a, b) => {
+    const aScore = Math.abs(a.diff) / Math.abs(a.first) * 100;
+    const bScore = Math.abs(b.diff) / Math.abs(b.first) * 100;
+    return bScore - aScore;
+  })[0];
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {/* Hero achievement card */}
+      {bestWin && (
+        <div style={{
+          background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
+          borderRadius: 18, padding: '20px 22px', color: '#fff',
+          display: 'flex', alignItems: 'center', gap: 16,
+        }}>
+          <div style={{ fontSize: 40 }}>🏆</div>
+          <div>
+            <p style={{ fontSize: 11, fontWeight: 700, opacity: 0.8, letterSpacing: 1, marginBottom: 4 }}>MAYOR LOGRO</p>
+            <p style={{ fontSize: 20, fontWeight: 800, marginBottom: 2 }}>
+              {bestWin.key === 'weight_kg' ? '▼' : '▲'} {Math.abs(bestWin.diff)} {bestWin.unit} de {bestWin.label}
+            </p>
+            <p style={{ fontSize: 13, opacity: 0.85 }}>
+              {bestWin.first} → {bestWin.last} {bestWin.unit} · {bestWin.pts.length} mediciones
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Per-metric cards */}
+      {fieldStats.map(s => {
+        const gradId = `grad-${s.key}`;
+        const color = s.good ? '#16a34a' : s.diff === 0 ? '#6b7280' : '#dc2626';
+        const fillColor = s.good ? '#16a34a' : s.diff === 0 ? '#6b7280' : '#dc2626';
+        const bgTint = s.good ? 'rgba(22,163,74,0.05)' : s.diff === 0 ? 'transparent' : 'rgba(220,38,38,0.04)';
+        return (
+          <div key={s.key} className="card" style={{ background: `var(--card)`, borderTop: `3px solid ${color}`, paddingTop: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+              <div>
+                <p style={{ fontWeight: 700, fontSize: 15 }}>{s.icon} {s.label}</p>
+                <p style={{ fontSize: 12, color, fontWeight: 700, marginTop: 2 }}>
+                  {s.diff > 0 ? '▲ +' : s.diff < 0 ? '▼ ' : ''}{s.diff} {s.unit}
+                  <span style={{ fontWeight: 400, color: 'var(--muted)', marginLeft: 6 }}>desde inicio</span>
+                </p>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <p style={{ fontSize: 22, fontWeight: 800, color }}>{s.last}<span style={{ fontSize: 12, fontWeight: 400 }}> {s.unit}</span></p>
+                <p style={{ fontSize: 11, color: 'var(--muted)' }}>antes: {s.first} {s.unit}</p>
+              </div>
+            </div>
+            <ResponsiveContainer width="100%" height={90}>
+              <AreaChart data={s.pts} margin={{ top: 5, right: 5, left: 5, bottom: 0 }}>
+                <defs>
+                  <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={fillColor} stopOpacity={0.25} />
+                    <stop offset="95%" stopColor={fillColor} stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'var(--muted)' }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  formatter={v => [`${v} ${s.unit}`, s.label]}
+                  contentStyle={{ borderRadius: 10, border: 'none', boxShadow: '0 2px 12px rgba(0,0,0,0.12)', fontSize: 13 }}
+                />
+                <Area type="monotone" dataKey={s.key} stroke={color} strokeWidth={2.5}
+                  fill={`url(#${gradId})`}
+                  dot={(props) => {
+                    const isFirst = props.index === 0;
+                    const isLast  = props.index === s.pts.length - 1;
+                    if (!isFirst && !isLast) return <g key={props.key} />;
+                    return <circle key={props.key} cx={props.cx} cy={props.cy} r={5} fill={color} stroke="#fff" strokeWidth={2} />;
+                  }}
+                  connectNulls
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        );
+      })}
     </div>
   );
 }
