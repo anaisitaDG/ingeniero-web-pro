@@ -3,6 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
 import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
+const API_BASE = process.env.REACT_APP_API_URL || '';
+function photoUrl(p) {
+  if (!p) return '';
+  return p.startsWith('http') ? p : `${API_BASE}/${p}`;
+}
+
 const EMPTY_EXERCISE = () => ({ _key: Math.random(), name: '', youtube_url: '', sets: 3, reps: '10', weight_kg: '' });
 const EMPTY_DAY = () => ({ _key: Math.random(), day_name: '', warmup_type: '', warmup_duration: '', cardio_type: '', cardio_duration: '', exercises: [EMPTY_EXERCISE()] });
 
@@ -642,7 +648,7 @@ export default function ClientDetail() {
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
                     {progress.photos.map(p => (
                       <div key={p.id}>
-                        <img src={p.image_url} alt="" style={{ width: '100%', aspectRatio: '3/4', objectFit: 'cover', borderRadius: 10 }} />
+                        <img src={photoUrl(p.image_url)} alt="" style={{ width: '100%', aspectRatio: '3/4', objectFit: 'cover', borderRadius: 10 }} />
                         <p style={{ fontSize: 10, color: 'var(--muted)', textAlign: 'center', marginTop: 4 }}>
                           {new Date(p.taken_at).toLocaleDateString('es', { day: 'numeric', month: 'short' })}
                         </p>
