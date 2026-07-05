@@ -76,6 +76,12 @@ export default function MyPlan() {
         <>
           {plan ? (
             <div>
+              {plan.duration_days && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--coral-light)', borderRadius: 12, padding: '10px 14px', marginBottom: 14 }}>
+                  <span style={{ fontSize: 18 }}>⏱</span>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--coral)' }}>Plan de <strong>{plan.duration_days} días</strong> · Asignado por tu entrenadora</p>
+                </div>
+              )}
               {plan.days.map(day => (
                 <DayCard key={day.id} day={day} onLogged={load}
                   completedDate={completedDays[day.id]}

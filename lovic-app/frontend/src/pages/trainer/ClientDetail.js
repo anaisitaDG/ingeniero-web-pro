@@ -19,9 +19,10 @@ export default function ClientDetail() {
   const [savingTargets, setSavingTargets] = useState(false);
 
   // Workout builder state
-  const [workoutDays, setWorkoutDays] = useState([EMPTY_DAY()]);
+  const [workoutDays, setWorkoutDays]     = useState([EMPTY_DAY()]);
   const [workoutLoading, setWorkoutLoading] = useState(false);
   const [savingWorkout, setSavingWorkout]   = useState(false);
+  const [durationDays, setDurationDays]     = useState('');
 
   // Library picker
   const [library, setLibrary]           = useState(null);
@@ -61,6 +62,9 @@ export default function ClientDetail() {
     setWorkoutLoading(true);
     try {
       const res = await api.trainer.getWorkout(id);
+      if (res.plan) {
+        setDurationDays(res.plan.duration_days || '');
+      }
       if (res.plan?.days?.length > 0) {
         setWorkoutDays(res.plan.days.map(d => ({
           _key: Math.random(),
@@ -127,7 +131,7 @@ export default function ClientDetail() {
       }));
     if (days.length === 0) return alert('Agrega al menos un día con ejercicios');
     setSavingWorkout(true);
-    try { await api.trainer.saveWorkout(id, days); alert('Plan de entrenamiento guardado ✓'); }
+    try { await api.trainer.saveWorkout(id, days, durationDays ? Number(durationDays) : null); alert('Plan de entrenamiento guardado ✓'); }
     catch (e) { alert(e.message); }
     finally { setSavingWorkout(false); }
   }
@@ -412,6 +416,25 @@ export default function ClientDetail() {
           <div style={{ textAlign: 'center', padding: 40 }}><div className="spinner" style={{ borderTopColor: 'var(--coral)', borderColor: 'var(--border)', width: 28, height: 28 }} /></div>
         ) : (
           <div>
+            {/* Duración del plan */}
+            <div className="card" style={{ marginBottom: 16, padding: '14px 16px' }}>
+              <p style={{ fontWeight: 700, fontSize: 14, marginBottom: 10 }}>⏱ Duración del plan</p>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {[15, 30, 45, 60, 90].map(d => (
+                  <button key={d} onClick={() => setDurationDays(durationDays === d ? '' : d)} style={{
+                    padding: '8px 16px', borderRadius: 10, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 13,
+                    background: durationDays === d ? 'var(--coral)' : 'var(--bg)',
+                    color: durationDays === d ? '#fff' : 'var(--muted)',
+                  }}>{d} días</button>
+                ))}
+                <input className="input" type="number" min="1" max="365" placeholder="Otro…"
+                  value={![15,30,45,60,90].includes(Number(durationDays)) && durationDays ? durationDays : ''}
+                  onChange={e => setDurationDays(e.target.value)}
+                  style={{ width: 90 }} />
+              </div>
+              {durationDays && <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 8 }}>La clienta verá que este plan dura <strong>{durationDays} días</strong>.</p>}
+            </div>
+
             {workoutDays.map((day, di) => (
               <div key={day._key} className="card" style={{ marginBottom: 16 }}>
                 {/* Day header */}

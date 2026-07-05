@@ -106,12 +106,12 @@ router.get('/clients/:id/workout', async (req, res) => {
 // PUT /trainer/clients/:id/workout — guarda plan estructurado completo
 router.put('/clients/:id/workout', async (req, res) => {
   const uid = req.params.id;
-  const { days } = req.body;
+  const { days, duration_days } = req.body;
   if (!Array.isArray(days)) return res.status(400).json({ error: 'days requerido' });
 
   await db.query('UPDATE workout_plans SET is_active=FALSE WHERE user_id=?', [uid]);
   const planId = uuidv4();
-  await db.query('INSERT INTO workout_plans (id, user_id, is_active) VALUES (?, ?, TRUE)', [planId, uid]);
+  await db.query('INSERT INTO workout_plans (id, user_id, is_active, duration_days) VALUES (?, ?, TRUE, ?)', [planId, uid, duration_days || null]);
 
   for (let di = 0; di < days.length; di++) {
     const day = days[di];
