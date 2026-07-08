@@ -23,12 +23,18 @@ export function usePushNotifications() {
   }, []);
 
   async function subscribe() {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      alert('Tu navegador no soporta notificaciones push. Abre la app desde el ícono en tu pantalla de inicio.');
+      return;
+    }
     setLoading(true);
     try {
       const perm = await Notification.requestPermission();
       setPermission(perm);
-      if (perm !== 'granted') return;
+      if (perm !== 'granted') {
+        alert('Permiso denegado. Ve a Ajustes > Notificaciones > Lovic y actívalas.');
+        return;
+      }
 
       const { publicKey } = await api.push.vapidKey();
       const reg = await navigator.serviceWorker.ready;
@@ -40,6 +46,7 @@ export function usePushNotifications() {
       setSubscribed(true);
     } catch (e) {
       console.error('[push] subscribe error', e);
+      alert('Error activando notificaciones: ' + e.message);
     } finally {
       setLoading(false);
     }
