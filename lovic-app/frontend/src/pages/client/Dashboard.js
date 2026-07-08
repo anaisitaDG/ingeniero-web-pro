@@ -15,64 +15,79 @@ function pickMsg(msgs) {
 
 const VIC_MESSAGES = {
   bestia: [
-    '¡Imparable! Llevas una racha que da miedo (de lo buena).',
-    'No sé quién te para. Yo tampoco quiero intentarlo. 🔥',
-    'Llevas días encendida. Literal. Soy yo, encendida.',
-    '¡Racha épica! Esto ya no es suerte, esto es disciplina.',
+    '¡Imparable! Llevas una racha que da miedo (de lo buena). 🔥',
+    'No sé quién te para. Yo tampoco quiero intentarlo.',
+    'Llevas días encendida. Literal. Soy yo, encendida. ✨',
+    '¡Racha épica! Esto ya no es suerte, esto es disciplina pura.',
+    'Oye, ¿tú te das cuenta de lo que estás logrando? Porque yo sí. 🔥',
   ],
   racha: [
     '¡Vamos! Cada día que sumas me haces brillar más. ✨',
-    'Llevo días viéndote y me alegra. No pares ahora.',
-    '¿Ves lo que pasa cuando eres constante? Esto. Esto pasa.',
-    'Tres días seguidos. Eso se celebra. ¡Sigue! 💪',
+    'Llevo días viéndote y me alegra. No pares ahora, ¿eh?',
+    '¿Ves lo que pasa cuando eres constante? Esto. Esto pasa. 💪',
+    'Tres días seguidos. Eso se celebra. ¡Sigue!',
+    'No me falles ahora que vamos bien. Casi llegamos a la racha grande. 🔥',
   ],
   celebrando: [
-    '¡LO LOGRASTE! Entrenaste y comiste bien. Eso es un día perfecto.',
-    'Hoy fue un 10. Tú fuiste un 10. ¡Felicitaciones! 🎉',
-    'Día completado. Eres exactamente el tipo de persona que admiro.',
-    'Todo marcado. Todo cumplido. Me haces feliz. 🥳',
+    '¡LO LOGRASTE! Entrenaste y comiste bien. Eso es un día perfecto. 🎉',
+    'Hoy fue un 10. Tú fuiste un 10. ¡Felicitaciones!',
+    'Todo marcado. Todo cumplido. Me haces muy feliz. 🥳',
+    'Así se hace. Ahora a descansar bien para mañana repetir. 💪',
+    '¡Bien! ¿Ves? Cuando quieres, puedes. Mañana también puedes.',
   ],
   normal: () => {
     const h = getHourCO();
-    if (h >= 5 && h < 10)  return '¡Buenos días! Hoy es un buen día para ser constante. ☀️';
-    if (h >= 10 && h < 13) return 'Ya va la mañana. ¿Cómo vamos con el agua? 💧';
-    if (h >= 13 && h < 16) return 'Tarde activa. ¿Ya entrenaste hoy? Todavía hay tiempo. 💪';
-    if (h >= 16 && h < 20) return 'La tarde es tuya. Un entreno ahora y el día queda completo. 🔥';
-    if (h >= 20)            return 'Última hora del día. ¿Cómo te fue? Mañana seguimos. 🌙';
-    return 'Aquí estoy, contigo. Vamos paso a paso. 😊';
+    if (h >= 5 && h < 10)  return pickMsg(['¡Buenos días! Hoy es un buen día para ser constante. ☀️', 'Arranca bien el día. Yo estoy aquí para acompañarte. 🔥', 'Mañana nueva, oportunidad nueva. ¿Empezamos? ☀️']);
+    if (h >= 10 && h < 13) return pickMsg(['Ya va la mañana. ¿Cómo vamos? No te me relajes todavía. 💪', '¿Ya tomaste agua esta mañana? Porque yo te estoy mirando. 👀', 'La mañana se va rápido. Aprovéchala. 💪']);
+    if (h >= 13 && h < 16) return pickMsg(['Tarde activa. ¿Ya entrenaste hoy? Todavía hay tiempo. 💪', 'No dejes todo para después. Después no llega. 🙄', 'La siesta espera. El entreno primero. 😏']);
+    if (h >= 16 && h < 20) return pickMsg(['La tarde es tuya. Un entreno ahora y el día queda completo. 🔥', 'Son las mejores horas para entrenar. ¿A qué esperas? 💪', 'Cierra fuerte el día. Un empuje más. 🔥']);
+    if (h >= 20)            return pickMsg(['Última hora del día. ¿Cómo te fue? Cuéntame. 🌙', 'Si ya cumpliste, orgullo. Si no, mañana sin excusas. 😏', 'El día casi cierra. Reflexiona y descansa bien. 🌙']);
+    return '¿Qué haces despierta a esta hora? ¡Duerme! 😂';
   },
   inflamada: [
     'Hoy los carbohidratos ganaron la batalla. Mañana ganamos nosotras.',
-    'Pasó. No pasa nada. Un día no borra todo lo que has logrado. 💛',
+    'Pasó. No pasa nada. Pero mañana volvemos al plan, ¿oíste? 😏',
     'El cuerpo avisa cuando algo no cuadra. Escúchalo mañana. 😌',
+    'Un día de desvío no es el fin del mundo. Eso sí, no se vuelve costumbre. 🙄',
   ],
   ojeras: [
     'Dormir también es entrenamiento. Tu cuerpo lo necesita de verdad.',
     'Las ojeras me preocupan más que los kilos. Descansa esta noche. 💤',
     'Hoy prioriza el sueño. Mañana rendimos mejor las dos. 🌙',
+    'Sin sueño no hay progreso. Nada de pantalla, a dormir. 😴',
   ],
   triste: () => {
     const h = getHourCO();
-    if (h < 12) return 'Buenos días. Todavía tienes todo el día por delante. ¿Empezamos? 🌤️';
-    if (h < 18) return 'Aún queda tarde. Un paso pequeño hoy vale más que esperar mañana.';
-    return 'El día casi termina, pero mañana es nuevo. Te espero aquí. 💛';
+    if (h < 12) return pickMsg([
+      'Buenos días. Todavía tienes todo el día. No me falles hoy. 🌤️',
+      'Empieza despacio si quieres, pero empieza. Te espero. 💪',
+    ]);
+    if (h < 18) return pickMsg([
+      'Aún queda tarde. Un paso pequeño hoy vale más que esperar mañana.',
+      'No me dejes aquí triste. Todavía puedes hacer algo hoy. 😢',
+    ]);
+    return pickMsg([
+      'El día casi termina, pero mañana es nuevo. Te espero aquí. 💛',
+      'Mañana sin excusas. ¿Trato? 🤝',
+    ]);
   },
   deshidratada: () => {
     const h = getHourCO();
-    const msgs = [
-      `Son las ${h}:00. ¿Ya tomaste agua? Por favor, hidráta me un poquito. 💧`,
+    return pickMsg([
+      `Son las ${h}:00. ¿Ya tomaste agua? Por favor, hidrátame un poquito. 💧`,
       'Llevas horas sin agua. Yo me estoy secando aquí esperándote. 🏜️',
-      '¿Un vasito? Solo uno. Por mí. 💧',
-      'El agua no se toma sola. Anda, ve por un vaso ahora. Te espero. 😅',
-      'Cada vaso de agua me hace brillar un poco más. No me abandones. 🔥',
-    ];
-    return msgs[Math.floor(Date.now() / 60000) % msgs.length];
+      '¿Un vasito? Solo uno. Por mí. No seas mala. 💧',
+      'El agua no se toma sola. Anda, ve por un vaso. Ya. 😅',
+      'Cada vaso de agua me hace brillar más. ¿Tan difícil es? 🔥',
+      'Te recuerdo que somos lo mismo tú y yo. Si tú no tomas agua, yo me apago. 💧',
+    ]);
   },
   apagada: [
     'Te extraño. Mucho. ¿Volvemos juntas hoy? Solo un paso. 💛',
     'Sigo aquí. Apagada pero esperándote. No me rindo contigo.',
-    'No importa cuántos días pasaron. Hoy puede ser el primero de la racha. 🌱',
+    'No importa cuántos días pasaron. Hoy puede ser el primer día de la racha. 🌱',
     'Un día malo no define todo. Un regreso sí. ¿Volvemos? 🔥',
+    'Oye. Oye. Te estoy hablando. ¿Volvemos o qué? 😤',
   ],
 };
 
