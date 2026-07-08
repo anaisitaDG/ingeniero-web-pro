@@ -5,16 +5,94 @@ import { useAuth } from '../../context/AuthContext';
 import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 /* ── VIC MASCOT ──────────────────────────────────────────────────── */
+function getHourCO() {
+  return new Date(Date.now() - 5 * 60 * 60 * 1000).getUTCHours();
+}
+
+function pickMsg(msgs) {
+  return msgs[Math.floor(Date.now() / 60000) % msgs.length];
+}
+
+const VIC_MESSAGES = {
+  bestia: [
+    '¡Imparable! Llevas una racha que da miedo (de lo buena).',
+    'No sé quién te para. Yo tampoco quiero intentarlo. 🔥',
+    'Llevas días encendida. Literal. Soy yo, encendida.',
+    '¡Racha épica! Esto ya no es suerte, esto es disciplina.',
+  ],
+  racha: [
+    '¡Vamos! Cada día que sumas me haces brillar más. ✨',
+    'Llevo días viéndote y me alegra. No pares ahora.',
+    '¿Ves lo que pasa cuando eres constante? Esto. Esto pasa.',
+    'Tres días seguidos. Eso se celebra. ¡Sigue! 💪',
+  ],
+  celebrando: [
+    '¡LO LOGRASTE! Entrenaste y comiste bien. Eso es un día perfecto.',
+    'Hoy fue un 10. Tú fuiste un 10. ¡Felicitaciones! 🎉',
+    'Día completado. Eres exactamente el tipo de persona que admiro.',
+    'Todo marcado. Todo cumplido. Me haces feliz. 🥳',
+  ],
+  normal: () => {
+    const h = getHourCO();
+    if (h >= 5 && h < 10)  return '¡Buenos días! Hoy es un buen día para ser constante. ☀️';
+    if (h >= 10 && h < 13) return 'Ya va la mañana. ¿Cómo vamos con el agua? 💧';
+    if (h >= 13 && h < 16) return 'Tarde activa. ¿Ya entrenaste hoy? Todavía hay tiempo. 💪';
+    if (h >= 16 && h < 20) return 'La tarde es tuya. Un entreno ahora y el día queda completo. 🔥';
+    if (h >= 20)            return 'Última hora del día. ¿Cómo te fue? Mañana seguimos. 🌙';
+    return 'Aquí estoy, contigo. Vamos paso a paso. 😊';
+  },
+  inflamada: [
+    'Hoy los carbohidratos ganaron la batalla. Mañana ganamos nosotras.',
+    'Pasó. No pasa nada. Un día no borra todo lo que has logrado. 💛',
+    'El cuerpo avisa cuando algo no cuadra. Escúchalo mañana. 😌',
+  ],
+  ojeras: [
+    'Dormir también es entrenamiento. Tu cuerpo lo necesita de verdad.',
+    'Las ojeras me preocupan más que los kilos. Descansa esta noche. 💤',
+    'Hoy prioriza el sueño. Mañana rendimos mejor las dos. 🌙',
+  ],
+  triste: () => {
+    const h = getHourCO();
+    if (h < 12) return 'Buenos días. Todavía tienes todo el día por delante. ¿Empezamos? 🌤️';
+    if (h < 18) return 'Aún queda tarde. Un paso pequeño hoy vale más que esperar mañana.';
+    return 'El día casi termina, pero mañana es nuevo. Te espero aquí. 💛';
+  },
+  deshidratada: () => {
+    const h = getHourCO();
+    const msgs = [
+      `Son las ${h}:00. ¿Ya tomaste agua? Por favor, hidráta me un poquito. 💧`,
+      'Llevas horas sin agua. Yo me estoy secando aquí esperándote. 🏜️',
+      '¿Un vasito? Solo uno. Por mí. 💧',
+      'El agua no se toma sola. Anda, ve por un vaso ahora. Te espero. 😅',
+      'Cada vaso de agua me hace brillar un poco más. No me abandones. 🔥',
+    ];
+    return msgs[Math.floor(Date.now() / 60000) % msgs.length];
+  },
+  apagada: [
+    'Te extraño. Mucho. ¿Volvemos juntas hoy? Solo un paso. 💛',
+    'Sigo aquí. Apagada pero esperándote. No me rindo contigo.',
+    'No importa cuántos días pasaron. Hoy puede ser el primero de la racha. 🌱',
+    'Un día malo no define todo. Un regreso sí. ¿Volvemos? 🔥',
+  ],
+};
+
+function getVicMsg(stateKey) {
+  const msgs = VIC_MESSAGES[stateKey];
+  if (!msgs) return '';
+  if (typeof msgs === 'function') return msgs();
+  return pickMsg(msgs);
+}
+
 const VIC_STATES = {
-  bestia:       { name: 'Modo Bestia 🔥',    accent: '#FF5A36', msg: '¡Imparable! Llevas una racha increíble.',        size: 105, dimmed: false },
-  racha:        { name: 'En Racha 😊',        accent: '#FFB347', msg: '¡Vas muy bien! Sigue así y no pares.',          size: 105, dimmed: false },
-  celebrando:   { name: 'Celebrando 🎉',      accent: '#60D394', msg: '¡LO LOGRASTE! Eres una bestia absoluta.',       size: 108, dimmed: false },
-  normal:       { name: 'Todo bien 😐',        accent: '#AAAACC', msg: 'Algo pendiente, pero tú puedes.',               size: 100, dimmed: false },
-  inflamada:    { name: 'Inflamada 😮',        accent: '#FF8844', msg: 'Muchos carbohidratos y sin entrenar… 🫃',       size: 118, dimmed: false },
-  ojeras:       { name: 'Ojeras 😴',           accent: '#9966CC', msg: 'Necesitas dormir más. Yo también estoy agotada.', size: 100, dimmed: false },
-  triste:       { name: 'Triste 😢',           accent: '#6B8FD4', msg: 'Te extraño. ¿Volvemos juntas?',                size: 100, dimmed: false },
-  deshidratada: { name: 'Deshidratada 🏜️',   accent: '#DD8833', msg: '¡Agua! Por favor. Me estoy apagando.',          size:  90, dimmed: false },
-  apagada:      { name: 'Apagada 💀',          accent: '#666688', msg: '…ni me hables. Estoy muerta por dentro.',      size:  95, dimmed: true  },
+  bestia:       { name: 'Modo Bestia 🔥',    accent: '#FF5A36', size: 105, dimmed: false },
+  racha:        { name: 'En Racha 😊',        accent: '#FFB347', size: 105, dimmed: false },
+  celebrando:   { name: 'Celebrando 🎉',      accent: '#60D394', size: 108, dimmed: false },
+  normal:       { name: 'Todo bien 😐',        accent: '#AAAACC', size: 100, dimmed: false },
+  inflamada:    { name: 'Inflamada 😮',        accent: '#FF8844', size: 118, dimmed: false },
+  ojeras:       { name: 'Ojeras 😴',           accent: '#9966CC', size: 100, dimmed: false },
+  triste:       { name: 'Triste 😢',           accent: '#6B8FD4', size: 100, dimmed: false },
+  deshidratada: { name: 'Deshidratada 🏜️',   accent: '#DD8833', size:  90, dimmed: false },
+  apagada:      { name: 'Apagada 💀',          accent: '#666688', size:  95, dimmed: true  },
 };
 
 function getVicState(streak, tracking, macros) {
@@ -122,6 +200,7 @@ const VIC_ANIM_STYLE = {
 function Vic({ streak, tracking, macros }) {
   const stateKey = getVicState(streak, tracking, macros);
   const state = VIC_STATES[stateKey];
+  const msg = getVicMsg(stateKey);
   const badgeMap = {
     bestia:       ['💪', '💪'],
     racha:        ['👍'],
@@ -170,7 +249,7 @@ function Vic({ streak, tracking, macros }) {
       </div>
       <div style={{ flex: 1 }}>
         <p style={{ fontWeight: 800, fontSize: 15, color: state.accent, marginBottom: 3 }}>{state.name}</p>
-        <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.45 }}>{state.msg}</p>
+        <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.45 }}>{msg}</p>
       </div>
     </div>
     </>
