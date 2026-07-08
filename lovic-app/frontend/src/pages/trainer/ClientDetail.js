@@ -102,6 +102,7 @@ export default function ClientDetail() {
           cardio_duration: d.cardio_duration || '',
           exercises: d.exercises.map(e => ({
             _key: Math.random(),
+            id: e.id || null,
             name: e.name,
             youtube_url: e.youtube_url || '',
             sets: e.sets,
@@ -157,6 +158,7 @@ export default function ClientDetail() {
         exercises: d.exercises
           .filter(e => e.name.trim())
           .map(e => ({
+            exercise_id: e.id || null,
             name: e.name,
             youtube_url: e.youtube_url || null,
             sets: Number(e.sets) || 3,

@@ -129,9 +129,10 @@ router.put('/clients/:id/workout', async (req, res) => {
     const exercises = day.exercises || [];
     for (let ei = 0; ei < exercises.length; ei++) {
       const ex = exercises[ei];
+      const exId = ex.exercise_id || uuidv4();
       await db.query(
         'INSERT INTO workout_exercises (id, day_id, name, youtube_url, sets, reps, weight_kg, exercise_order, library_exercise_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [uuidv4(), dayId, ex.name, ex.youtube_url || null, ex.sets || 3, ex.reps || '10', ex.weight_kg || null, ei, ex.library_exercise_id || null]
+        [exId, dayId, ex.name, ex.youtube_url || null, ex.sets || 3, ex.reps || '10', ex.weight_kg || null, ei, ex.library_exercise_id || null]
       );
     }
   }
