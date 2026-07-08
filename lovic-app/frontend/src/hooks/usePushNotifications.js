@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
 
 function urlBase64ToUint8Array(base64String) {
@@ -8,22 +8,24 @@ function urlBase64ToUint8Array(base64String) {
   return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
 }
 
-// VAPID key hardcoded to avoid async delay before requestPermission (iOS requirement)
-const VAPID_PUBLIC_KEY = 'BMyXu344UMSX0IoqheXZQnVnk9LC5bSMUVYza66Ht5jrY_LpeSe3y5b3npONMOM33uI-Rsg7z5XJBza4CHbwD6s';
+const VAPID_KEY = 'BMyXu344UMSX0IoqheXZQnVnk9LC5bSMUVYza66Ht5jrY_LpeSe3y5b3npONMOM33uI-Rsg7z5XJBza4CHbwD6s';
+const APP_KEY  = urlBase64ToUint8Array(VAPID_KEY);
 
 export function usePushNotifications() {
-  const [permission, setPermission] = useState(Notification.permission);
-  const [subscribed, setSubscribed] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const swRef = useState(null);
+  const [permission, setPermission] = useState(() => {
+    try { return Notification.permission; } catch { return 'default'; }
+  });
+  const [subscribed, setSubscribed]  = useState(false);
+  const [loading, setLoading]        = useState(false);
+  const swReg = useRef(null);
 
   useEffect(() => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
     navigator.serviceWorker.ready.then(reg => {
-      swRef[1](reg);
+      swReg.current = reg;
       reg.pushManager.getSubscription().then(sub => setSubscribed(!!sub));
     });
-  }, []); // eslint-disable-line
+  }, []);
 
   async function subscribe() {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
@@ -32,11 +34,7 @@ export function usePushNotifications() {
     }
     setLoading(true);
     try {
-      // On iOS, requestPermission must be called synchronously from user gesture
-      // and the entire chain must complete without slow async gaps
-      const reg = swRef[0] || await navigator.serviceWorker.ready;
-      const appKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
-
+      // iOS: requestPermission debe ser la primera operación async desde el gesto
       const perm = await Notification.requestPermission();
       setPermission(perm);
       if (perm !== 'granted') {
@@ -44,15 +42,16 @@ export function usePushNotifications() {
         return;
       }
 
+      const reg = swReg.current || await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: appKey,
+        applicationServerKey: APP_KEY,
       });
       await api.push.subscribe(sub.toJSON());
       setSubscribed(true);
     } catch (e) {
-      console.error('[push] subscribe error', e);
-      alert('Error activando notificaciones: ' + e.message);
+      console.error('[push] error', e);
+      alert('Error: ' + (e.message || e));
     } finally {
       setLoading(false);
     }
@@ -61,7 +60,7 @@ export function usePushNotifications() {
   async function unsubscribe() {
     setLoading(true);
     try {
-      const reg = await navigator.serviceWorker.ready;
+      const reg = swReg.current || await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.getSubscription();
       if (sub) {
         await api.push.unsubscribe(sub.endpoint);
@@ -73,6 +72,10 @@ export function usePushNotifications() {
     }
   }
 
-  const supported = 'serviceWorker' in navigator && 'PushManager' in window;
+  const supported = typeof window !== 'undefined' &&
+    'serviceWorker' in navigator &&
+    'PushManager' in window &&
+    'Notification' in window;
+
   return { supported, permission, subscribed, loading, subscribe, unsubscribe };
 }
