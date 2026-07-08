@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { usePushNotifications } from '../../hooks/usePushNotifications';
 
 /* ── VIC MASCOT ──────────────────────────────────────────────────── */
 function getHourCO() {
@@ -271,6 +272,44 @@ function Vic({ streak, tracking, macros }) {
   );
 }
 
+function PushBanner() {
+  const { supported, permission, subscribed, loading, subscribe, unsubscribe } = usePushNotifications();
+  const [dismissed, setDismissed] = useState(() => localStorage.getItem('push_dismissed') === '1');
+
+  if (!supported || permission === 'denied' || subscribed || dismissed) return null;
+
+  function dismiss() {
+    localStorage.setItem('push_dismissed', '1');
+    setDismissed(true);
+  }
+
+  return (
+    <div style={{
+      background: 'linear-gradient(135deg, #FF6B6B11, #FF8C4211)',
+      border: '1.5px solid #FF6B6B33',
+      borderRadius: 16, padding: '14px 16px', marginBottom: 16,
+      display: 'flex', alignItems: 'center', gap: 12,
+    }}>
+      <span style={{ fontSize: 28 }}>🔥</span>
+      <div style={{ flex: 1 }}>
+        <p style={{ fontWeight: 700, fontSize: 14, marginBottom: 2 }}>Vic quiere avisarte</p>
+        <p style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.4 }}>Activa notificaciones y te mando recordatorios de agua, entreno y motivación.</p>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
+        <button
+          onClick={subscribe}
+          disabled={loading}
+          style={{ background: 'var(--coral)', color: '#fff', border: 'none', borderRadius: 10, padding: '7px 14px', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}
+        >{loading ? '…' : 'Activar'}</button>
+        <button
+          onClick={dismiss}
+          style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: 11, cursor: 'pointer', padding: '2px 0' }}
+        >Ahora no</button>
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const { user } = useAuth();
   const [data, setData]       = useState(null);
@@ -331,6 +370,7 @@ export default function Dashboard() {
 
       {/* Vic mascot */}
       <Vic streak={streak} tracking={tracking} macros={macros} />
+      <PushBanner />
 
       {/* Pending reminders */}
       {(() => {

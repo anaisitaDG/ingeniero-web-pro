@@ -109,6 +109,11 @@ export const api = {
     saveFree:       (exercises, note, date) => request('/workout/free', { method: 'POST', body: JSON.stringify({ exercises, note, date }) }),
     getFree:        () => request('/workout/free'),
   },
+  push: {
+    vapidKey:    ()  => request('/push/vapid-public-key'),
+    subscribe:   (s) => request('/push/subscribe',  { method: 'POST',   body: JSON.stringify({ subscription: s }) }),
+    unsubscribe: (e) => request('/push/subscribe',  { method: 'DELETE', body: JSON.stringify({ endpoint: e }) }),
+  },
   mealPlan: {
     today:    ()                       => request('/meal-plan'),
     week:     ()                       => request('/meal-plan/week'),

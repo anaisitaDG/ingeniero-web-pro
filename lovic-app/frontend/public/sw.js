@@ -1,4 +1,4 @@
-const CACHE = 'lovic-v9';
+const CACHE = 'lovic-v10';
 
 const API_PATHS = ['/auth/', '/food/', '/dashboard/', '/measurements/', '/bioimpedance/', '/questionnaire/', '/trainer/', '/profile', '/progress-photos', '/workout'];
 
@@ -11,6 +11,29 @@ self.addEventListener('activate', e => {
     Promise.all(keys.map(k => caches.delete(k)))
   ));
   self.clients.claim();
+});
+
+self.addEventListener('push', e => {
+  const data = e.data?.json() || {};
+  const title = data.title || 'Lovic Athletica';
+  const options = {
+    body: data.body || '',
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
+    data: { url: data.url || '/' },
+    vibrate: [100, 50, 100],
+  };
+  e.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const url = e.notification.data?.url || '/';
+  e.waitUntil(clients.matchAll({ type: 'window' }).then(list => {
+    const existing = list.find(c => c.url.includes(url) && 'focus' in c);
+    if (existing) return existing.focus();
+    return clients.openWindow(url);
+  }));
 });
 
 self.addEventListener('fetch', e => {

@@ -197,10 +197,22 @@ const db = require('./database/db');
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
     await db.query(`ALTER TABLE meal_completions MODIFY COLUMN client_id VARCHAR(36) NOT NULL`).catch(() => {});
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS push_subscriptions (
+        user_id    VARCHAR(36) NOT NULL,
+        endpoint   TEXT NOT NULL,
+        subscription TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (user_id, endpoint(255))
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
   } catch (e) {
     console.error('Migration error:', e.message);
   }
 })();
+
+// Push notifications cron
+require('./notifications').startCronJobs();
 
 // Security
 app.use(helmet());
@@ -225,6 +237,7 @@ app.use('/profile',         require('./routes/profile'));
 app.use('/progress-photos', require('./routes/progressPhotos'));
 app.use('/workout',         require('./routes/workout'));
 app.use('/meal-plan',       require('./routes/mealPlan'));
+app.use('/push',            require('./routes/push').router);
 
 // Health
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }));
