@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const webpush = require('web-push');
-const db = require('../db');
+const db = require('../database/db');
 const auth = require('../middleware/auth');
 
 const VAPID_PUBLIC  = 'BMyXu344UMSX0IoqheXZQnVnk9LC5bSMUVYza66Ht5jrY_LpeSe3y5b3npONMOM33uI-Rsg7z5XJBza4CHbwD6s';
