@@ -71,4 +71,15 @@ router.get('/', async (req, res) => {
   res.json({ bioimpedance: rows });
 });
 
+// DELETE /bioimpedance/:id
+router.delete('/:id', async (req, res) => {
+  const [rows] = await db.query('SELECT user_id FROM bioimpedance WHERE id=?', [req.params.id]);
+  if (!rows.length) return res.status(404).json({ error: 'No encontrado' });
+  if (req.user.role !== 'trainer' && rows[0].user_id !== req.user.id) {
+    return res.status(403).json({ error: 'Sin permiso' });
+  }
+  await db.query('DELETE FROM bioimpedance WHERE id=?', [req.params.id]);
+  res.json({ ok: true });
+});
+
 module.exports = router;

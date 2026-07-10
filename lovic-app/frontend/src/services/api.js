@@ -67,6 +67,7 @@ export const api = {
         body: formData,
       }).then(r => r.json());
     },
+    delete: (bioId) => request(`/bioimpedance/${bioId}`, { method: 'DELETE' }),
   },
   questionnaire: {
     save: (data) => request('/questionnaire', { method: 'POST', body: JSON.stringify(data) }),

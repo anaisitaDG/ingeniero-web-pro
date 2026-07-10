@@ -24,7 +24,7 @@ export default function ClientDetail() {
   const [loading, setLoading]   = useState(true);
   const [tab, setTab]           = useState('overview');
   const [inviting, setInviting] = useState(false);
-  const [bioFile, setBioFile]   = useState(null);
+  const [bioFiles, setBioFiles] = useState([]);
   const [bioUploading, setBioUploading] = useState(false);
   const [targets, setTargets]   = useState({ calorie_target: '', protein_target_g: '', carbs_target_g: '', fat_target_g: '' });
   const [savingTargets, setSavingTargets] = useState(false);
@@ -231,20 +231,29 @@ export default function ClientDetail() {
   }
 
   async function uploadBio() {
-    if (!bioFile) return;
+    if (!bioFiles.length) return;
     setBioUploading(true);
     const fd = new FormData();
-    fd.append('image', bioFile);
+    bioFiles.forEach(f => fd.append('image', f));
     fd.append('user_id', id);
     try {
       const res = await api.bioimpedance.upload(fd, id);
       if (res.error) throw new Error(res.error);
       await load();
-      setBioFile(null);
+      setBioFiles([]);
       setTab('bio');
       alert('Bioimpedancia guardada');
     } catch (e) { alert(e.message); }
     finally { setBioUploading(false); }
+  }
+
+  async function deleteBio(bioId) {
+    if (!window.confirm('¿Eliminar este registro?')) return;
+    try {
+      const res = await api.bioimpedance.delete(bioId);
+      if (res.error) throw new Error(res.error);
+      await load();
+    } catch (e) { alert(e.message); }
   }
 
   // Day helpers
@@ -854,8 +863,9 @@ export default function ClientDetail() {
         <div>
           <div className="card" style={{ marginBottom: 16 }}>
             <p style={{ fontWeight: 700, marginBottom: 10 }}>📊 Subir bioimpedancia</p>
-            <input type="file" accept="image/*" onChange={e => setBioFile(e.target.files[0])} style={{ marginBottom: 10 }} />
-            <button className="btn-primary" onClick={uploadBio} disabled={!bioFile || bioUploading} style={{ width: '100%', justifyContent: 'center' }}>
+            <input type="file" accept="image/*" multiple onChange={e => setBioFiles(Array.from(e.target.files))} style={{ marginBottom: 6 }} />
+            {bioFiles.length > 0 && <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>{bioFiles.length} imagen{bioFiles.length > 1 ? 'es' : ''} seleccionada{bioFiles.length > 1 ? 's' : ''}</p>}
+            <button className="btn-primary" onClick={uploadBio} disabled={!bioFiles.length || bioUploading} style={{ width: '100%', justifyContent: 'center' }}>
               {bioUploading ? <><span className="spinner" /> Procesando…</> : 'Subir y analizar'}
             </button>
           </div>
@@ -865,9 +875,12 @@ export default function ClientDetail() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {bioimpedance.map(b => (
                 <div key={b.id} className="card" style={{ padding: 16 }}>
-                  <p style={{ fontWeight: 700, marginBottom: 12 }}>
-                    {fmtDate(b.logged_at, { day: 'numeric', month: 'long', year: 'numeric' })}
-                  </p>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <p style={{ fontWeight: 700 }}>
+                      {fmtDate(b.logged_at, { day: 'numeric', month: 'long', year: 'numeric' })}
+                    </p>
+                    <button onClick={() => deleteBio(b.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: 18, padding: '0 4px' }} title="Eliminar">🗑</button>
+                  </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                     {b.body_fat_pct != null && <BioRow label="Grasa corporal" value={`${b.body_fat_pct}%`} />}
                     {b.muscle_mass_kg != null && <BioRow label="Masa muscular" value={`${b.muscle_mass_kg} kg`} />}
