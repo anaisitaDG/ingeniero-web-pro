@@ -886,7 +886,7 @@ export default function ClientDetail() {
         <div>
           <div className="card" style={{ marginBottom: 16 }}>
             <p style={{ fontWeight: 700, marginBottom: 10 }}>📊 Subir bioimpedancia</p>
-            <input type="file" accept="image/*" multiple onChange={e => setBioFiles(Array.from(e.target.files))} style={{ marginBottom: 10 }} />
+            <input type="file" accept="image/jpeg,image/png,image/heic,image/webp" multiple onChange={e => setBioFiles(Array.from(e.target.files))} style={{ marginBottom: 10 }} />
             {bioFiles.length > 0 && <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>{bioFiles.length} imagen{bioFiles.length > 1 ? 'es' : ''} seleccionada{bioFiles.length > 1 ? 's' : ''}</p>}
             <label style={{ fontSize: 12, color: 'var(--muted)', display: 'block', marginBottom: 4 }}>Fecha del registro</label>
             <input type="date" value={bioDate} onChange={e => setBioDate(e.target.value)} className="input" style={{ marginBottom: 12, fontSize: 14 }} />
