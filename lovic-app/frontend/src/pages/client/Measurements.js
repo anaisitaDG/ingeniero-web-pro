@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { AreaChart, Area, LineChart, Line, XAxis, Tooltip, ResponsiveContainer, ReferenceDot } from 'recharts';
+import { AreaChart, Area, LineChart, Line, XAxis, Tooltip, ResponsiveContainer, ReferenceDot, BarChart, Bar, Cell, LabelList } from 'recharts';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
@@ -195,11 +195,14 @@ export default function Measurements() {
 
       {/* TAB: Progreso */}
       {tab === 'progress' && (
-        chartData.length < 2 ? (
-          <div className="empty-state"><div className="icon">📈</div><p>Necesitas al menos 2 registros para ver el progreso</p></div>
-        ) : (
-          <ProgressTab chartData={chartData} />
-        )
+        <>
+          {bioList.length >= 2 && <BioBarCharts bioimpedance={bioList} />}
+          {chartData.length < 2 ? (
+            bioList.length < 2 ? <div className="empty-state"><div className="icon">📈</div><p>Necesitas al menos 2 registros para ver el progreso</p></div> : null
+          ) : (
+            <ProgressTab chartData={chartData} />
+          )}
+        </>
       )}
 
       {/* TAB: Bioimpedancia */}
@@ -260,6 +263,60 @@ export default function Measurements() {
           <div className="empty-state"><div className="icon">📊</div><p>No hay registros de bioimpedancia</p></div>
         )}
       </div>}
+    </div>
+  );
+}
+
+const BIO_BAR_METRICS = [
+  { key: 'weight_kg',          label: 'Peso',           unit: 'kg',   color: '#457B9D' },
+  { key: 'body_fat_pct',       label: '% Grasa',        unit: '%',    color: '#FF6B6B' },
+  { key: 'muscle_mass_kg',     label: 'Músculo',        unit: 'kg',   color: '#06D6A0' },
+  { key: 'skeletal_muscle_kg', label: 'M. Esquelético', unit: 'kg',   color: '#2A9D8F' },
+  { key: 'body_fat_kg',        label: 'Peso grasa',     unit: 'kg',   color: '#F4A261' },
+  { key: 'body_water_pct',     label: '% Agua',         unit: '%',    color: '#00BBF9' },
+  { key: 'visceral_fat',       label: 'Grasa visceral', unit: '',     color: '#E76F51' },
+  { key: 'bmr_kcal',           label: 'Metabolismo',    unit: 'kcal', color: '#FF9F1C' },
+];
+
+function BioBarCharts({ bioimpedance }) {
+  if (!bioimpedance || bioimpedance.length < 2) return null;
+  const sorted = [...bioimpedance].reverse();
+  const active = BIO_BAR_METRICS.filter(m => sorted.some(b => b[m.key] != null));
+  if (!active.length) return null;
+
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 12 }}>📊 Comparativa bioimpedancia</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {active.map(m => {
+          const data = sorted.map(b => ({ date: b.logged_at ? b.logged_at.slice(5, 10).replace('-', '/') : '', value: b[m.key] != null ? Number(b[m.key]) : null })).filter(d => d.value != null);
+          if (data.length < 2) return null;
+          const first = data[0].value, last = data[data.length - 1].value;
+          const diff = +(last - first).toFixed(2);
+          const isGood = ['muscle_mass_kg','skeletal_muscle_kg','body_water_pct','bmr_kcal'].includes(m.key) ? diff >= 0 : diff <= 0;
+          return (
+            <div key={m.key} className="card" style={{ padding: '14px 14px 6px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <p style={{ fontWeight: 700, fontSize: 13 }}>{m.label}</p>
+                <span style={{ fontSize: 12, fontWeight: 700, color: diff === 0 ? 'var(--muted)' : isGood ? '#16a34a' : '#dc2626' }}>
+                  {diff > 0 ? '+' : ''}{diff}{m.unit ? ' ' + m.unit : ''}
+                </span>
+              </div>
+              <ResponsiveContainer width="100%" height={data.length * 36 + 20}>
+                <BarChart data={data} layout="vertical" margin={{ top: 0, right: 48, left: 48, bottom: 0 }} barSize={20}>
+                  <XAxis type="number" domain={['auto', 'auto']} hide />
+                  <YAxis type="category" dataKey="date" tick={{ fontSize: 11, fill: 'var(--muted)' }} width={40} axisLine={false} tickLine={false} />
+                  <Tooltip formatter={v => [`${v} ${m.unit}`, m.label]} contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--card)' }} />
+                  <Bar dataKey="value" radius={[0, 6, 6, 0]} background={{ fill: 'var(--surface)', radius: 6 }}>
+                    {data.map((_, i) => <Cell key={i} fill={i === data.length - 1 ? m.color : m.color + '99'} />)}
+                    <LabelList dataKey="value" position="right" formatter={v => `${v}${m.unit}`} style={{ fontSize: 11, fontWeight: 700, fill: 'var(--text)' }} />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
