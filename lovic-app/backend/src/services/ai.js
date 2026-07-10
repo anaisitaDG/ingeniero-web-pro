@@ -133,7 +133,7 @@ async function parseBioimpedance(imagePath) {
 
 Devuelve SOLO un JSON válido con estos campos (usa null si no está en la imagen):
 {
-  "report_date": "YYYY-MM-DD" (fecha exacta del reporte visible en la imagen; lee con cuidado día y mes — no los confundas; si aparece DD/MM/YYYY convierte correctamente, ej: 10/07/2026 → "2026-07-10"),
+  "report_date_raw": "texto exacto de la fecha tal como aparece en la imagen (ej: '10/07/2026', '2026-07-10', 'Jul 10 2026'), sin interpretar ni convertir",
   "weight_kg": número (peso corporal total en kg),
   "bmi": número (IMC / índice de masa corporal),
   "body_fat_pct": número (% grasa corporal),
