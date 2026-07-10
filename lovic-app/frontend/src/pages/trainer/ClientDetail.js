@@ -1260,76 +1260,94 @@ const PROGRESS_METRICS = [
   { key: 'bmr_kcal',           label: 'Metabolismo',     unit: 'kcal', src: 'bio',  goodDown: false },
 ];
 
-const DATE_COLORS = ['#457B9D','#FF6B6B','#06D6A0','#F4A261','#9B5DE5','#FF9F1C'];
-
 function ProgressComparisonChart({ bioimpedance, measurements }) {
-  const bioSorted   = [...(bioimpedance  || [])].reverse();
-  const measSorted  = [...(measurements  || [])].reverse();
+  const bioSorted  = [...(bioimpedance || [])].reverse();
+  const measSorted = [...(measurements || [])].reverse();
 
-  // Collect all unique dates across both sources
-  const bioByDate  = Object.fromEntries(bioSorted.map(b  => [b.logged_at?.slice(0,10),  b]));
-  const measByDate = Object.fromEntries(measSorted.map(m => [m.logged_at?.slice(0,10),  m]));
+  const bioByDate  = Object.fromEntries(bioSorted.map(b  => [b.logged_at?.slice(0,10), b]));
+  const measByDate = Object.fromEntries(measSorted.map(m => [m.logged_at?.slice(0,10), m]));
   const allDates   = [...new Set([...Object.keys(bioByDate), ...Object.keys(measByDate)])].sort();
-
-  if (allDates.length < 2) return null;
 
   const active = PROGRESS_METRICS.filter(m => {
     const src = m.src === 'bio' ? bioByDate : measByDate;
     return Object.values(src).some(r => r[m.key] != null);
   });
-  if (!active.length) return null;
 
-  // Build one row per metric: { metric, [date1]: val, [date2]: val, ... }
-  const chartData = active.map(m => {
-    const src = m.src === 'bio' ? bioByDate : measByDate;
-    const row = { metric: m.label, unit: m.unit, goodDown: m.goodDown };
-    allDates.forEach(d => { row[d] = src[d]?.[m.key] != null ? Number(src[d][m.key]) : null; });
-    // delta first→last
-    const vals = allDates.map(d => row[d]).filter(v => v != null);
-    row._first = vals[0]; row._last = vals[vals.length - 1];
-    row._diff  = vals.length >= 2 ? +(row._last - row._first).toFixed(2) : null;
-    return row;
-  });
+  const [selected, setSelected] = useState(null);
 
-  const shortDate = d => d.slice(5).replace('-', '/');
+  const metric = selected
+    ? active.find(m => m.key === selected) || active[0]
+    : active[0];
+
+  if (!metric || allDates.length < 2) return null;
+
+  const src = metric.src === 'bio' ? bioByDate : measByDate;
+  const points = allDates
+    .map(d => ({ date: d.slice(5).replace('-', '/'), value: src[d]?.[metric.key] != null ? Number(src[d][metric.key]) : null }))
+    .filter(p => p.value != null);
+
+  if (points.length < 2) return null;
+
+  const first = points[0].value;
+  const last  = points[points.length - 1].value;
+  const diff  = +(last - first).toFixed(2);
+  const isGood = metric.goodDown ? diff <= 0 : diff >= 0;
+  const diffColor = diff === 0 ? 'var(--muted)' : isGood ? '#16a34a' : '#dc2626';
+  const lineColor = '#E07055';
+
+  const CustomTooltip = ({ active: a, payload }) => {
+    if (!a || !payload?.length) return null;
+    return (
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 14px', fontSize: 13 }}>
+        <p style={{ color: 'var(--muted)', marginBottom: 2, fontSize: 11 }}>{payload[0]?.payload?.date}</p>
+        <p style={{ fontWeight: 700, color: 'var(--text)' }}>{payload[0]?.value} <span style={{ fontWeight: 400, color: 'var(--muted)' }}>{metric.unit}</span></p>
+      </div>
+    );
+  };
 
   return (
-    <div className="card" style={{ padding: 16, marginBottom: 20, overflowX: 'auto' }}>
-      <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 16 }}>📊 Comparativa de progreso</p>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-        <thead>
-          <tr>
-            <th style={{ textAlign: 'left', padding: '6px 8px', color: 'var(--muted)', fontWeight: 600, fontSize: 11, borderBottom: '2px solid var(--border)' }}>Métrica</th>
-            {allDates.map((d, i) => (
-              <th key={d} style={{ textAlign: 'right', padding: '6px 8px', color: DATE_COLORS[i % DATE_COLORS.length], fontWeight: 700, fontSize: 11, borderBottom: '2px solid var(--border)', whiteSpace: 'nowrap' }}>
-                {shortDate(d)}
-              </th>
-            ))}
-            <th style={{ textAlign: 'right', padding: '6px 8px', color: 'var(--muted)', fontWeight: 600, fontSize: 11, borderBottom: '2px solid var(--border)' }}>Cambio</th>
-          </tr>
-        </thead>
-        <tbody>
-          {chartData.map((row, ri) => {
-            const isGood = row._diff == null ? null : row.goodDown ? row._diff <= 0 : row._diff >= 0;
-            const diffColor = row._diff == null || row._diff === 0 ? 'var(--muted)' : isGood ? '#16a34a' : '#dc2626';
-            return (
-              <tr key={ri} style={{ borderBottom: '1px solid var(--border)' }}>
-                <td style={{ padding: '10px 8px', fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap' }}>{row.metric}</td>
-                {allDates.map((d, i) => (
-                  <td key={d} style={{ padding: '10px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                    {row[d] != null
-                      ? <span style={{ fontWeight: 700, color: DATE_COLORS[i % DATE_COLORS.length] }}>{row[d]}<span style={{ fontWeight: 400, fontSize: 11, color: 'var(--muted)', marginLeft: 2 }}>{row.unit}</span></span>
-                      : <span style={{ color: 'var(--muted)', fontSize: 11 }}>—</span>}
-                  </td>
-                ))}
-                <td style={{ padding: '10px 8px', textAlign: 'right', fontWeight: 700, color: diffColor, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-                  {row._diff != null ? `${row._diff > 0 ? '+' : ''}${row._diff}${row.unit ? ' '+row.unit : ''}` : '—'}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+    <div className="card" style={{ padding: 20, marginBottom: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
+        <p style={{ fontWeight: 700, fontSize: 15 }}>📈 Progreso</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontVariantNumeric: 'tabular-nums' }}>
+          <span style={{ fontSize: 13, color: 'var(--muted)' }}>Total:</span>
+          <span style={{ fontWeight: 700, fontSize: 14, color: diffColor }}>{diff > 0 ? '+' : ''}{diff}{metric.unit ? ' '+metric.unit : ''}</span>
+        </div>
+      </div>
+
+      {/* Metric selector */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 20 }}>
+        {active.map(m => (
+          <button
+            key={m.key}
+            onClick={() => setSelected(m.key)}
+            style={{
+              padding: '5px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600,
+              border: metric.key === m.key ? '2px solid var(--coral)' : '1.5px solid var(--border)',
+              background: metric.key === m.key ? 'var(--coral)' : 'transparent',
+              color: metric.key === m.key ? '#fff' : 'var(--muted)',
+              cursor: 'pointer', transition: 'all 0.15s',
+            }}
+          >
+            {m.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Chart */}
+      <ResponsiveContainer width="100%" height={200}>
+        <LineChart data={points} margin={{ top: 8, right: 16, left: -20, bottom: 0 }}>
+          <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--muted)' }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fontSize: 11, fill: 'var(--muted)' }} axisLine={false} tickLine={false} domain={['auto', 'auto']} />
+          <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'var(--border)', strokeWidth: 1 }} />
+          <Line
+            type="monotone" dataKey="value" stroke={lineColor}
+            strokeWidth={2.5} dot={{ r: 4, fill: lineColor, strokeWidth: 0 }}
+            activeDot={{ r: 6, fill: lineColor, stroke: '#fff', strokeWidth: 2 }}
+            connectNulls
+          />
+        </LineChart>
+      </ResponsiveContainer>
     </div>
   );
 }
