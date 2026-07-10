@@ -82,11 +82,81 @@ async function sendWelcome(email, name) {
           <h1 style="color:#fff;margin:0">¡Bienvenida, ${name}!</h1>
         </div>
         <div style="background:#fff;padding:2rem;border-radius:0 0 12px 12px">
-          <p style="color:#555;line-height:1.7">
-            Tu valoración ha sido recibida. Lorena revisará tu perfil y en breve tendrás tu plan personalizado listo.
+          <p style="color:#555;line-height:1.7">Tu valoración ha sido recibida. Lorena revisará tu perfil y en breve tendrás tu plan personalizado listo.</p>
+          <p style="color:#555;line-height:1.7">Tu proceso de transformación comienza hoy. 💪</p>
+        </div>
+      </div>
+    `,
+  });
+}
+
+async function sendWelcomeWithInstructions(email, name, phone) {
+  const appUrl = process.env.APP_URL || 'https://lovicgym.com';
+  await resend.emails.send({
+    from: FROM,
+    to: email,
+    subject: '¡Bienvenida a Lovic Athletica Gym! ✨',
+    html: `
+      <div style="font-family:'Helvetica Neue',sans-serif;max-width:540px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
+
+        <!-- Header -->
+        <div style="background:linear-gradient(135deg,#FF6B6B,#FF8E53);padding:2.5rem;text-align:center">
+          <h1 style="color:#fff;margin:0;font-size:1.8rem;letter-spacing:.05em">LOVIC</h1>
+          <p style="color:rgba(255,255,255,.85);margin:.25rem 0 0;font-size:.85rem;letter-spacing:.1em">ATHLETICA GYM</p>
+        </div>
+
+        <div style="padding:2rem">
+          <!-- Bienvenida -->
+          <h2 style="color:#1A1A1A;margin:0 0 .75rem">¡Bienvenida, ${name}! 🎉</h2>
+          <p style="color:#555;line-height:1.7;margin:0 0 1.5rem">
+            Tu valoración ha sido recibida. Lorena ya está revisando tu perfil para diseñar tu plan de entrenamiento y nutrición completamente personalizado. En breve te avisará cuando esté listo. ¡Este es tu primer paso hacia la transformación! 💪
           </p>
-          <p style="color:#555;line-height:1.7">
-            Tu proceso de transformación comienza hoy. 💪
+
+          <!-- Acceso -->
+          <div style="background:#FFF8F8;border-left:4px solid #FF6B6B;border-radius:8px;padding:1.25rem 1.5rem;margin-bottom:1.5rem">
+            <p style="color:#1A1A1A;font-weight:700;margin:0 0 .75rem;font-size:1rem">🔑 Cómo ingresar a tu app</p>
+            <p style="color:#555;line-height:1.7;margin:0 0 .5rem">Puedes entrar en cualquier momento con:</p>
+            <table style="width:100%;border-collapse:collapse">
+              <tr>
+                <td style="padding:6px 0;color:#888;font-size:.9rem;width:110px">Usuario:</td>
+                <td style="padding:6px 0;color:#1A1A1A;font-weight:700;font-size:.95rem">${email}</td>
+              </tr>
+              <tr>
+                <td style="padding:6px 0;color:#888;font-size:.9rem">Contraseña:</td>
+                <td style="padding:6px 0;color:#FF6B6B;font-weight:800;font-size:1.1rem;letter-spacing:.05em">${phone}</td>
+              </tr>
+            </table>
+            <p style="color:#999;font-size:.8rem;margin:.75rem 0 0">Guarda este correo para no olvidarlo. Puedes cambiar tu contraseña desde tu perfil en la app.</p>
+          </div>
+
+          <!-- Instalar en iPhone -->
+          <div style="background:#F0F7FF;border-radius:10px;padding:1.25rem 1.5rem;margin-bottom:1rem">
+            <p style="color:#1A1A1A;font-weight:700;margin:0 0 .75rem">🍎 Instalar en iPhone</p>
+            <ol style="color:#555;line-height:2;margin:0;padding-left:1.25rem;font-size:.9rem">
+              <li>Abre <strong>Safari</strong> y ve a <a href="${appUrl}" style="color:#FF6B6B">${appUrl}</a></li>
+              <li>Toca el botón de <strong>compartir</strong> (cuadrado con flecha ↑)</li>
+              <li>Desplázate y toca <strong>"Agregar a pantalla de inicio"</strong></li>
+              <li>Toca <strong>"Agregar"</strong> — ¡listo! La app aparece como ícono en tu pantalla</li>
+            </ol>
+          </div>
+
+          <!-- Instalar en Android -->
+          <div style="background:#F0FFF4;border-radius:10px;padding:1.25rem 1.5rem;margin-bottom:1.5rem">
+            <p style="color:#1A1A1A;font-weight:700;margin:0 0 .75rem">🤖 Instalar en Android</p>
+            <ol style="color:#555;line-height:2;margin:0;padding-left:1.25rem;font-size:.9rem">
+              <li>Abre <strong>Chrome</strong> y ve a <a href="${appUrl}" style="color:#16a34a">${appUrl}</a></li>
+              <li>Toca los <strong>tres puntos ⋮</strong> en la esquina superior derecha</li>
+              <li>Toca <strong>"Instalar app"</strong> o <strong>"Agregar a pantalla de inicio"</strong></li>
+              <li>Confirma tocando <strong>"Instalar"</strong> — ¡ya la tienes!</li>
+            </ol>
+          </div>
+
+          <a href="${appUrl}" style="display:block;background:linear-gradient(135deg,#FF6B6B,#FF8E53);color:#fff;padding:1rem;border-radius:10px;text-decoration:none;font-weight:700;font-size:1rem;text-align:center">
+            Entrar a mi app →
+          </a>
+
+          <p style="color:#bbb;font-size:.8rem;margin:1.5rem 0 0;text-align:center">
+            Si tienes alguna duda, escríbele a Lorena directamente.
           </p>
         </div>
       </div>
@@ -186,4 +256,4 @@ async function sendRenewalReminder(clientEmail, clientName, daysLeft, trainerEma
   });
 }
 
-module.exports = { sendMagicLink, sendWelcome, notifyTrainerOnboarding, sendWeeklySummary, sendRenewalReminder };
+module.exports = { sendMagicLink, sendWelcome, sendWelcomeWithInstructions, notifyTrainerOnboarding, sendWeeklySummary, sendRenewalReminder };

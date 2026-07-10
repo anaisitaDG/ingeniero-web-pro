@@ -1,8 +1,9 @@
 const express = require('express');
 const router  = express.Router();
+const bcrypt  = require('bcryptjs');
 const db      = require('../database/db');
 const { requireAuth } = require('../middleware/auth');
-const { notifyTrainerOnboarding } = require('../services/email');
+const { notifyTrainerOnboarding, sendWelcomeWithInstructions } = require('../services/email');
 
 router.use(requireAuth);
 
@@ -72,6 +73,21 @@ router.post('/', async (req, res) => {
       'UPDATE users SET fitness_goal = COALESCE(?, fitness_goal), calorie_target = COALESCE(?, calorie_target) WHERE id = ?',
       [q.fitness_goal || null, calorie_target, uid]
     );
+  }
+
+  // Set phone as password if provided and account has no password yet
+  const phone = q.phone ? String(q.phone).replace(/\D/g, '').slice(-10) : null;
+  if (phone && phone.length >= 7) {
+    const [[u2]] = await db.query('SELECT password_hash, email FROM users WHERE id=?', [uid]);
+    if (!u2?.password_hash) {
+      const hash = await bcrypt.hash(phone, 10);
+      await db.query('UPDATE users SET password_hash=? WHERE id=?', [hash, uid]);
+      // Send welcome email with login instructions
+      if (u2?.email) {
+        const [[uName]] = await db.query('SELECT name FROM users WHERE id=?', [uid]);
+        sendWelcomeWithInstructions(u2.email, uName?.name || 'Hola', phone).catch(() => {});
+      }
+    }
   }
 
   // Notify trainer
