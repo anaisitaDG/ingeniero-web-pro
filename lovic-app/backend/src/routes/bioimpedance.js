@@ -28,7 +28,6 @@ router.post('/upload', upload.array('image', 4), async (req, res) => {
   if (!req.files?.length) return res.status(400).json({ error: 'Imagen requerida' });
 
   const targetUserId = req.body.user_id || req.user.id;
-  const loggedAt = req.body.logged_at || null;
 
   if (req.user.role !== 'trainer' && targetUserId !== req.user.id) {
     return res.status(403).json({ error: 'Sin permiso' });
