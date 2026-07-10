@@ -603,6 +603,14 @@ router.put('/billing/:clientId', requireTrainer, async (req, res) => {
   res.json({ ok: true });
 });
 
+// DELETE /trainer/clients/:id
+router.delete('/clients/:id', requireTrainer, async (req, res) => {
+  const [[user]] = await db.query('SELECT id FROM users WHERE id=? AND role="client"', [req.params.id]);
+  if (!user) return res.status(404).json({ error: 'Cliente no encontrado' });
+  await db.query('DELETE FROM users WHERE id=?', [req.params.id]);
+  res.json({ ok: true });
+});
+
 function extractCalorieTarget(content) {
   const match = content.match(/(\d{3,4})\s*kcal/i);
   return match ? parseInt(match[1]) : null;

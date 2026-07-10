@@ -14,6 +14,12 @@ function photoUrl(p) {
   return p.startsWith('http') ? p : `${API_BASE}/${p}`;
 }
 
+const AVATAR_COLORS = ['#FF6B6B','#F4A261','#2A9D8F','#E76F51','#457B9D','#9B5DE5','#F15BB5','#00BBF9','#06D6A0','#FF9F1C'];
+function avatarColor(name = '') {
+  let h = 0; for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xffffffff;
+  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
+}
+
 const EMPTY_EXERCISE = () => ({ _key: Math.random(), name: '', youtube_url: '', sets: 3, reps: '10', weight_kg: '' });
 const EMPTY_DAY = () => ({ _key: Math.random(), day_name: '', warmup_type: '', warmup_duration: '', cardio_type: '', cardio_duration: '', exercises: [EMPTY_EXERCISE()] });
 
@@ -247,6 +253,15 @@ export default function ClientDetail() {
     finally { setBioUploading(false); }
   }
 
+  async function deleteClient() {
+    if (!window.confirm(`¿Eliminar a ${data?.user?.name}? Esta acción es irreversible y borrará todos sus datos.`)) return;
+    try {
+      const res = await api.trainer.deleteClient(id);
+      if (res.error) throw new Error(res.error);
+      navigate('/trainer');
+    } catch (e) { alert(e.message); }
+  }
+
   async function deleteBio(bioId) {
     if (!window.confirm('¿Eliminar este registro?')) return;
     try {
@@ -333,7 +348,7 @@ export default function ClientDetail() {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
         <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-          <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'var(--coral-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 800, color: 'var(--coral)' }}>
+          <div style={{ width: 56, height: 56, borderRadius: '50%', background: avatarColor(user.name), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 800, color: '#fff' }}>
             {user.name.charAt(0).toUpperCase()}
           </div>
           <div>
@@ -341,9 +356,14 @@ export default function ClientDetail() {
             <p style={{ color: 'var(--muted)', fontSize: 14 }}>{user.email}</p>
           </div>
         </div>
-        <button className="btn-primary" onClick={sendInvite} disabled={inviting} style={{ padding: '10px 18px', fontSize: 14, background: 'var(--gold)' }}>
-          {inviting ? <span className="spinner" /> : '✉️ Invitar'}
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn-primary" onClick={sendInvite} disabled={inviting} style={{ padding: '10px 18px', fontSize: 14, background: 'var(--gold)' }}>
+            {inviting ? <span className="spinner" /> : '✉️ Invitar'}
+          </button>
+          <button onClick={deleteClient} title="Eliminar cliente" style={{ padding: '10px 14px', fontSize: 18, background: 'none', border: '1px solid var(--border)', borderRadius: 12, cursor: 'pointer', color: '#dc2626' }}>
+            🗑
+          </button>
+        </div>
       </div>
 
       {/* Tabs — two rows */}

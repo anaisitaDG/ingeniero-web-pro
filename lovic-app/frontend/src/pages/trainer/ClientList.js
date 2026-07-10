@@ -4,6 +4,12 @@ import { api } from '../../services/api';
 
 const GOAL_LABELS = { fat_loss: 'Pérdida de grasa', muscle_gain: 'Ganar músculo', maintenance: 'Mantenimiento', health: 'Salud general' };
 
+const AVATAR_COLORS = ['#FF6B6B','#F4A261','#2A9D8F','#E76F51','#457B9D','#9B5DE5','#F15BB5','#00BBF9','#06D6A0','#FF9F1C'];
+function avatarColor(name = '') {
+  let h = 0; for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xffffffff;
+  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
+}
+
 function goals(g) {
   try {
     const a = typeof g === 'string' ? JSON.parse(g) : g;
@@ -181,7 +187,7 @@ function CardView({ clients, navigate }) {
             onMouseLeave={e => e.currentTarget.style.boxShadow = 'var(--shadow)'}
           >
             {/* Avatar */}
-            <div style={{ width: 46, height: 46, borderRadius: '50%', background: 'var(--coral-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 800, color: 'var(--coral)', flexShrink: 0 }}>
+            <div style={{ width: 46, height: 46, borderRadius: '50%', background: avatarColor(c.name), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 800, color: '#fff', flexShrink: 0 }}>
               {c.name.charAt(0).toUpperCase()}
             </div>
 

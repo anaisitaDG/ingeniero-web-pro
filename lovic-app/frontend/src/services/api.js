@@ -140,6 +140,7 @@ export const api = {
     getWorkoutLogs:(id) => request(`/trainer/clients/${id}/workout-logs`),
     getNotes:      (id) => request(`/trainer/clients/${id}/notes`),
     saveNotes:     (id, notes) => request(`/trainer/clients/${id}/notes`, { method: 'PUT', body: JSON.stringify({ notes }) }),
+    deleteClient:  (id)         => request(`/trainer/clients/${id}`, { method: 'DELETE' }),
     weeklySummary: ()           => request('/trainer/weekly-summary', { method: 'POST' }),
     getMealPlan:   (id)         => request(`/trainer/clients/${id}/meal-plan`),
     saveMealPlan:  (id, days)   => request(`/trainer/clients/${id}/meal-plan`, { method: 'PUT', body: JSON.stringify({ days }) }),
