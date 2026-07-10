@@ -72,6 +72,7 @@ export default function MyPlan() {
           dayName={celebration.dayName}
           kcal={celebration.kcal}
           streak={celebration.streak}
+          completedDays={completedDays}
           onClose={() => setCelebration(null)}
         />
       )}
@@ -1135,16 +1136,25 @@ function FreeWorkout({ onCompleted }) {
   );
 }
 
-function CelebrationModal({ dayName, kcal, streak, onClose }) {
+function CelebrationModal({ dayName, kcal, streak, completedDays, onClose }) {
   const shareRef = useRef(null);
   const today = new Date();
   const dateLabel = today.toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' });
+
+  // Fechas completadas esta semana
+  const completedDates = new Set(
+    Object.values(completedDays || {})
+      .filter(v => typeof v === 'string')
+  );
 
   const dow = today.getDay();
   const monday = new Date(today); monday.setDate(today.getDate() - ((dow + 6) % 7));
   const weekDays = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(monday); d.setDate(monday.getDate() + i);
-    return { label: ['L','M','M','J','V','S','D'][i], date: d.getDate(), isToday: d.toDateString() === today.toDateString() };
+    const dateStr = d.toLocaleDateString('en-CA');
+    const isToday = d.toDateString() === today.toDateString();
+    const isDone  = completedDates.has(dateStr) || isToday;
+    return { label: ['L','M','M','J','V','S','D'][i], date: d.getDate(), isToday, isDone };
   });
 
   async function handleShare() {
@@ -1203,11 +1213,12 @@ function CelebrationModal({ dayName, kcal, streak, onClose }) {
                 <span style={{ fontSize: 11, color: '#666', fontWeight: 600 }}>{d.label}</span>
                 <div style={{
                   width: 36, height: 36, borderRadius: '50%',
-                  background: d.isToday ? '#FF6B4A' : '#2a2a2a',
+                  background: d.isToday ? '#FF6B4A' : d.isDone ? '#ff9a7a' : '#2a2a2a',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: d.isToday ? '#ffffff' : '#555', fontWeight: 700, fontSize: 13,
+                  color: d.isDone ? '#ffffff' : '#555', fontWeight: 700, fontSize: 13,
+                  border: d.isToday ? '2px solid #fff' : 'none',
                 }}>
-                  {d.isToday ? '✓' : d.date}
+                  {d.isDone ? '✓' : d.date}
                 </div>
               </div>
             ))}
@@ -1221,7 +1232,7 @@ function CelebrationModal({ dayName, kcal, streak, onClose }) {
           }}>
             <div style={{ position: 'absolute', top: -30, right: -30, width: 130, height: 130, background: 'rgba(255,255,255,0.08)', borderRadius: '50%' }} />
             <p style={{ fontSize: 10, fontWeight: 800, color: 'rgba(255,255,255,0.7)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 12 }}>LOVIC GYM</p>
-            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', fontWeight: 600, marginBottom: 4, textTransform: 'capitalize' }}>{today.toLocaleDateString('es', { weekday: 'long' })} · Rutina del día</p>
+            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', fontWeight: 600, marginBottom: 4, textTransform: 'capitalize' }}>{today.toLocaleDateString('es', { weekday: 'long' })} · {dayName}</p>
             <p style={{ fontSize: 22, fontWeight: 900, color: '#ffffff', marginBottom: 16 }}>{dayName} 💪</p>
             <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
               <div style={{ background: 'rgba(255,255,255,0.15)', borderRadius: 12, padding: '10px 14px', flex: 1 }}>
