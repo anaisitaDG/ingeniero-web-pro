@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
-import { AreaChart, Area, LineChart, Line, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 const API_BASE = process.env.REACT_APP_API_URL || '';
 function fmtDate(str, opts = { day: 'numeric', month: 'short' }) {
@@ -1415,75 +1415,79 @@ function WorkoutHeatmap({ sessions }) {
 }
 
 const BIO_METRICS = [
-  { key: 'weight_kg',         label: 'Peso',               unit: 'kg',   color: '#457B9D' },
-  { key: 'bmi',               label: 'IMC',                unit: '',     color: '#9B5DE5' },
-  { key: 'body_fat_pct',      label: '% Grasa',            unit: '%',    color: '#FF6B6B' },
-  { key: 'body_fat_kg',       label: 'Peso grasa',         unit: 'kg',   color: '#F4A261' },
-  { key: 'muscle_mass_kg',    label: 'Peso muscular',      unit: 'kg',   color: '#06D6A0' },
-  { key: 'skeletal_muscle_kg',label: 'Músculo esquelético',unit: 'kg',   color: '#2A9D8F' },
-  { key: 'body_water_pct',    label: '% Agua',             unit: '%',    color: '#00BBF9' },
-  { key: 'visceral_fat',      label: 'Grasa visceral',     unit: '',     color: '#E76F51' },
-  { key: 'bmr_kcal',          label: 'Metabolismo basal',  unit: 'kcal', color: '#FF9F1C' },
-  { key: 'calorie_target',    label: 'Calorías objetivo',  unit: 'kcal', color: '#F15BB5' },
+  { key: 'weight_kg',          label: 'Peso',                unit: 'kg',   color: '#457B9D' },
+  { key: 'bmi',                label: 'IMC',                 unit: '',     color: '#9B5DE5' },
+  { key: 'body_fat_pct',       label: '% Grasa corporal',    unit: '%',    color: '#FF6B6B' },
+  { key: 'body_fat_kg',        label: 'Peso de grasa',       unit: 'kg',   color: '#F4A261' },
+  { key: 'muscle_mass_kg',     label: 'Peso muscular',       unit: 'kg',   color: '#06D6A0' },
+  { key: 'skeletal_muscle_kg', label: 'Músculo esquelético', unit: 'kg',   color: '#2A9D8F' },
+  { key: 'body_water_pct',     label: '% Agua corporal',     unit: '%',    color: '#00BBF9' },
+  { key: 'visceral_fat',       label: 'Grasa visceral',      unit: '',     color: '#E76F51' },
+  { key: 'bmr_kcal',           label: 'Metabolismo basal',   unit: 'kcal', color: '#FF9F1C' },
+  { key: 'calorie_target',     label: 'Calorías objetivo',   unit: 'kcal', color: '#F15BB5' },
 ];
 
 function BioCharts({ data }) {
   const sorted = [...data].reverse();
-  const active = BIO_METRICS.filter(m => sorted.some(b => b[m.key] != null));
-  if (active.length === 0 || sorted.length < 2) return null;
-  const pts = sorted.map(b => ({ date: b.logged_at ? b.logged_at.slice(0,10) : '', ...Object.fromEntries(BIO_METRICS.map(m => [m.key, b[m.key]])) }));
+  if (sorted.length < 2) return null;
+
+  const pts = sorted.map(b => ({
+    date: b.logged_at ? b.logged_at.slice(5, 10).replace('-', '/') : '',
+    ...Object.fromEntries(BIO_METRICS.map(m => [m.key, b[m.key] != null ? Number(b[m.key]) : null])),
+  }));
+
+  const active = BIO_METRICS.filter(m => pts.filter(p => p[m.key] != null).length >= 2);
+  if (active.length === 0) return null;
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>
-      <p style={{ fontWeight: 700, fontSize: 15 }}>📈 Progreso</p>
-      {active.map(m => {
-        const vals = pts.filter(p => p[m.key] != null);
-        if (vals.length < 2) return null;
-        const min = Math.min(...vals.map(v => v[m.key]));
-        const max = Math.max(...vals.map(v => v[m.key]));
-        const last = vals[vals.length - 1][m.key];
-        const first = vals[0][m.key];
-        const diff = +(last - first).toFixed(2);
-        return (
-          <div key={m.key} className="card" style={{ padding: 14 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <p style={{ fontWeight: 700, fontSize: 13 }}>{m.label}</p>
-              <span style={{ fontSize: 13, fontWeight: 700, color: diff === 0 ? 'var(--muted)' : diff > 0 ? '#16a34a' : '#dc2626' }}>
-                {diff > 0 ? '+' : ''}{diff} {m.unit}
-              </span>
+    <div style={{ marginBottom: 20 }}>
+      <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 12 }}>📈 Progreso</p>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        {active.map(m => {
+          const vals = pts.filter(p => p[m.key] != null);
+          const first = vals[0][m.key];
+          const last  = vals[vals.length - 1][m.key];
+          const diff  = +(last - first).toFixed(2);
+          const isGood = (m.key === 'muscle_mass_kg' || m.key === 'skeletal_muscle_kg' || m.key === 'body_water_pct' || m.key === 'bmr_kcal') ? diff >= 0 : diff <= 0;
+          const diffColor = diff === 0 ? 'var(--muted)' : isGood ? '#16a34a' : '#dc2626';
+          const minVal = Math.min(...vals.map(v => v[m.key]));
+          const maxVal = Math.max(...vals.map(v => v[m.key]));
+          const pad = (maxVal - minVal) * 0.15 || 1;
+          return (
+            <div key={m.key} className="card" style={{ padding: '12px 12px 6px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 2 }}>
+                <p style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>{m.label}</p>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+                <span style={{ fontSize: 20, fontWeight: 800 }}>{last}<span style={{ fontSize: 12, fontWeight: 400, marginLeft: 2 }}>{m.unit}</span></span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: diffColor }}>{diff > 0 ? '+' : ''}{diff}{m.unit ? ' ' + m.unit : ''}</span>
+              </div>
+              <ResponsiveContainer width="100%" height={56}>
+                <AreaChart data={vals} margin={{ top: 2, right: 4, left: 4, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id={`g-${m.key}`} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={m.color} stopOpacity={0.25} />
+                      <stop offset="95%" stopColor={m.color} stopOpacity={0.02} />
+                    </linearGradient>
+                  </defs>
+                  <YAxis domain={[minVal - pad, maxVal + pad]} hide />
+                  <XAxis dataKey="date" hide />
+                  <Tooltip
+                    contentStyle={{ fontSize: 11, padding: '4px 8px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--card)' }}
+                    formatter={(v) => [`${v} ${m.unit}`, m.label]}
+                    labelStyle={{ color: 'var(--muted)', fontSize: 10 }}
+                  />
+                  <Area type="monotone" dataKey={m.key} stroke={m.color} strokeWidth={2} fill={`url(#g-${m.key})`} dot={{ r: 3, fill: m.color, strokeWidth: 0 }} activeDot={{ r: 4 }} connectNulls />
+                </AreaChart>
+              </ResponsiveContainer>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 2 }}>
+                <span style={{ fontSize: 9, color: 'var(--muted)' }}>{vals[0].date}</span>
+                <span style={{ fontSize: 9, color: 'var(--muted)' }}>{vals[vals.length-1].date}</span>
+              </div>
             </div>
-            <svg width="100%" height="60" viewBox={`0 0 ${vals.length * 60} 60`} preserveAspectRatio="none" style={{ display: 'block' }}>
-              <defs>
-                <linearGradient id={`bg-${m.key}`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={m.color} stopOpacity="0.3" />
-                  <stop offset="100%" stopColor={m.color} stopOpacity="0.02" />
-                </linearGradient>
-              </defs>
-              {(() => {
-                const range = max - min || 1;
-                const x = (i) => i * 60 + 30;
-                const y = (v) => 55 - ((v - min) / range) * 48;
-                const points = vals.map((p, i) => `${x(i)},${y(p[m.key])}`).join(' ');
-                const areaPoints = `${x(0)},58 ${points} ${x(vals.length-1)},58`;
-                return (
-                  <>
-                    <polygon points={areaPoints} fill={`url(#bg-${m.key})`} />
-                    <polyline points={points} fill="none" stroke={m.color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-                    {vals.map((p, i) => (
-                      <circle key={i} cx={x(i)} cy={y(p[m.key])} r="3.5" fill={m.color} />
-                    ))}
-                    {vals.map((p, i) => (
-                      <text key={`t${i}`} x={x(i)} y={y(p[m.key]) - 7} textAnchor="middle" fontSize="9" fill="var(--text)" fontWeight="600">{p[m.key]}</text>
-                    ))}
-                    {vals.map((p, i) => (
-                      <text key={`d${i}`} x={x(i)} y="60" textAnchor="middle" fontSize="8" fill="var(--muted)">{p.date?.slice(5)}</text>
-                    ))}
-                  </>
-                );
-              })()}
-            </svg>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }
