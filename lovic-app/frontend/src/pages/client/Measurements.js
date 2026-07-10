@@ -35,7 +35,9 @@ export default function Measurements() {
   const [tab, setTab]           = useState('current');
   const [bioList, setBioList]   = useState([]);
   const [bioFiles, setBioFiles] = useState([]);
+  const [bioDate, setBioDate]   = useState(new Date().toISOString().slice(0, 10));
   const [bioUploading, setBioUploading] = useState(false);
+  const [bioDel, setBioDel]     = useState(null);
 
   useEffect(() => { load(); }, []);
 
@@ -207,17 +209,39 @@ export default function Measurements() {
       {/* TAB: Bioimpedancia */}
       {tab === 'bio' && <div style={{ marginTop: 4 }}>
         <p className="page-title" style={{ fontSize: 18, marginBottom: 16 }}>Bioimpedancia 📊</p>
+
+        {/* Confirm delete modal */}
+        {bioDel && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+            <div className="card" style={{ maxWidth: 320, width: '100%', padding: 24 }}>
+              <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 8 }}>¿Eliminar registro?</p>
+              <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 20 }}>Esta acción no se puede deshacer.</p>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button className="btn-secondary" style={{ flex: 1 }} onClick={() => setBioDel(null)}>Cancelar</button>
+                <button className="btn-primary" style={{ flex: 1, background: '#dc2626' }} onClick={async () => {
+                  await api.bioimpedance.delete(bioDel);
+                  setBioDel(null);
+                  load();
+                }}>Eliminar</button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="card" style={{ marginBottom: 16 }}>
           <p style={{ fontWeight: 700, marginBottom: 10 }}>Subir fotos de bioimpedancia</p>
           <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>Selecciona hasta 4 fotos del reporte</p>
-          <input type="file" accept="image/*" multiple onChange={e => setBioFiles(Array.from(e.target.files))} style={{ marginBottom: 10 }} />
-          {bioFiles.length > 0 && <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>{bioFiles.length} foto(s) seleccionada(s)</p>}
+          <input type="file" accept="image/jpeg,image/png,image/heic,image/webp" multiple onChange={e => setBioFiles(Array.from(e.target.files))} style={{ marginBottom: 10 }} />
+          {bioFiles.length > 0 && <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>{bioFiles.length} imagen{bioFiles.length > 1 ? 'es' : ''} seleccionada{bioFiles.length > 1 ? 's' : ''}</p>}
+          <label style={{ fontSize: 12, color: 'var(--muted)', display: 'block', marginBottom: 4 }}>Fecha del registro</label>
+          <input type="date" value={bioDate} onChange={e => setBioDate(e.target.value)} className="input" style={{ marginBottom: 12, fontSize: 14 }} />
           <button className="btn-primary" onClick={async () => {
             if (!bioFiles.length) return;
             setBioUploading(true);
             const fd = new FormData();
             bioFiles.forEach(f => fd.append('image', f));
             fd.append('user_id', user.id);
+            if (bioDate) fd.append('logged_at', bioDate);
             try {
               const res = await api.bioimpedance.upload(fd, user.id);
               if (res.error) throw new Error(res.error);
@@ -229,16 +253,26 @@ export default function Measurements() {
             {bioUploading ? <><span className="spinner" /> Procesando…</> : 'Subir y analizar'}
           </button>
         </div>
+
         {bioList.length > 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {bioList.map(b => (
               <div key={b.id} className="card" style={{ padding: 16 }}>
-                <p style={{ fontWeight: 700, marginBottom: 10 }}>{fmtDate(b.logged_at, { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <p style={{ fontWeight: 700 }}>{fmtDate(b.logged_at, { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                  <button onClick={() => setBioDel(b.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: 'var(--muted)', padding: '2px 6px' }}>🗑</button>
+                </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  {b.weight_kg != null && <InfoRow label="Peso" value={`${b.weight_kg} kg`} />}
+                  {b.bmi != null && <InfoRow label="IMC" value={b.bmi} />}
                   {b.body_fat_pct != null && <InfoRow label="Grasa corporal" value={`${b.body_fat_pct}%`} />}
+                  {b.body_fat_kg != null && <InfoRow label="Peso de grasa" value={`${b.body_fat_kg} kg`} />}
                   {b.muscle_mass_kg != null && <InfoRow label="Masa muscular" value={`${b.muscle_mass_kg} kg`} />}
+                  {b.skeletal_muscle_kg != null && <InfoRow label="M. Esquelético" value={`${b.skeletal_muscle_kg} kg`} />}
+                  {b.body_water_pct != null && <InfoRow label="Agua corporal" value={`${b.body_water_pct}%`} />}
                   {b.visceral_fat != null && <InfoRow label="Grasa visceral" value={b.visceral_fat} />}
                   {b.bmr_kcal != null && <InfoRow label="Metabolismo" value={`${b.bmr_kcal} kcal`} />}
+                  {b.calorie_target != null && <InfoRow label="Calorías objetivo" value={`${b.calorie_target} kcal`} />}
                 </div>
                 {(b.target_muscle_kg != null || b.target_fat_loss_kg != null) && (
                   <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
@@ -250,7 +284,7 @@ export default function Measurements() {
                   </div>
                 )}
                 {b.ai_summary && (
-                  <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)', background: 'var(--coral-light)', borderRadius: 10, padding: 10 }}>
+                  <div style={{ marginTop: 10, borderTop: '1px solid var(--border)', paddingTop: 10, background: 'var(--coral-light)', borderRadius: 10, padding: 10 }}>
                     <p style={{ fontSize: 11, color: 'var(--coral)', fontWeight: 700, marginBottom: 6 }}>✨ Análisis de Lorena</p>
                     <p style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--text)' }}>{b.ai_summary}</p>
                   </div>

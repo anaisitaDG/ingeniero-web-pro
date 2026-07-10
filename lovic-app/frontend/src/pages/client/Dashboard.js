@@ -467,7 +467,10 @@ export default function Dashboard() {
       {/* Bio stats */}
       {bio && (
         <div className="card" style={{ marginBottom: 16 }}>
-          <p className="label" style={{ marginBottom: 12 }}>Última bioimpedancia</p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <p className="label">Última bioimpedancia</p>
+            <Link to="/measurements" style={{ fontSize: 12, color: 'var(--coral)', fontWeight: 700, textDecoration: 'none' }}>Ver todo →</Link>
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             {bio.body_fat_pct != null && <StatBox label="Grasa corporal" value={`${bio.body_fat_pct}%`} icon="📊" />}
             {bio.muscle_mass_kg != null && <StatBox label="Masa muscular" value={`${bio.muscle_mass_kg} kg`} icon="💪" />}
@@ -476,6 +479,18 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* Progress shortcut */}
+      <Link to="/measurements" style={{ textDecoration: 'none', display: 'block', marginBottom: 16 }}>
+        <div style={{ background: 'linear-gradient(135deg, var(--coral) 0%, #C75C45 100%)', borderRadius: 16, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14 }}>
+          <span style={{ fontSize: 28 }}>📈</span>
+          <div style={{ flex: 1 }}>
+            <p style={{ fontWeight: 800, fontSize: 15, color: '#fff', marginBottom: 2 }}>Ver mi progreso</p>
+            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)' }}>Gráficas de peso, grasa, músculo y medidas</p>
+          </div>
+          <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: 18 }}>→</span>
+        </div>
+      </Link>
 
       {/* Adherence */}
       {adherence && adherence.total_days > 0 && (

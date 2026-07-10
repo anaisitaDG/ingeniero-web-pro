@@ -30,6 +30,7 @@ export default function ClientDetail() {
   const [loading, setLoading]   = useState(true);
   const [tab, setTab]           = useState('overview');
   const [inviting, setInviting] = useState(false);
+  const [sendingPush, setSendingPush] = useState(false);
   const [bioFiles, setBioFiles] = useState([]);
   const [bioDate, setBioDate]   = useState(new Date().toISOString().slice(0, 10));
   const [bioUploading, setBioUploading] = useState(false);
@@ -237,6 +238,19 @@ export default function ClientDetail() {
     finally { setInviting(false); }
   }
 
+  async function sendReminder() {
+    setSendingPush(true);
+    try {
+      const res = await api.push.sendToClient(id, '¡Hola! 💪', `Lorena te envía un recordatorio. ¡No olvides registrar tu entrenamiento de hoy!`);
+      if (res.error) throw new Error(res.error);
+      setSaveMsg('✅ Recordatorio enviado');
+    } catch (e) {
+      setSaveMsg('❌ ' + (e.message === 'El cliente no tiene notificaciones activas' ? 'La cliente no tiene notificaciones activadas en su dispositivo' : e.message));
+    }
+    setTimeout(() => setSaveMsg(''), 4000);
+    setSendingPush(false);
+  }
+
   async function uploadBio() {
     if (!bioFiles.length) return;
     setBioUploading(true);
@@ -360,6 +374,9 @@ export default function ClientDetail() {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn-primary" onClick={sendReminder} disabled={sendingPush} title="Enviar recordatorio push" style={{ padding: '10px 14px', fontSize: 16, background: 'var(--coral)' }}>
+            {sendingPush ? <span className="spinner" /> : '🔔'}
+          </button>
           <button className="btn-primary" onClick={sendInvite} disabled={inviting} style={{ padding: '10px 18px', fontSize: 14, background: 'var(--gold)' }}>
             {inviting ? <span className="spinner" /> : '✉️ Invitar'}
           </button>

@@ -43,4 +43,21 @@ router.delete('/subscribe', auth, async (req, res) => {
   res.json({ ok: true });
 });
 
+// POST /push/send — trainer sends a reminder to a specific client
+router.post('/send', auth, async (req, res) => {
+  if (req.user.role !== 'trainer') return res.status(403).json({ error: 'Sin permiso' });
+  const { user_id, title = '¡Hola!', body = 'Tu entrenadora Lorena te envía un recordatorio 💪' } = req.body;
+  if (!user_id) return res.status(400).json({ error: 'user_id requerido' });
+
+  const [subs] = await db.query('SELECT subscription FROM push_subscriptions WHERE user_id=?', [user_id]);
+  if (!subs.length) return res.status(404).json({ error: 'El cliente no tiene notificaciones activas' });
+
+  const payload = JSON.stringify({ title, body, icon: '/icons/icon-192.png' });
+  const results = await Promise.allSettled(
+    subs.map(s => webpush.sendNotification(JSON.parse(s.subscription), payload))
+  );
+  const sent = results.filter(r => r.status === 'fulfilled').length;
+  res.json({ ok: true, sent });
+});
+
 module.exports = { router, webpush, VAPID_PUBLIC };
