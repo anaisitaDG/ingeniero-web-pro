@@ -95,6 +95,11 @@ const db = require('./database/db');
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
     await db.query(`ALTER TABLE bioimpedance ADD COLUMN IF NOT EXISTS body_water_pct DECIMAL(4,1) DEFAULT NULL`).catch(() => {});
+    await db.query(`ALTER TABLE bioimpedance ADD COLUMN IF NOT EXISTS weight_kg DECIMAL(5,2) DEFAULT NULL`).catch(() => {});
+    await db.query(`ALTER TABLE bioimpedance ADD COLUMN IF NOT EXISTS bmi DECIMAL(4,1) DEFAULT NULL`).catch(() => {});
+    await db.query(`ALTER TABLE bioimpedance ADD COLUMN IF NOT EXISTS body_fat_kg DECIMAL(5,2) DEFAULT NULL`).catch(() => {});
+    await db.query(`ALTER TABLE bioimpedance ADD COLUMN IF NOT EXISTS skeletal_muscle_kg DECIMAL(5,2) DEFAULT NULL`).catch(() => {});
+    await db.query(`ALTER TABLE bioimpedance ADD COLUMN IF NOT EXISTS calorie_target INT DEFAULT NULL`).catch(() => {});
     await db.query(`ALTER TABLE daily_tracking ADD COLUMN IF NOT EXISTS sleep_hours DECIMAL(3,1) DEFAULT NULL`).catch(() => {});
     await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(100) DEFAULT NULL`).catch(() => {});
     await db.query(`ALTER TABLE workout_plans ADD COLUMN IF NOT EXISTS start_date DATE DEFAULT NULL`).catch(() => {});

@@ -129,19 +129,25 @@ async function parseBioimpedance(imagePath) {
         },
         {
           type: 'text',
-          text: `Analiza esta imagen de bioimpedancia y extrae los datos. Distingue entre valores ACTUALES del cuerpo y valores OBJETIVO/META (los que indican cuánto ganar o perder, suelen aparecer con + o - o en sección "Para alcanzar tu peso ideal").
+          text: `Analiza esta imagen de bioimpedancia y extrae TODOS los datos visibles. Distingue entre valores ACTUALES del cuerpo y valores OBJETIVO/META (los que indican cuánto ganar o perder, suelen aparecer con + o - o en sección "Para alcanzar tu peso ideal").
 
-Devuelve SOLO un JSON válido:
+Devuelve SOLO un JSON válido con estos campos (usa null si no está en la imagen):
 {
-  "body_fat_pct": número (% grasa corporal ACTUAL),
-  "muscle_mass_kg": número (masa muscular ACTUAL en kg, busca "Peso muscular" o "Masa muscular esquelética Kg"),
-  "visceral_fat": número (grasa visceral ACTUAL),
-  "bmr_kcal": número (metabolismo basal ACTUAL en kcal),
-  "target_muscle_kg": número (kg de músculo a GANAR según recomendación, suele aparecer como +X.XX),
-  "target_fat_loss_kg": número (kg de grasa a PERDER según recomendación, suele aparecer como -X.XX, guarda el valor positivo),
+  "weight_kg": número (peso corporal total en kg),
+  "bmi": número (IMC / índice de masa corporal),
+  "body_fat_pct": número (% grasa corporal),
+  "body_fat_kg": número (peso de grasa corporal en kg),
+  "muscle_mass_kg": número (peso muscular total en kg, busca "Peso muscular"),
+  "skeletal_muscle_kg": número (masa muscular esquelética en kg, busca "Masa muscular esquelética"),
+  "body_water_pct": número (% agua corporal),
+  "visceral_fat": número (nivel de grasa visceral, suele ser un número entero 1-20),
+  "bmr_kcal": número (metabolismo basal en kcal),
+  "calorie_target": número (calorías objetivo recomendadas si aparece),
+  "target_muscle_kg": número (kg de músculo a GANAR según recomendación, valor positivo),
+  "target_fat_loss_kg": número (kg de grasa a PERDER según recomendación, guarda el valor positivo sin signo),
   "raw": {}
 }
-Si no encuentras un valor, usa null. Solo devuelve el JSON.`,
+Solo devuelve el JSON, sin texto adicional.`,
         },
       ],
     }],

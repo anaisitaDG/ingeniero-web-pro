@@ -35,26 +35,25 @@ router.post('/upload', upload.array('image', 4), async (req, res) => {
 
   // Parsear todas las imágenes y combinar: el último valor no-nulo prevalece
   const results = await Promise.all(req.files.map(f => parseBioimpedance(f.path)));
+  const FIELDS = ['weight_kg','bmi','body_fat_pct','body_fat_kg','muscle_mass_kg','skeletal_muscle_kg','body_water_pct','visceral_fat','bmr_kcal','calorie_target','target_muscle_kg','target_fat_loss_kg'];
+  const empty = Object.fromEntries(FIELDS.map(f => [f, null]));
   const merged = results.reduce((acc, r) => ({
-    body_fat_pct:     r.body_fat_pct     ?? acc.body_fat_pct,
-    muscle_mass_kg:   r.muscle_mass_kg   ?? acc.muscle_mass_kg,
-    visceral_fat:     r.visceral_fat     ?? acc.visceral_fat,
-    bmr_kcal:         r.bmr_kcal         ?? acc.bmr_kcal,
-    target_muscle_kg: r.target_muscle_kg ?? acc.target_muscle_kg,
-    target_fat_loss_kg: r.target_fat_loss_kg ?? acc.target_fat_loss_kg,
-    raw:              { ...acc.raw, ...r.raw },
-  }), { body_fat_pct: null, muscle_mass_kg: null, visceral_fat: null, bmr_kcal: null, target_muscle_kg: null, target_fat_loss_kg: null, raw: {} });
+    ...Object.fromEntries(FIELDS.map(f => [f, r[f] ?? acc[f]])),
+    raw: { ...acc.raw, ...r.raw },
+  }), { ...empty, raw: {} });
 
   const imagePaths = req.files.map(f => f.path).join(',');
 
   await db.query(
     `INSERT INTO bioimpedance
-       (id, user_id, image_url, body_fat_pct, muscle_mass_kg, visceral_fat, bmr_kcal, target_muscle_kg, target_fat_loss_kg, raw_ocr_text)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id, user_id, image_url, weight_kg, bmi, body_fat_pct, body_fat_kg, muscle_mass_kg, skeletal_muscle_kg, body_water_pct, visceral_fat, bmr_kcal, calorie_target, target_muscle_kg, target_fat_loss_kg, raw_ocr_text)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       uuidv4(), targetUserId, imagePaths,
-      merged.body_fat_pct, merged.muscle_mass_kg, merged.visceral_fat,
-      merged.bmr_kcal, merged.target_muscle_kg, merged.target_fat_loss_kg,
+      merged.weight_kg, merged.bmi, merged.body_fat_pct, merged.body_fat_kg,
+      merged.muscle_mass_kg, merged.skeletal_muscle_kg, merged.body_water_pct,
+      merged.visceral_fat, merged.bmr_kcal, merged.calorie_target,
+      merged.target_muscle_kg, merged.target_fat_loss_kg,
       JSON.stringify(merged.raw),
     ]
   );
