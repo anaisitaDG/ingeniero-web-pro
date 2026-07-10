@@ -59,6 +59,14 @@ export default function ClientDetail() {
   const [routinePrompt, setRoutinePrompt]         = useState('');
   const [sendingSummary, setSendingSummary]       = useState(false);
 
+  // Photo upload state (trainer uploading for client)
+  const ANGLES = [{ key: 'frente', label: 'Frente', icon: '🧍' }, { key: 'espalda', label: 'Espalda', icon: '🔄' }, { key: 'perfil', label: 'Perfil', icon: '↔️' }];
+  const [photoFiles, setPhotoFiles]   = useState({ frente: null, espalda: null, perfil: null });
+  const [photoPreviews, setPhotoPreviews] = useState({ frente: null, espalda: null, perfil: null });
+  const [photoNote, setPhotoNote]     = useState('');
+  const [photoDate, setPhotoDate]     = useState(new Date().toISOString().slice(0, 10));
+  const [photoUploading, setPhotoUploading] = useState(false);
+
   // New tabs state
   const [progress, setProgress]         = useState(null);
   const [adherenceDetail, setAdherence] = useState(null);
@@ -965,9 +973,57 @@ export default function ClientDetail() {
             <>
               <ProgressComparisonChart bioimpedance={bioimpedance} measurements={progress.measurements} />
               {progress.measurements.length > 1 && <TrainerProgressCharts measurements={progress.measurements} />}
+              {/* Upload panel */}
+              <div className="card" style={{ marginBottom: 16 }}>
+                <p style={{ fontWeight: 700, marginBottom: 14 }}>📸 Nuevo registro de fotos</p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 12 }}>
+                  {ANGLES.map(({ key, label, icon }) => (
+                    <label key={key} style={{ cursor: 'pointer' }}>
+                      <div style={{ border: '2px dashed var(--border)', borderRadius: 12, aspectRatio: '3/4', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: photoPreviews[key] ? 'transparent' : 'var(--surface)', position: 'relative' }}>
+                        {photoPreviews[key] ? (
+                          <img src={photoPreviews[key]} alt={label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <><span style={{ fontSize: 22 }}>{icon}</span><span style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>{label}</span></>
+                        )}
+                      </div>
+                      <input type="file" accept="image/jpeg,image/png,image/heic,image/webp" style={{ display: 'none' }} onChange={e => {
+                        const f = e.target.files[0];
+                        if (!f) return;
+                        setPhotoFiles(prev => ({ ...prev, [key]: f }));
+                        setPhotoPreviews(prev => ({ ...prev, [key]: URL.createObjectURL(f) }));
+                      }} />
+                    </label>
+                  ))}
+                </div>
+                <label style={{ fontSize: 12, color: 'var(--muted)', display: 'block', marginBottom: 4 }}>Fecha</label>
+                <input type="date" value={photoDate} onChange={e => setPhotoDate(e.target.value)} className="input" style={{ marginBottom: 10, fontSize: 14 }} />
+                <input type="text" placeholder="Nota (opcional)" value={photoNote} onChange={e => setPhotoNote(e.target.value)} className="input" style={{ marginBottom: 12, fontSize: 14 }} />
+                <button className="btn-primary" disabled={!Object.values(photoFiles).some(Boolean) || photoUploading} style={{ width: '100%', justifyContent: 'center' }}
+                  onClick={async () => {
+                    setPhotoUploading(true);
+                    try {
+                      const fd = new FormData();
+                      ANGLES.forEach(({ key }) => { if (photoFiles[key]) fd.append(key, photoFiles[key]); });
+                      fd.append('note', photoNote);
+                      fd.append('date', photoDate);
+                      fd.append('user_id', id);
+                      const res = await api.progressPhotos.uploadRegisterForClient(fd);
+                      if (res.error) throw new Error(res.error);
+                      setPhotoFiles({ frente: null, espalda: null, perfil: null });
+                      setPhotoPreviews({ frente: null, espalda: null, perfil: null });
+                      setPhotoNote('');
+                      load();
+                    } catch (e) { alert(e.message); }
+                    finally { setPhotoUploading(false); }
+                  }}>
+                  {photoUploading ? <><span className="spinner" /> Subiendo…</> : 'Guardar fotos'}
+                </button>
+              </div>
+
+              {/* Gallery */}
               {progress.photos.length > 0 ? (
                 <div>
-                  <p style={{ fontWeight: 700, marginBottom: 12 }}>📸 Fotos de progreso</p>
+                  <p style={{ fontWeight: 700, marginBottom: 12 }}>Registros anteriores</p>
                   {progress.photos.map(reg => (
                     <div key={reg.id} className="card" style={{ marginBottom: 12 }}>
                       <p style={{ fontWeight: 700, fontSize: 13, marginBottom: 10 }}>
@@ -978,12 +1034,7 @@ export default function ClientDetail() {
                         {['frente','espalda','perfil'].map(angle => (
                           <div key={angle}>
                             {reg.photos[angle] ? (
-                              <img
-                                src={photoUrl(reg.photos[angle].image_url)}
-                                alt={angle}
-                                onClick={() => setLightbox(photoUrl(reg.photos[angle].image_url))}
-                                style={{ width: '100%', aspectRatio: '3/4', objectFit: 'cover', borderRadius: 10, cursor: 'zoom-in', display: 'block' }}
-                              />
+                              <img src={photoUrl(reg.photos[angle].image_url)} alt={angle} onClick={() => setLightbox(photoUrl(reg.photos[angle].image_url))} style={{ width: '100%', aspectRatio: '3/4', objectFit: 'cover', borderRadius: 10, cursor: 'zoom-in', display: 'block' }} />
                             ) : (
                               <div style={{ width: '100%', aspectRatio: '3/4', borderRadius: 10, background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                 <span style={{ fontSize: 10, color: 'var(--muted)' }}>Sin foto</span>
@@ -996,9 +1047,7 @@ export default function ClientDetail() {
                     </div>
                   ))}
                 </div>
-              ) : (
-                <div className="empty-state"><div className="icon">📸</div><p>La cliente aún no ha subido fotos de progreso</p></div>
-              )}
+              ) : null}
             </>
           )}
         </div>

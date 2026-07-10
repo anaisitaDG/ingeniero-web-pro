@@ -33,13 +33,16 @@ router.post('/register', upload.fields([
     return res.status(400).json({ error: 'Al menos una foto es requerida' });
   }
 
+  // Allow trainer to upload on behalf of a client
+  const targetUserId = req.body.user_id && req.user.role === 'trainer' ? req.body.user_id : req.user.id;
+
   const registerId = uuidv4();
   const note = req.body.note || '';
   const date = req.body.date || new Date().toISOString().slice(0, 10);
 
   await db.query(
     'INSERT INTO progress_registers (id, user_id, date, note) VALUES (?, ?, ?, ?)',
-    [registerId, req.user.id, date, note]
+    [registerId, targetUserId, date, note]
   );
 
   const angles = ['frente', 'espalda', 'perfil'];
@@ -47,7 +50,7 @@ router.post('/register', upload.fields([
     if (files[angle]) {
       await db.query(
         'INSERT INTO progress_photos (id, user_id, register_id, angle, image_url, note) VALUES (?, ?, ?, ?, ?, ?)',
-        [uuidv4(), req.user.id, registerId, angle, 'uploads/' + files[angle][0].filename, note]
+        [uuidv4(), targetUserId, registerId, angle, 'uploads/' + files[angle][0].filename, note]
       );
     }
   }

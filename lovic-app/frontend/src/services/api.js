@@ -86,6 +86,14 @@ export const api = {
         body: formData,
       }).then(r => r.json());
     },
+    uploadRegisterForClient: (formData) => {
+      const token = getToken();
+      return fetch(`${BASE}/progress-photos/register`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      }).then(r => r.json());
+    },
     // legacy
     remove: (id)       => request(`/progress-photos/${id}`, { method: 'DELETE' }),
     upload: (formData) => {
