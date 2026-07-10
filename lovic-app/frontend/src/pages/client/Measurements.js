@@ -247,6 +247,12 @@ export default function Measurements() {
                     </div>
                   </div>
                 )}
+                {b.ai_summary && (
+                  <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)', background: 'var(--coral-light)', borderRadius: 10, padding: 10 }}>
+                    <p style={{ fontSize: 11, color: 'var(--coral)', fontWeight: 700, marginBottom: 6 }}>✨ Análisis de Lorena</p>
+                    <p style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--text)' }}>{b.ai_summary}</p>
+                  </div>
+                )}
               </div>
             ))}
           </div>

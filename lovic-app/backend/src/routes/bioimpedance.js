@@ -4,7 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const path    = require('path');
 const db      = require('../database/db');
 const { requireAuth } = require('../middleware/auth');
-const { parseBioimpedance } = require('../services/ai');
+const { parseBioimpedance, generateBioSummary } = require('../services/ai');
 const multer  = require('multer');
 
 const storage = multer.diskStorage({
@@ -43,10 +43,11 @@ router.post('/upload', upload.array('image', 4), async (req, res) => {
 
   const imagePaths = req.files.map(f => f.path).join(',');
   const loggedAt = req.body.logged_at || null;
+  const aiSummary = await generateBioSummary(merged).catch(() => null);
 
   const insertSql = loggedAt
-    ? `INSERT INTO bioimpedance (id, user_id, image_url, logged_at, weight_kg, bmi, body_fat_pct, body_fat_kg, muscle_mass_kg, skeletal_muscle_kg, body_water_pct, visceral_fat, bmr_kcal, calorie_target, target_muscle_kg, target_fat_loss_kg, raw_ocr_text) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    : `INSERT INTO bioimpedance (id, user_id, image_url, weight_kg, bmi, body_fat_pct, body_fat_kg, muscle_mass_kg, skeletal_muscle_kg, body_water_pct, visceral_fat, bmr_kcal, calorie_target, target_muscle_kg, target_fat_loss_kg, raw_ocr_text) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    ? `INSERT INTO bioimpedance (id, user_id, image_url, logged_at, weight_kg, bmi, body_fat_pct, body_fat_kg, muscle_mass_kg, skeletal_muscle_kg, body_water_pct, visceral_fat, bmr_kcal, calorie_target, target_muscle_kg, target_fat_loss_kg, raw_ocr_text, ai_summary) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    : `INSERT INTO bioimpedance (id, user_id, image_url, weight_kg, bmi, body_fat_pct, body_fat_kg, muscle_mass_kg, skeletal_muscle_kg, body_water_pct, visceral_fat, bmr_kcal, calorie_target, target_muscle_kg, target_fat_loss_kg, raw_ocr_text, ai_summary) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
   const baseParams = [
     uuidv4(), targetUserId, imagePaths,
@@ -54,7 +55,7 @@ router.post('/upload', upload.array('image', 4), async (req, res) => {
     merged.muscle_mass_kg, merged.skeletal_muscle_kg, merged.body_water_pct,
     merged.visceral_fat, merged.bmr_kcal, merged.calorie_target,
     merged.target_muscle_kg, merged.target_fat_loss_kg,
-    JSON.stringify(merged.raw),
+    JSON.stringify(merged.raw), aiSummary,
   ];
 
   await db.query(insertSql, loggedAt ? [baseParams[0], baseParams[1], baseParams[2], loggedAt, ...baseParams.slice(3)] : baseParams);

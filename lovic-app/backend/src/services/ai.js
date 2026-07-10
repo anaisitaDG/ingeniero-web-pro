@@ -159,6 +159,40 @@ Solo devuelve el JSON, sin texto adicional.`,
   return JSON.parse(jsonMatch[0]);
 }
 
+async function generateBioSummary(data) {
+  const lines = [
+    data.weight_kg        != null && `Peso: ${data.weight_kg} kg`,
+    data.bmi              != null && `IMC: ${data.bmi}`,
+    data.body_fat_pct     != null && `Grasa corporal: ${data.body_fat_pct}%`,
+    data.body_fat_kg      != null && `Peso de grasa: ${data.body_fat_kg} kg`,
+    data.muscle_mass_kg   != null && `Peso muscular: ${data.muscle_mass_kg} kg`,
+    data.skeletal_muscle_kg != null && `Músculo esquelético: ${data.skeletal_muscle_kg} kg`,
+    data.body_water_pct   != null && `Agua corporal: ${data.body_water_pct}%`,
+    data.visceral_fat     != null && `Grasa visceral: ${data.visceral_fat}`,
+    data.bmr_kcal         != null && `Metabolismo basal: ${data.bmr_kcal} kcal`,
+    data.calorie_target   != null && `Calorías objetivo: ${data.calorie_target} kcal`,
+    data.target_muscle_kg != null && `Músculo a ganar: +${data.target_muscle_kg} kg`,
+    data.target_fat_loss_kg != null && `Grasa a perder: -${data.target_fat_loss_kg} kg`,
+  ].filter(Boolean).join('\n');
+
+  if (!lines) return null;
+
+  const message = await client.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 400,
+    messages: [{
+      role: 'user',
+      content: `Eres una entrenadora personal experta. Analiza estos resultados de bioimpedancia y da un resumen personalizado, cálido y motivador en español. Explica qué significa cada valor para la cliente, si está en rango saludable o no, y qué puede esperar mejorar con entrenamiento. Máximo 4 oraciones, sin tecnicismos innecesarios, sin usar asteriscos ni formato markdown.
+
+Resultados:
+${lines}
+
+Responde directamente el resumen, sin título ni encabezado.`,
+    }],
+  });
+  return message.content[0].text.trim();
+}
+
 async function suggestDayName(exerciseNames) {
   const message = await client.messages.create({
     model: 'claude-haiku-4-5-20251001',
@@ -174,4 +208,4 @@ Solo el nombre, sin puntuación ni explicación.`,
   return message.content[0].text.trim().replace(/[."]/g, '');
 }
 
-module.exports = { parseFood, getFoodRecommendation, generateRoutine, generateNutritionPlan, parseBioimpedance, suggestDayName };
+module.exports = { parseFood, getFoodRecommendation, generateRoutine, generateNutritionPlan, parseBioimpedance, generateBioSummary, suggestDayName };

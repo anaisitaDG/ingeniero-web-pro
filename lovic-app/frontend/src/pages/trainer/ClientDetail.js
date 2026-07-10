@@ -927,6 +927,12 @@ export default function ClientDetail() {
                         </div>
                       </div>
                     )}
+                    {b.ai_summary && (
+                      <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)', background: 'var(--coral-light)', borderRadius: 10, padding: 12 }}>
+                        <p style={{ fontSize: 11, color: 'var(--coral)', fontWeight: 700, marginBottom: 6 }}>✨ Análisis</p>
+                        <p style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--text)' }}>{b.ai_summary}</p>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

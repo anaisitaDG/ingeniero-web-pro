@@ -96,6 +96,7 @@ const db = require('./database/db');
     `);
     await db.query(`ALTER TABLE bioimpedance ADD COLUMN IF NOT EXISTS body_water_pct DECIMAL(4,1) DEFAULT NULL`).catch(() => {});
     await db.query(`ALTER TABLE bioimpedance ADD COLUMN IF NOT EXISTS weight_kg DECIMAL(5,2) DEFAULT NULL`).catch(() => {});
+    await db.query(`ALTER TABLE bioimpedance ADD COLUMN IF NOT EXISTS ai_summary TEXT DEFAULT NULL`).catch(() => {});
     await db.query(`ALTER TABLE bioimpedance ADD COLUMN IF NOT EXISTS bmi DECIMAL(4,1) DEFAULT NULL`).catch(() => {});
     await db.query(`ALTER TABLE bioimpedance ADD COLUMN IF NOT EXISTS body_fat_kg DECIMAL(5,2) DEFAULT NULL`).catch(() => {});
     await db.query(`ALTER TABLE bioimpedance ADD COLUMN IF NOT EXISTS skeletal_muscle_kg DECIMAL(5,2) DEFAULT NULL`).catch(() => {});
