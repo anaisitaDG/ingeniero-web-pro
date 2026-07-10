@@ -34,37 +34,42 @@ router.get('/clients', async (req, res) => {
 
 // GET /trainer/clients/:id
 router.get('/clients/:id', async (req, res) => {
-  const uid = req.params.id;
+  try {
+    const uid = req.params.id;
 
-  const [[user]] = await db.query('SELECT * FROM users WHERE id=? AND role="client"', [uid]);
-  if (!user) return res.status(404).json({ error: 'Cliente no encontrado' });
+    const [[user]] = await db.query('SELECT * FROM users WHERE id=? AND role="client"', [uid]);
+    if (!user) return res.status(404).json({ error: 'Cliente no encontrado' });
 
-  const [[questionnaire]] = await db.query('SELECT * FROM questionnaire_data WHERE user_id=?', [uid]);
+    const [[questionnaire]] = await db.query('SELECT * FROM questionnaire_data WHERE user_id=?', [uid]);
 
-  const [measurements] = await db.query(
-    'SELECT * FROM measurements WHERE user_id=? ORDER BY logged_at DESC LIMIT 10', [uid]
-  );
+    const [measurements] = await db.query(
+      'SELECT * FROM measurements WHERE user_id=? ORDER BY logged_at DESC LIMIT 10', [uid]
+    );
 
-  const [bioimpedance] = await db.query(
-    'SELECT * FROM bioimpedance WHERE user_id=? ORDER BY logged_at DESC LIMIT 5', [uid]
-  );
+    const [bioimpedance] = await db.query(
+      'SELECT * FROM bioimpedance WHERE user_id=? ORDER BY logged_at DESC LIMIT 5', [uid]
+    );
 
-  const [[routine]] = await db.query(
-    'SELECT * FROM routines WHERE user_id=? AND is_active=TRUE ORDER BY created_at DESC LIMIT 1', [uid]
-  );
+    const [[routine]] = await db.query(
+      'SELECT * FROM routines WHERE user_id=? AND is_active=TRUE ORDER BY created_at DESC LIMIT 1', [uid]
+    );
 
-  const [[nutrition]] = await db.query(
-    'SELECT * FROM nutrition_plans WHERE user_id=? AND is_active=TRUE ORDER BY created_at DESC LIMIT 1', [uid]
-  );
+    const [[nutrition]] = await db.query(
+      'SELECT * FROM nutrition_plans WHERE user_id=? AND is_active=TRUE ORDER BY created_at DESC LIMIT 1', [uid]
+    );
 
-  const [adherence] = await db.query(
-    `SELECT COUNT(*) as total_days, SUM(workout_done) as workout_days, SUM(diet_followed) as diet_days
-     FROM daily_tracking WHERE user_id=? AND tracked_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)`,
-    [uid]
-  );
+    const [adherence] = await db.query(
+      `SELECT COUNT(*) as total_days, SUM(workout_done) as workout_days, SUM(diet_followed) as diet_days
+       FROM daily_tracking WHERE user_id=? AND tracked_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)`,
+      [uid]
+    );
 
-  const { password_hash, ...safeUser } = user;
-  res.json({ user: safeUser, questionnaire, measurements, bioimpedance, routine, nutrition_plan: nutrition, adherence: adherence[0] });
+    const { password_hash, ...safeUser } = user;
+    res.json({ user: safeUser, questionnaire, measurements, bioimpedance, routine, nutrition_plan: nutrition, adherence: adherence[0] });
+  } catch (e) {
+    console.error('[GET /clients/:id] ERROR:', e.message);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // POST /trainer/suggest-day-name — sugiere nombre de día según ejercicios
