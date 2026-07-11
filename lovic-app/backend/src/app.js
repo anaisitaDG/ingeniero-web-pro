@@ -103,7 +103,7 @@ const db = require('./database/db');
     await db.query(`ALTER TABLE bioimpedance ADD COLUMN IF NOT EXISTS skeletal_muscle_kg DECIMAL(5,2) DEFAULT NULL`).catch(() => {});
     await db.query(`ALTER TABLE bioimpedance ADD COLUMN IF NOT EXISTS calorie_target INT DEFAULT NULL`).catch(() => {});
     await db.query(`ALTER TABLE daily_tracking ADD COLUMN IF NOT EXISTS sleep_hours DECIMAL(3,1) DEFAULT NULL`).catch(() => {});
-    await db.query(`ALTER TABLE daily_tracking MODIFY COLUMN mood TEXT DEFAULT NULL`).catch(e => console.error('[migration] mood column:', e.message));
+    await db.query(`ALTER TABLE daily_tracking MODIFY COLUMN mood ENUM('tired','normal','good') DEFAULT NULL`).catch(e => console.error('[migration] mood column:', e.message));
     await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(100) DEFAULT NULL`).catch(() => {});
     await db.query(`ALTER TABLE workout_plans ADD COLUMN IF NOT EXISTS start_date DATE DEFAULT NULL`).catch(() => {});
     await db.query(`
