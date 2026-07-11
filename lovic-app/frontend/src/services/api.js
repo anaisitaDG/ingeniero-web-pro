@@ -30,7 +30,8 @@ async function request(path, options = {}) {
     return;
   }
 
-  const data = await res.json();
+  let data;
+  try { data = await res.json(); } catch { throw new Error(`Error del servidor (${res.status})`); }
   if (!res.ok) throw new Error(data.error || 'Error del servidor');
   return data;
 }

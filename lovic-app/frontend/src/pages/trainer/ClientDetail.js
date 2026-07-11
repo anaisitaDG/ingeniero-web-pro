@@ -97,6 +97,8 @@ export default function ClientDetail() {
         carbs_target_g:   d.user?.carbs_target_g   || '',
         fat_target_g:     d.user?.fat_target_g      || '',
       });
+    } catch (e) {
+      setSaveMsg('❌ ' + e.message);
     } finally { setLoading(false); }
   }, [id]);
 
