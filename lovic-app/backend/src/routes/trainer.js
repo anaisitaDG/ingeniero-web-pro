@@ -4,6 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const db      = require('../database/db');
 const { requireAuth } = require('../middleware/auth');
 const { generateRoutine, generateNutritionPlan, suggestDayName } = require('../services/ai');
+const { webpush } = require('./push');
 
 router.use(requireAuth);
 
@@ -614,6 +615,18 @@ router.delete('/clients/:id', requireTrainer, async (req, res) => {
   if (!user) return res.status(404).json({ error: 'Cliente no encontrado' });
   await db.query('DELETE FROM users WHERE id=?', [req.params.id]);
   res.json({ ok: true });
+});
+
+// POST /trainer/push-reminder — envía recordatorio push a un cliente
+router.post('/push-reminder', async (req, res) => {
+  const { user_id, title = '¡Hola!', body = 'Tu entrenadora Lorena te envía un recordatorio 💪' } = req.body;
+  if (!user_id) return res.status(400).json({ error: 'user_id requerido' });
+  const [subs] = await db.query('SELECT subscription FROM push_subscriptions WHERE user_id=?', [user_id]);
+  if (!subs.length) return res.status(404).json({ error: 'El cliente no tiene notificaciones activas' });
+  const payload = JSON.stringify({ title, body, icon: '/icons/icon-192.png' });
+  const results = await Promise.allSettled(subs.map(s => webpush.sendNotification(JSON.parse(s.subscription), payload)));
+  const sent = results.filter(r => r.status === 'fulfilled').length;
+  res.json({ ok: true, sent });
 });
 
 function extractCalorieTarget(content) {
