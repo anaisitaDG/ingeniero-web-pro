@@ -63,13 +63,23 @@ router.get('/', async (req, res) => {
   for (const r of logDays) activeDates.add(r.d);
   for (const r of trackDays) activeDates.add(r.d);
 
+  // Streak: only breaks if more rest days pass than the plan allows
+  // e.g. training 5 days/week → max 2 consecutive rest days allowed
+  const trainingDaysPerWeek = Math.min(Math.max(parseInt(questRow?.training_days_week) || 5, 1), 6);
+  const maxRestDays = 7 - trainingDaysPerWeek;
   let streak = 0;
+  let restDaysSinceLastWorkout = 0;
   const msPerDay = 86400000;
   let expected = new Date(today).getTime();
   while (true) {
     const dateStr = new Date(expected).toISOString().slice(0, 10);
-    if (!activeDates.has(dateStr)) break;
-    streak++;
+    if (activeDates.has(dateStr)) {
+      streak++;
+      restDaysSinceLastWorkout = 0;
+    } else {
+      restDaysSinceLastWorkout++;
+      if (restDaysSinceLastWorkout > maxRestDays) break;
+    }
     expected -= msPerDay;
   }
 
