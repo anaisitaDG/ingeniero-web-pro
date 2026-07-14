@@ -19,7 +19,6 @@ function calcMacroTargets(calorieTarget, fitnessGoal) {
   };
 }
 
-module.exports.calcMacroTargets = calcMacroTargets;
 
 async function requireAuth(req, res, next) {
   const header = req.headers.authorization;
@@ -87,4 +86,4 @@ function requireTrainer(req, res, next) {
   next();
 }
 
-module.exports = { requireAuth, requireTrainer };
+module.exports = { requireAuth, requireTrainer, calcMacroTargets };
