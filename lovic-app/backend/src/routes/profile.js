@@ -41,4 +41,29 @@ router.put('/', async (req, res) => {
   res.json({ user: updated });
 });
 
+// POST /profile/push-subscribe
+router.post('/push-subscribe', async (req, res) => {
+  const { subscription } = req.body;
+  if (!subscription?.endpoint) return res.status(400).json({ error: 'subscription requerida' });
+  const uid = req.user.id;
+  await db.query(
+    `INSERT INTO push_subscriptions (user_id, endpoint, subscription)
+     VALUES (?, ?, ?)
+     ON DUPLICATE KEY UPDATE subscription = VALUES(subscription)`,
+    [uid, subscription.endpoint, JSON.stringify(subscription)]
+  );
+  res.json({ ok: true });
+});
+
+// DELETE /profile/push-subscribe
+router.delete('/push-subscribe', async (req, res) => {
+  const { endpoint } = req.body;
+  if (endpoint) {
+    await db.query('DELETE FROM push_subscriptions WHERE user_id=? AND endpoint=?', [req.user.id, endpoint]);
+  } else {
+    await db.query('DELETE FROM push_subscriptions WHERE user_id=?', [req.user.id]);
+  }
+  res.json({ ok: true });
+});
+
 module.exports = router;
