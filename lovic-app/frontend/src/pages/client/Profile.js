@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
+import { usePushNotifications } from '../../hooks/usePushNotifications';
 
 function SetPasswordCard() {
   const [pw, setPw]       = useState('');
@@ -142,7 +143,44 @@ export default function Profile() {
             <Row label="Rol" value={user?.role === 'client' ? 'Cliente' : 'Entrenador'} />
           </div>
           <SetPasswordCard />
+          <NotificationsCard />
         </div>
+      )}
+    </div>
+  );
+}
+
+function NotificationsCard() {
+  const { supported, permission, subscribed, loading, subscribe, unsubscribe } = usePushNotifications();
+
+  if (!supported) return (
+    <div className="card">
+      <p style={{ fontWeight: 700, marginBottom: 8 }}>🔔 Notificaciones</p>
+      <p style={{ fontSize: 13, color: 'var(--muted)' }}>Abre la app desde el ícono en tu pantalla de inicio para activar notificaciones.</p>
+    </div>
+  );
+
+  return (
+    <div className="card">
+      <p style={{ fontWeight: 700, marginBottom: 8 }}>🔔 Notificaciones</p>
+      {permission === 'denied' ? (
+        <p style={{ fontSize: 13, color: 'var(--muted)' }}>
+          Tienes las notificaciones bloqueadas. Ve a <strong>Ajustes → Notificaciones → Lovic</strong> y actívalas.
+        </p>
+      ) : subscribed ? (
+        <>
+          <p style={{ fontSize: 13, color: 'var(--green)', marginBottom: 12 }}>✅ Notificaciones activas</p>
+          <button className="btn-ghost" onClick={unsubscribe} disabled={loading} style={{ width: '100%', justifyContent: 'center', fontSize: 14 }}>
+            {loading ? <span className="spinner" /> : 'Desactivar notificaciones'}
+          </button>
+        </>
+      ) : (
+        <>
+          <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 12 }}>Recibe recordatorios de agua, entrenamiento y motivación.</p>
+          <button className="btn-primary" onClick={subscribe} disabled={loading} style={{ width: '100%', justifyContent: 'center', fontSize: 14 }}>
+            {loading ? <span className="spinner" /> : 'Activar notificaciones'}
+          </button>
+        </>
       )}
     </div>
   );
