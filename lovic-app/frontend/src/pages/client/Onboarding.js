@@ -103,7 +103,7 @@ export default function Onboarding() {
       </div>
 
       {/* Footer buttons */}
-      <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, background: 'var(--card)', borderTop: '1px solid var(--border)', padding: '16px 20px', display: 'flex', gap: 12 }}>
+      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, margin: '0 auto', width: '100%', maxWidth: 480, background: 'var(--card)', borderTop: '1px solid var(--border)', padding: '16px 20px', paddingBottom: 'calc(16px + env(safe-area-inset-bottom))', display: 'flex', gap: 12, zIndex: 100 }}>
         {step > 0 && (
           <button className="btn-ghost" onClick={() => setStep(s => s - 1)} style={{ flex: 1, padding: '14px' }}>
             ← Atrás

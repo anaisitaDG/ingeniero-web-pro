@@ -63,7 +63,7 @@ const styles = {
   headerInner:{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px' },
   logo:       { display: 'flex', alignItems: 'center', gap: 8 },
   main:       { flex: 1, padding: '20px 20px 96px' },
-  nav:        { position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, background: 'var(--card)', borderTop: '1px solid var(--border)', display: 'flex', zIndex: 10 },
+  nav:        { position: 'fixed', bottom: 0, left: 0, right: 0, margin: '0 auto', width: '100%', maxWidth: 480, background: 'var(--card)', borderTop: '1px solid var(--border)', display: 'flex', zIndex: 100, paddingBottom: 'env(safe-area-inset-bottom)' },
   navItem:    { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '10px 0 14px', color: 'var(--muted)', textDecoration: 'none' },
   navActive:  { color: 'var(--coral)' },
 };
