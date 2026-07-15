@@ -27,8 +27,14 @@ async function requireAuth(req, res, next) {
   }
 
   const token = header.slice(7);
+  let payload;
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    payload = jwt.verify(token, process.env.JWT_SECRET);
+  } catch {
+    return res.status(401).json({ error: 'Token inválido' });
+  }
+
+  try {
     const [[user]] = await db.query(
       `SELECT u.id, u.email, u.name, u.role, u.calorie_target, u.fitness_goal,
               u.protein_target_g, u.carbs_target_g, u.fat_target_g,
@@ -74,8 +80,10 @@ async function requireAuth(req, res, next) {
 
     req.user = user;
     next();
-  } catch {
-    return res.status(401).json({ error: 'Token inválido' });
+  } catch (e) {
+    // Error de BD u otro fallo interno: NO invalidar la sesión del usuario
+    console.error('[requireAuth]', e.message);
+    return res.status(500).json({ error: 'Error interno. Intenta de nuevo.' });
   }
 }
 

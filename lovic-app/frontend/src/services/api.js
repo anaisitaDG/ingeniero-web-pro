@@ -24,7 +24,10 @@ async function request(path, options = {}) {
     },
   });
 
-  if (res.status === 401) {
+  // 401 en endpoints de sesión (login/magic-link) = credenciales incorrectas,
+  // no sesión expirada — se maneja abajo como error normal con su mensaje real
+  const isLoginAttempt = path.startsWith('/auth/login') || path.startsWith('/auth/magic-link');
+  if (res.status === 401 && !isLoginAttempt) {
     clearToken();
     window.location.href = '/login';
     throw new Error('Sesión expirada');

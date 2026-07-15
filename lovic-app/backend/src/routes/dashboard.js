@@ -120,7 +120,7 @@ router.post('/tracking', async (req, res) => {
        water_glasses=VALUES(water_glasses),
        weight_kg=VALUES(weight_kg), mood=VALUES(mood), notes=VALUES(notes),
        sleep_hours=VALUES(sleep_hours)`,
-    [req.user.id, today, workout_done ?? false, diet_followed ?? false, water_glasses ?? 0, weight_kg, mood, notes, sleep_hours ?? null]
+    [req.user.id, today, workout_done ?? false, diet_followed ?? false, water_glasses ?? 0, weight_kg ?? null, mood ?? null, notes ?? null, sleep_hours ?? null]
   );
 
   res.json({ message: 'Registro actualizado' });

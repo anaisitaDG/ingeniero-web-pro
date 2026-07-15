@@ -2,8 +2,8 @@ const cron = require('node-cron');
 const webpush = require('web-push');
 const db = require('./database/db');
 
-const VAPID_PUBLIC  = 'BMyXu344UMSX0IoqheXZQnVnk9LC5bSMUVYza66Ht5jrY_LpeSe3y5b3npONMOM33uI-Rsg7z5XJBza4CHbwD6s';
-const VAPID_PRIVATE = '0zl7Psjn5I2o8gyQMDmWiEgKuqgsC5hl9kG2zWvxZ30';
+const VAPID_PUBLIC  = process.env.VAPID_PUBLIC_KEY  || 'BMyXu344UMSX0IoqheXZQnVnk9LC5bSMUVYza66Ht5jrY_LpeSe3y5b3npONMOM33uI-Rsg7z5XJBza4CHbwD6s';
+const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY || '0zl7Psjn5I2o8gyQMDmWiEgKuqgsC5hl9kG2zWvxZ30';
 
 webpush.setVapidDetails('mailto:hola@anaismoralesmkt.com', VAPID_PUBLIC, VAPID_PRIVATE);
 
@@ -65,13 +65,16 @@ function pick(arr) {
 function startCronJobs() {
   // 8am Colombia (13:00 UTC)
   cron.schedule('0 13 * * *', async () => {
-    console.log('[push] Enviando notificación matutina');
-    const msg = pick(MORNING_MSGS);
-    await sendToAll({ ...msg, url: '/' });
+    try {
+      console.log('[push] Enviando notificación matutina');
+      const msg = pick(MORNING_MSGS);
+      await sendToAll({ ...msg, url: '/' });
+    } catch (e) { console.error('[push] Error matutina:', e.message); }
   });
 
   // 2pm Colombia (19:00 UTC) — recordatorio de agua
   cron.schedule('0 19 * * *', async () => {
+    try {
     console.log('[push] Enviando recordatorio de agua');
     // Solo a quienes tienen < 3 vasos hoy
     const today = colombiaToday();
@@ -93,10 +96,12 @@ function startCronJobs() {
         }
       }
     }
+    } catch (e) { console.error('[push] Error agua:', e.message); }
   });
 
   // 5pm Colombia (22:00 UTC) — motivación de tarde si no han entrenado
   cron.schedule('0 22 * * *', async () => {
+    try {
     console.log('[push] Enviando motivación de tarde');
     const today = colombiaToday();
     const [rows] = await db.query(
@@ -117,6 +122,7 @@ function startCronJobs() {
         }
       }
     }
+    } catch (e) { console.error('[push] Error tarde:', e.message); }
   });
 
   console.log('[push] Cron jobs de notificaciones activos');

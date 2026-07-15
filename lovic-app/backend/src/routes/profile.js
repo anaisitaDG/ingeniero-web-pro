@@ -20,15 +20,15 @@ router.put('/', async (req, res) => {
        name             = COALESCE(NULLIF(?, ''), name),
        fitness_goal     = COALESCE(NULLIF(?, ''), fitness_goal),
        calorie_target   = COALESCE(NULLIF(?, 0), calorie_target),
-       protein_target_g = ?,
-       carbs_target_g   = ?,
-       fat_target_g     = ?
+       protein_target_g = COALESCE(?, protein_target_g),
+       carbs_target_g   = COALESCE(?, carbs_target_g),
+       fat_target_g     = COALESCE(?, fat_target_g)
      WHERE id = ?`,
     [
-      name, fitness_goal, calorie_target || null,
-      protein_target_g || auto.protein_target_g,
-      carbs_target_g   || auto.carbs_target_g,
-      fat_target_g     || auto.fat_target_g,
+      name ?? null, fitness_goal ?? null, calorie_target || null,
+      protein_target_g || auto.protein_target_g || null,
+      carbs_target_g   || auto.carbs_target_g   || null,
+      fat_target_g     || auto.fat_target_g     || null,
       uid,
     ]
   );
