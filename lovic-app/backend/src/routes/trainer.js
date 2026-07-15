@@ -75,12 +75,14 @@ router.get('/clients/:id', async (req, res) => {
 
 // POST /trainer/suggest-day-name — sugiere nombre de día según ejercicios
 router.post('/suggest-day-name', async (req, res) => {
-  const { exercises } = req.body;
-  if (!Array.isArray(exercises) || exercises.length === 0) return res.status(400).json({ error: 'exercises requerido' });
-  const names = exercises.filter(Boolean);
-  if (names.length === 0) return res.status(400).json({ error: 'Sin ejercicios' });
-  const name = await suggestDayName(names);
-  res.json({ name });
+  try {
+    const { exercises } = req.body;
+    if (!Array.isArray(exercises) || exercises.length === 0) return res.status(400).json({ error: 'exercises requerido' });
+    const names = exercises.filter(Boolean);
+    if (names.length === 0) return res.status(400).json({ error: 'Sin ejercicios' });
+    const name = await suggestDayName(names);
+    res.json({ name });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // GET /trainer/clients/:id/workout — obtiene plan estructurado
@@ -258,33 +260,36 @@ router.put('/clients/:id/nutrition', async (req, res) => {
 
 // POST /trainer/clients/:id/routine — genera rutina con IA
 router.post('/clients/:id/routine', async (req, res) => {
-  const uid = req.params.id;
-  const { override_prompt } = req.body;
+  try {
+    const uid = req.params.id;
+    const { override_prompt } = req.body;
 
-  const [[questionnaire]] = await db.query('SELECT * FROM questionnaire_data WHERE user_id=?', [uid]);
-  if (!questionnaire) return res.status(400).json({ error: 'El cliente no tiene cuestionario' });
+    const [[questionnaire]] = await db.query('SELECT * FROM questionnaire_data WHERE user_id=?', [uid]);
+    if (!questionnaire) return res.status(400).json({ error: 'El cliente no tiene cuestionario' });
 
-  const content = await generateRoutine(questionnaire, override_prompt);
+    const content = await generateRoutine(questionnaire, override_prompt);
 
-  await db.query('UPDATE routines SET is_active=FALSE WHERE user_id=?', [uid]);
-  await db.query(
-    'INSERT INTO routines (id, user_id, content, is_active) VALUES (?, ?, ?, TRUE)',
-    [uuidv4(), uid, content]
-  );
+    await db.query('UPDATE routines SET is_active=FALSE WHERE user_id=?', [uid]);
+    await db.query(
+      'INSERT INTO routines (id, user_id, content, is_active) VALUES (?, ?, ?, TRUE)',
+      [uuidv4(), uid, content]
+    );
 
-  res.json({ routine: content });
+    res.json({ routine: content });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // POST /trainer/clients/:id/nutrition — genera plan nutricional con IA
 router.post('/clients/:id/nutrition', async (req, res) => {
-  const uid = req.params.id;
-  const { override_prompt } = req.body;
+  try {
+    const uid = req.params.id;
+    const { override_prompt } = req.body;
 
-  const [[questionnaire]] = await db.query('SELECT * FROM questionnaire_data WHERE user_id=?', [uid]);
-  if (!questionnaire) return res.status(400).json({ error: 'El cliente no tiene cuestionario' });
+    const [[questionnaire]] = await db.query('SELECT * FROM questionnaire_data WHERE user_id=?', [uid]);
+    if (!questionnaire) return res.status(400).json({ error: 'El cliente no tiene cuestionario' });
 
-  const [[user]] = await db.query('SELECT * FROM users WHERE id=?', [uid]);
-  const content = await generateNutritionPlan(questionnaire, user, override_prompt);
+    const [[user]] = await db.query('SELECT * FROM users WHERE id=?', [uid]);
+    const content = await generateNutritionPlan(questionnaire, user, override_prompt);
 
   await db.query('UPDATE nutrition_plans SET is_active=FALSE WHERE user_id=?', [uid]);
   const planId = uuidv4();
@@ -299,12 +304,15 @@ router.post('/clients/:id/nutrition', async (req, res) => {
   }
 
   res.json({ nutrition_plan: content });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // PUT /trainer/clients/:id/targets — actualiza metas de calorías y macros
 router.put('/clients/:id/targets', async (req, res) => {
   const { calorie_target, protein_target_g, carbs_target_g, fat_target_g } = req.body;
   const uid = req.params.id;
+  const [[client]] = await db.query('SELECT id FROM users WHERE id=? AND role="client"', [uid]);
+  if (!client) return res.status(404).json({ error: 'Cliente no encontrado' });
   await db.query(
     `UPDATE users SET
        calorie_target   = COALESCE(?, calorie_target),
@@ -458,14 +466,21 @@ router.get('/clients/:id/workout-logs', async (req, res) => {
 
 // GET/PUT /trainer/clients/:id/notes — notas privadas del entrenador
 router.get('/clients/:id/notes', async (req, res) => {
-  const [[user]] = await db.query('SELECT trainer_notes FROM users WHERE id=?', [req.params.id]);
-  res.json({ notes: user?.trainer_notes || '' });
+  try {
+    const [[user]] = await db.query('SELECT trainer_notes FROM users WHERE id=? AND role="client"', [req.params.id]);
+    if (!user) return res.status(404).json({ error: 'Cliente no encontrado' });
+    res.json({ notes: user.trainer_notes || '' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 router.put('/clients/:id/notes', async (req, res) => {
-  const { notes } = req.body;
-  await db.query('UPDATE users SET trainer_notes=? WHERE id=?', [notes || '', req.params.id]);
-  res.json({ message: 'Notas guardadas' });
+  try {
+    const { notes } = req.body;
+    const [[client]] = await db.query('SELECT id FROM users WHERE id=? AND role="client"', [req.params.id]);
+    if (!client) return res.status(404).json({ error: 'Cliente no encontrado' });
+    await db.query('UPDATE users SET trainer_notes=? WHERE id=?', [notes || '', req.params.id]);
+    res.json({ message: 'Notas guardadas' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // POST /trainer/invite-new — crea cliente nuevo y envía valoración/onboarding

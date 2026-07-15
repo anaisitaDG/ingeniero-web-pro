@@ -90,7 +90,7 @@ export default function ClientList() {
       setInviteDone(true);
       setInviteName(''); setInviteEmail('');
       setTimeout(() => { setInviteDone(false); setShowInvite(false); }, 3000);
-      api.trainer.clients().then(d => setClients(d.clients));
+      api.trainer.clients().then(d => setClients(d.clients)).catch(console.error);
     } catch (e) { alert(e.message); }
     finally { setInviteSending(false); }
   }

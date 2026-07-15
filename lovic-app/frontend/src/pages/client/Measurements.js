@@ -219,9 +219,13 @@ export default function Measurements() {
               <div style={{ display: 'flex', gap: 10 }}>
                 <button className="btn-secondary" style={{ flex: 1 }} onClick={() => setBioDel(null)}>Cancelar</button>
                 <button className="btn-primary" style={{ flex: 1, background: '#dc2626' }} onClick={async () => {
-                  await api.bioimpedance.delete(bioDel);
-                  setBioDel(null);
-                  load();
+                  try {
+                    await api.bioimpedance.delete(bioDel);
+                    setBioDel(null);
+                    load();
+                  } catch (e) {
+                    alert('No se pudo eliminar. Intenta de nuevo.');
+                  }
                 }}>Eliminar</button>
               </div>
             </div>

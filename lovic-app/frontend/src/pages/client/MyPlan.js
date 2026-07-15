@@ -33,7 +33,7 @@ export default function MyPlan() {
 
   async function toggleDay(dayId, dayName, kcal, date) {
     const done = !completedDays[dayId];
-    const useDate = date || new Date().toLocaleDateString('en-CA');
+    const useDate = date || new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString().slice(0, 10);
     setCompletedDays(prev => {
       const next = { ...prev };
       if (done) next[dayId] = useDate; else delete next[dayId];
@@ -42,7 +42,7 @@ export default function MyPlan() {
     try { await api.workout.completeDay(dayId, done, useDate); } catch (_) {}
     if (done) {
       const dRes = await api.dashboard.get().catch(() => null);
-      const newStreak = dRes?.streak || streak + 1;
+      const newStreak = dRes?.streak ?? streak + 1;
       setStreak(newStreak);
       setCelebration({ dayName, kcal, streak: newStreak });
     }
@@ -520,7 +520,7 @@ function ActivityBlock({ emoji, label, options, kcalTable, defaultDuration, choi
       </select>
       {(choice === 'Otro' || (!options.includes(choice) && choice)) && (
         <input className="input" placeholder="¿Qué hiciste?" value={choice === 'Otro' ? '' : choice}
-          onChange={e => setChoice(e.target.value || 'Otro')}
+          onChange={e => setChoice(e.target.value !== '' ? e.target.value : 'Otro')}
           style={{ fontSize: 13, padding: '8px 10px', marginBottom: 8 }} autoFocus />
       )}
       {choice && choice !== 'Otro' && (

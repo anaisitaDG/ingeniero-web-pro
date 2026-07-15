@@ -172,26 +172,30 @@ router.get('/history/:exerciseId', async (req, res) => {
 
 // POST /workout/activity — guarda calentamiento o cardio de una sesión
 router.post('/activity', async (req, res) => {
-  const uid = req.user.id;
-  const { day_id, type, activity_name, duration_mins, date } = req.body;
-  const session_date = date || colombiaToday();
-  await db.query(
-    `INSERT INTO workout_activity_logs (id, user_id, day_id, session_date, type, activity_name, duration_mins)
-     VALUES (?, ?, ?, ?, ?, ?, ?)
-     ON DUPLICATE KEY UPDATE activity_name=VALUES(activity_name), duration_mins=VALUES(duration_mins)`,
-    [uuidv4(), uid, day_id, session_date, type, activity_name, duration_mins || null]
-  );
-  res.json({ ok: true });
+  try {
+    const uid = req.user.id;
+    const { day_id, type, activity_name, duration_mins, date } = req.body;
+    const session_date = date || colombiaToday();
+    await db.query(
+      `INSERT INTO workout_activity_logs (id, user_id, day_id, session_date, type, activity_name, duration_mins)
+       VALUES (?, ?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE activity_name=VALUES(activity_name), duration_mins=VALUES(duration_mins)`,
+      [uuidv4(), uid, day_id, session_date, type, activity_name, duration_mins || null]
+    );
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // GET /workout/activity/:dayId — trae actividades de las últimas sesiones de un día
 router.get('/activity/:dayId', async (req, res) => {
-  const uid = req.user.id;
-  const [rows] = await db.query(
-    `SELECT * FROM workout_activity_logs WHERE user_id=? AND day_id=? ORDER BY session_date DESC LIMIT 20`,
-    [uid, req.params.dayId]
-  );
-  res.json({ activities: rows });
+  try {
+    const uid = req.user.id;
+    const [rows] = await db.query(
+      `SELECT * FROM workout_activity_logs WHERE user_id=? AND day_id=? ORDER BY session_date DESC LIMIT 20`,
+      [uid, req.params.dayId]
+    );
+    res.json({ activities: rows });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // POST /workout/free — guardar sesión de entrenamiento libre

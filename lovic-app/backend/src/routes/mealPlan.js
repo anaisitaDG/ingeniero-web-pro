@@ -63,6 +63,8 @@ router.post('/complete', async (req, res) => {
   try {
     const uid = req.user.id;
     const { meal_type, date, done } = req.body;
+    const VALID_MEALS = ['breakfast', 'lunch', 'dinner', 'snack'];
+    if (!meal_type || !VALID_MEALS.includes(meal_type)) return res.status(400).json({ error: 'meal_type inválido' });
     const d = date || colombiaToday();
     if (done === false) {
       await db.query(
