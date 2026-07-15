@@ -44,6 +44,7 @@ export default function ClientDetail() {
   const [savingWorkout, setSavingWorkout]   = useState(false);
   const [durationDays, setDurationDays]     = useState('');
   const [startDate, setStartDate]           = useState(new Date().toISOString().slice(0, 10));
+  const [activePlanId, setActivePlanId]     = useState(null);
 
   // Library picker
   const [library, setLibrary]           = useState(null);
@@ -108,6 +109,7 @@ export default function ClientDetail() {
     try {
       const res = await api.trainer.getWorkout(id);
       if (res.plan) {
+        setActivePlanId(res.plan.id || null);
         setDurationDays(res.plan.duration_days || '');
         setStartDate(res.plan.start_date ? res.plan.start_date.slice(0, 10) : new Date().toISOString().slice(0, 10));
       }
@@ -115,6 +117,7 @@ export default function ClientDetail() {
         setOriginalDayCount(res.plan.days.length);
         setWorkoutDays(res.plan.days.map(d => ({
           _key: Math.random(),
+          id: d.id || null,
           day_name: d.day_name,
           warmup_type: d.warmup_type || '',
           warmup_duration: d.warmup_duration || '',
@@ -170,6 +173,7 @@ export default function ClientDetail() {
     const days = workoutDays
       .filter(d => d.day_name.trim())
       .map(d => ({
+        day_id: d.id || null,
         day_name: d.day_name,
         warmup_type: d.warmup_type || null,
         warmup_duration: d.warmup_duration ? Number(d.warmup_duration) : null,
@@ -193,7 +197,7 @@ export default function ClientDetail() {
       if (!ok) return;
     }
     setSavingWorkout(true);
-    try { await api.trainer.saveWorkout(id, days, durationDays ? Number(durationDays) : null, startDate || null); setSaveMsg('✅ Plan guardado'); setTimeout(() => setSaveMsg(''), 3000); }
+    try { await api.trainer.saveWorkout(id, days, durationDays ? Number(durationDays) : null, startDate || null, activePlanId); setSaveMsg('✅ Plan guardado'); setTimeout(() => setSaveMsg(''), 3000); }
     catch (e) { setSaveMsg('❌ ' + e.message); setTimeout(() => setSaveMsg(''), 4000); }
     finally { setSavingWorkout(false); }
   }

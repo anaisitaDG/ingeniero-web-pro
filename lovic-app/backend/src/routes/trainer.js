@@ -116,29 +116,88 @@ router.get('/clients/:id/workout', async (req, res) => {
 // PUT /trainer/clients/:id/workout — guarda plan estructurado completo
 router.put('/clients/:id/workout', async (req, res) => {
   const uid = req.params.id;
-  const { days, duration_days, start_date } = req.body;
+  const { days, duration_days, start_date, plan_id } = req.body;
   if (!Array.isArray(days)) return res.status(400).json({ error: 'days requerido' });
 
+  // If editing an existing plan, update in place to preserve workout_logs history
+  if (plan_id) {
+    await db.query(
+      'UPDATE workout_plans SET duration_days=?, start_date=? WHERE id=? AND user_id=?',
+      [duration_days || null, start_date || null, plan_id, uid]
+    );
+
+    // Get existing day IDs to know which ones to delete
+    const [existingDays] = await db.query('SELECT id FROM workout_days WHERE plan_id=?', [plan_id]);
+    const incomingDayIds = days.map(d => d.day_id).filter(Boolean);
+    const toDelete = existingDays.map(d => d.id).filter(id => !incomingDayIds.includes(id));
+    if (toDelete.length) {
+      await db.query(`DELETE FROM workout_days WHERE id IN (${toDelete.map(() => '?').join(',')})`, toDelete);
+    }
+
+    for (let di = 0; di < days.length; di++) {
+      const day = days[di];
+      let dayId = day.day_id;
+      if (dayId) {
+        // Update existing day
+        await db.query(
+          'UPDATE workout_days SET day_name=?, day_order=?, warmup_type=?, warmup_duration=?, cardio_type=?, cardio_duration=? WHERE id=?',
+          [day.day_name, di, day.warmup_type || null, day.warmup_duration || null, day.cardio_type || null, day.cardio_duration || null, dayId]
+        );
+      } else {
+        // New day added
+        dayId = uuidv4();
+        await db.query(
+          'INSERT INTO workout_days (id, plan_id, day_name, day_order, warmup_type, warmup_duration, cardio_type, cardio_duration) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          [dayId, plan_id, day.day_name, di, day.warmup_type || null, day.warmup_duration || null, day.cardio_type || null, day.cardio_duration || null]
+        );
+      }
+
+      const exercises = day.exercises || [];
+      const [existingExs] = await db.query('SELECT id FROM workout_exercises WHERE day_id=?', [dayId]);
+      const incomingExIds = exercises.map(e => e.exercise_id).filter(Boolean);
+      const exToDelete = existingExs.map(e => e.id).filter(id => !incomingExIds.includes(id));
+      if (exToDelete.length) {
+        await db.query(`DELETE FROM workout_exercises WHERE id IN (${exToDelete.map(() => '?').join(',')})`, exToDelete);
+      }
+
+      for (let ei = 0; ei < exercises.length; ei++) {
+        const ex = exercises[ei];
+        if (ex.exercise_id) {
+          await db.query(
+            'UPDATE workout_exercises SET name=?, youtube_url=?, sets=?, reps=?, weight_kg=?, exercise_order=?, library_exercise_id=? WHERE id=?',
+            [ex.name, ex.youtube_url || null, ex.sets || 3, ex.reps || '10', ex.weight_kg || null, ei, ex.library_exercise_id || null, ex.exercise_id]
+          );
+        } else {
+          await db.query(
+            'INSERT INTO workout_exercises (id, day_id, name, youtube_url, sets, reps, weight_kg, exercise_order, library_exercise_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [uuidv4(), dayId, ex.name, ex.youtube_url || null, ex.sets || 3, ex.reps || '10', ex.weight_kg || null, ei, ex.library_exercise_id || null]
+          );
+        }
+      }
+    }
+    return res.json({ message: 'Plan actualizado' });
+  }
+
+  // No existing plan — create new
   await db.query('UPDATE workout_plans SET is_active=FALSE WHERE user_id=?', [uid]);
   const planId = uuidv4();
   await db.query(
     'INSERT INTO workout_plans (id, user_id, is_active, duration_days, start_date) VALUES (?, ?, TRUE, ?, ?)',
     [planId, uid, duration_days || null, start_date || null]
   );
-
   for (let di = 0; di < days.length; di++) {
     const day = days[di];
     const dayId = uuidv4();
     await db.query(
       'INSERT INTO workout_days (id, plan_id, day_name, day_order, warmup_type, warmup_duration, cardio_type, cardio_duration) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [dayId, planId, day.day_name, di, day.warmup_type || null, day.warmup_duration || null, day.cardio_type || null, day.cardio_duration || null]);
+      [dayId, planId, day.day_name, di, day.warmup_type || null, day.warmup_duration || null, day.cardio_type || null, day.cardio_duration || null]
+    );
     const exercises = day.exercises || [];
     for (let ei = 0; ei < exercises.length; ei++) {
       const ex = exercises[ei];
-      const exId = ex.exercise_id || uuidv4();
       await db.query(
         'INSERT INTO workout_exercises (id, day_id, name, youtube_url, sets, reps, weight_kg, exercise_order, library_exercise_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [exId, dayId, ex.name, ex.youtube_url || null, ex.sets || 3, ex.reps || '10', ex.weight_kg || null, ei, ex.library_exercise_id || null]
+        [uuidv4(), dayId, ex.name, ex.youtube_url || null, ex.sets || 3, ex.reps || '10', ex.weight_kg || null, ei, ex.library_exercise_id || null]
       );
     }
   }
