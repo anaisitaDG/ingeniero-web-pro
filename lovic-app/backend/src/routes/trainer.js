@@ -132,25 +132,21 @@ router.put('/clients/:id/workout', async (req, res) => {
       [duration_days || null, start_date || null, plan_id, uid]
     );
 
-    // Get existing day IDs to know which ones to delete
-    const [existingDays] = await db.query('SELECT id FROM workout_days WHERE plan_id=?', [plan_id]);
-    const incomingDayIds = days.map(d => d.day_id).filter(Boolean);
-    const toDelete = existingDays.map(d => d.id).filter(id => !incomingDayIds.includes(id));
-    if (toDelete.length) {
-      await db.query(`DELETE FROM workout_days WHERE id IN (${toDelete.map(() => '?').join(',')})`, toDelete);
-    }
+    // Match existing days by order position to preserve exercise IDs
+    const [existingDaysFull] = await db.query(
+      'SELECT id FROM workout_days WHERE plan_id=? ORDER BY day_order', [plan_id]
+    );
 
     for (let di = 0; di < days.length; di++) {
       const day = days[di];
-      let dayId = day.day_id;
+      // Use existing day at same position to keep its ID (and its exercises' IDs)
+      let dayId = existingDaysFull[di]?.id || null;
       if (dayId) {
-        // Update existing day
         await db.query(
           'UPDATE workout_days SET day_name=?, day_order=?, warmup_type=?, warmup_duration=?, cardio_type=?, cardio_duration=? WHERE id=?',
           [day.day_name, di, day.warmup_type || null, day.warmup_duration || null, day.cardio_type || null, day.cardio_duration || null, dayId]
         );
       } else {
-        // New day added
         dayId = uuidv4();
         await db.query(
           'INSERT INTO workout_days (id, plan_id, day_name, day_order, warmup_type, warmup_duration, cardio_type, cardio_duration) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
@@ -158,20 +154,19 @@ router.put('/clients/:id/workout', async (req, res) => {
         );
       }
 
+      // Match existing exercises by position to preserve their IDs (keeps workout_logs linked)
       const exercises = day.exercises || [];
-      const [existingExs] = await db.query('SELECT id FROM workout_exercises WHERE day_id=?', [dayId]);
-      const incomingExIds = exercises.map(e => e.exercise_id).filter(Boolean);
-      const exToDelete = existingExs.map(e => e.id).filter(id => !incomingExIds.includes(id));
-      if (exToDelete.length) {
-        await db.query(`DELETE FROM workout_exercises WHERE id IN (${exToDelete.map(() => '?').join(',')})`, exToDelete);
-      }
+      const [existingExsFull] = await db.query(
+        'SELECT id FROM workout_exercises WHERE day_id=? ORDER BY exercise_order', [dayId]
+      );
 
       for (let ei = 0; ei < exercises.length; ei++) {
         const ex = exercises[ei];
-        if (ex.exercise_id) {
+        const existingExId = existingExsFull[ei]?.id || null;
+        if (existingExId) {
           await db.query(
             'UPDATE workout_exercises SET name=?, youtube_url=?, sets=?, reps=?, weight_kg=?, exercise_order=?, library_exercise_id=? WHERE id=?',
-            [ex.name, ex.youtube_url || null, ex.sets || 3, ex.reps || '10', ex.weight_kg || null, ei, ex.library_exercise_id || null, ex.exercise_id]
+            [ex.name, ex.youtube_url || null, ex.sets || 3, ex.reps || '10', ex.weight_kg || null, ei, ex.library_exercise_id || null, existingExId]
           );
         } else {
           await db.query(
@@ -180,6 +175,16 @@ router.put('/clients/:id/workout', async (req, res) => {
           );
         }
       }
+      // Remove exercises beyond the new count (truly deleted ones)
+      if (existingExsFull.length > exercises.length) {
+        const toRemove = existingExsFull.slice(exercises.length).map(e => e.id);
+        await db.query(`DELETE FROM workout_exercises WHERE id IN (${toRemove.map(() => '?').join(',')})`, toRemove);
+      }
+    }
+    // Remove days beyond the new count
+    if (existingDaysFull.length > days.length) {
+      const toRemove = existingDaysFull.slice(days.length).map(d => d.id);
+      await db.query(`DELETE FROM workout_days WHERE id IN (${toRemove.map(() => '?').join(',')})`, toRemove);
     }
     return res.json({ message: 'Plan actualizado' });
   }
