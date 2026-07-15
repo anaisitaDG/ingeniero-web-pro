@@ -25,11 +25,16 @@ export default function ExerciseLibrary() {
   const [varForm, setVarForm]       = useState({});   // { [exId]: { name, youtube_url } }
   const [addingVar, setAddingVar]   = useState(null); // exId
 
+  const [loadError, setLoadError] = useState(false);
+
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const res = await api.trainer.getLibrary();
       setExercises(res.exercises || []);
+    } catch (e) {
+      setLoadError(true);
     } finally { setLoading(false); }
   }, []);
 
@@ -165,6 +170,12 @@ export default function ExerciseLibrary() {
       {loading ? (
         <div style={{ textAlign: 'center', padding: 48 }}>
           <div className="spinner" style={{ borderTopColor: 'var(--coral)', borderColor: 'var(--border)', width: 32, height: 32 }} />
+        </div>
+      ) : loadError ? (
+        <div className="empty-state">
+          <div className="icon">📡</div>
+          <p>No se pudo cargar la biblioteca. Revisa tu conexión.</p>
+          <button className="btn-primary" style={{ marginTop: 16 }} onClick={load}>Reintentar</button>
         </div>
       ) : filtered.length === 0 ? (
         <div className="empty-state">

@@ -17,20 +17,22 @@ router.use(requireTrainer);
 
 // GET /trainer/clients
 router.get('/clients', async (req, res) => {
-  const [clients] = await db.query(
-    `SELECT u.id, u.name, u.email, u.created_at,
-       q.main_goal, q.weight_kg AS initial_weight_kg, q.height_cm,
-       (SELECT weight_kg FROM measurements WHERE user_id=u.id ORDER BY logged_at DESC LIMIT 1) AS current_weight_kg,
-       (SELECT logged_at FROM measurements WHERE user_id=u.id ORDER BY logged_at DESC LIMIT 1) AS last_measurement,
-       (SELECT MAX(tracked_date) FROM daily_tracking WHERE user_id=u.id AND workout_done=1) AS last_trained,
-       (SELECT COUNT(*) FROM daily_tracking WHERE user_id=u.id AND workout_done=1 AND tracked_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)) AS workouts_this_week
-     FROM users u
-     LEFT JOIN questionnaire_data q ON q.user_id = u.id
-     WHERE u.role = 'client'
-     ORDER BY u.created_at DESC`,
-    []
-  );
-  res.json({ clients });
+  try {
+    const [clients] = await db.query(
+      `SELECT u.id, u.name, u.email, u.created_at,
+         q.main_goal, q.weight_kg AS initial_weight_kg, q.height_cm,
+         (SELECT weight_kg FROM measurements WHERE user_id=u.id ORDER BY logged_at DESC LIMIT 1) AS current_weight_kg,
+         (SELECT logged_at FROM measurements WHERE user_id=u.id ORDER BY logged_at DESC LIMIT 1) AS last_measurement,
+         (SELECT MAX(tracked_date) FROM daily_tracking WHERE user_id=u.id AND workout_done=1) AS last_trained,
+         (SELECT COUNT(*) FROM daily_tracking WHERE user_id=u.id AND workout_done=1 AND tracked_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)) AS workouts_this_week
+       FROM users u
+       LEFT JOIN questionnaire_data q ON q.user_id = u.id
+       WHERE u.role = 'client'
+       ORDER BY u.created_at DESC`,
+      []
+    );
+    res.json({ clients });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // GET /trainer/clients/:id
@@ -87,32 +89,34 @@ router.post('/suggest-day-name', async (req, res) => {
 
 // GET /trainer/clients/:id/workout — obtiene plan estructurado
 router.get('/clients/:id/workout', async (req, res) => {
-  const uid = req.params.id;
-  const [[plan]] = await db.query(
-    'SELECT * FROM workout_plans WHERE user_id=? AND is_active=TRUE ORDER BY created_at DESC LIMIT 1', [uid]
-  );
-  if (!plan) return res.json({ plan: null });
-
-  const [days] = await db.query(
-    'SELECT * FROM workout_days WHERE plan_id=? ORDER BY day_order', [plan.id]
-  );
-  for (const day of days) {
-    const [exercises] = await db.query(
-      'SELECT * FROM workout_exercises WHERE day_id=? ORDER BY exercise_order', [day.id]
+  try {
+    const uid = req.params.id;
+    const [[plan]] = await db.query(
+      'SELECT * FROM workout_plans WHERE user_id=? AND is_active=TRUE ORDER BY created_at DESC LIMIT 1', [uid]
     );
-    for (const ex of exercises) {
-      if (ex.library_exercise_id) {
-        const [vars] = await db.query(
-          'SELECT id, name, youtube_url, notes FROM exercise_variations WHERE exercise_id=?', [ex.library_exercise_id]
-        );
-        ex.variations = vars;
-      } else {
-        ex.variations = [];
+    if (!plan) return res.json({ plan: null });
+
+    const [days] = await db.query(
+      'SELECT * FROM workout_days WHERE plan_id=? ORDER BY day_order', [plan.id]
+    );
+    for (const day of days) {
+      const [exercises] = await db.query(
+        'SELECT * FROM workout_exercises WHERE day_id=? ORDER BY exercise_order', [day.id]
+      );
+      for (const ex of exercises) {
+        if (ex.library_exercise_id) {
+          const [vars] = await db.query(
+            'SELECT id, name, youtube_url, notes FROM exercise_variations WHERE exercise_id=?', [ex.library_exercise_id]
+          );
+          ex.variations = vars;
+        } else {
+          ex.variations = [];
+        }
       }
+      day.exercises = exercises;
     }
-    day.exercises = exercises;
-  }
-  res.json({ plan: { ...plan, days } });
+    res.json({ plan: { ...plan, days } });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // PUT /trainer/clients/:id/workout — guarda plan estructurado completo
@@ -220,16 +224,18 @@ router.put('/clients/:id/workout', async (req, res) => {
 
 // PUT /trainer/clients/:id/routine — guarda rutina manual
 router.put('/clients/:id/routine', async (req, res) => {
-  const uid = req.params.id;
-  const { content } = req.body;
-  if (!content || !content.trim()) return res.status(400).json({ error: 'Contenido requerido' });
+  try {
+    const uid = req.params.id;
+    const { content } = req.body;
+    if (!content || !content.trim()) return res.status(400).json({ error: 'Contenido requerido' });
 
-  await db.query('UPDATE routines SET is_active=FALSE WHERE user_id=?', [uid]);
-  await db.query(
-    'INSERT INTO routines (id, user_id, content, is_active) VALUES (?, ?, ?, TRUE)',
-    [uuidv4(), uid, content.trim()]
-  );
-  res.json({ routine: content.trim() });
+    await db.query('UPDATE routines SET is_active=FALSE WHERE user_id=?', [uid]);
+    await db.query(
+      'INSERT INTO routines (id, user_id, content, is_active) VALUES (?, ?, ?, TRUE)',
+      [uuidv4(), uid, content.trim()]
+    );
+    res.json({ routine: content.trim() });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // PUT /trainer/clients/:id/nutrition — guarda plan nutricional manual
@@ -309,74 +315,86 @@ router.post('/clients/:id/nutrition', async (req, res) => {
 
 // PUT /trainer/clients/:id/targets — actualiza metas de calorías y macros
 router.put('/clients/:id/targets', async (req, res) => {
-  const { calorie_target, protein_target_g, carbs_target_g, fat_target_g } = req.body;
-  const uid = req.params.id;
-  const [[client]] = await db.query('SELECT id FROM users WHERE id=? AND role="client"', [uid]);
-  if (!client) return res.status(404).json({ error: 'Cliente no encontrado' });
-  await db.query(
-    `UPDATE users SET
-       calorie_target   = COALESCE(?, calorie_target),
-       protein_target_g = COALESCE(?, protein_target_g),
-       carbs_target_g   = COALESCE(?, carbs_target_g),
-       fat_target_g     = COALESCE(?, fat_target_g)
-     WHERE id = ?`,
-    [calorie_target || null, protein_target_g || null, carbs_target_g || null, fat_target_g || null, uid]
-  );
-  res.json({ message: 'Metas actualizadas' });
+  try {
+    const { calorie_target, protein_target_g, carbs_target_g, fat_target_g } = req.body;
+    const uid = req.params.id;
+    const [[client]] = await db.query('SELECT id FROM users WHERE id=? AND role="client"', [uid]);
+    if (!client) return res.status(404).json({ error: 'Cliente no encontrado' });
+    await db.query(
+      `UPDATE users SET
+         calorie_target   = COALESCE(?, calorie_target),
+         protein_target_g = COALESCE(?, protein_target_g),
+         carbs_target_g   = COALESCE(?, carbs_target_g),
+         fat_target_g     = COALESCE(?, fat_target_g)
+       WHERE id = ?`,
+      [calorie_target || null, protein_target_g || null, carbs_target_g || null, fat_target_g || null, uid]
+    );
+    res.json({ message: 'Metas actualizadas' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // POST /trainer/clients/:id/invite — envía magic link de acceso (plan listo)
 router.post('/clients/:id/invite', async (req, res) => {
-  const [[user]] = await db.query('SELECT * FROM users WHERE id=? AND role="client"', [req.params.id]);
-  if (!user) return res.status(404).json({ error: 'Cliente no encontrado' });
+  try {
+    const [[user]] = await db.query('SELECT * FROM users WHERE id=? AND role="client"', [req.params.id]);
+    if (!user) return res.status(404).json({ error: 'Cliente no encontrado' });
 
-  const { sendMagicLink } = require('../services/email');
-  const token = uuidv4();
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-  await db.query('INSERT INTO magic_links (user_id, token, expires_at) VALUES (?, ?, ?)', [user.id, token, expiresAt]);
-  await sendMagicLink(user.email, user.name, token, 'invite');
-
-  res.json({ message: 'Invitación enviada' });
+    const { sendMagicLink } = require('../services/email');
+    const token = uuidv4();
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    await db.query('INSERT INTO magic_links (user_id, token, expires_at) VALUES (?, ?, ?)', [user.id, token, expiresAt]);
+    try {
+      await sendMagicLink(user.email, user.name, token, 'invite');
+    } catch (emailErr) {
+      await db.query('DELETE FROM magic_links WHERE token=?', [token]);
+      throw emailErr;
+    }
+    res.json({ message: 'Invitación enviada' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // GET /trainer/clients/:id/progress — fotos + historial de medidas
 router.get('/clients/:id/progress', async (req, res) => {
-  const uid = req.params.id;
-  const [measurements] = await db.query(
-    'SELECT * FROM measurements WHERE user_id=? ORDER BY logged_at DESC LIMIT 30', [uid]
-  );
-  const [registers] = await db.query(
-    'SELECT * FROM progress_registers WHERE user_id=? ORDER BY date DESC LIMIT 20', [uid]
-  );
-  let photos = [];
-  if (registers.length) {
-    const ids = registers.map(r => r.id);
-    const placeholders = ids.map(() => '?').join(',');
-    const [rawPhotos] = await db.query(
-      `SELECT * FROM progress_photos WHERE register_id IN (${placeholders})`, ids
+  try {
+    const uid = req.params.id;
+    const [measurements] = await db.query(
+      'SELECT * FROM measurements WHERE user_id=? ORDER BY logged_at DESC LIMIT 30', [uid]
     );
-    const byRegister = {};
-    for (const p of rawPhotos) {
-      if (!byRegister[p.register_id]) byRegister[p.register_id] = {};
-      byRegister[p.register_id][p.angle] = {
-        ...p,
-        image_url: p.image_url ? p.image_url.replace(/^.*\/uploads\//, 'uploads/') : p.image_url,
-      };
+    const [registers] = await db.query(
+      'SELECT * FROM progress_registers WHERE user_id=? ORDER BY date DESC LIMIT 20', [uid]
+    );
+    let photos = [];
+    if (registers.length) {
+      const ids = registers.map(r => r.id);
+      const placeholders = ids.map(() => '?').join(',');
+      const [rawPhotos] = await db.query(
+        `SELECT * FROM progress_photos WHERE register_id IN (${placeholders})`, ids
+      );
+      const byRegister = {};
+      for (const p of rawPhotos) {
+        if (!byRegister[p.register_id]) byRegister[p.register_id] = {};
+        byRegister[p.register_id][p.angle] = {
+          ...p,
+          image_url: p.image_url ? p.image_url.replace(/^.*\/uploads\//, 'uploads/') : p.image_url,
+        };
+      }
+      photos = registers.map(r => ({ ...r, photos: byRegister[r.id] || {} }));
     }
-    photos = registers.map(r => ({ ...r, photos: byRegister[r.id] || {} }));
-  }
-  res.json({ measurements, photos });
+    res.json({ measurements, photos });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // GET /trainer/clients/:id/adherence-detail — día a día últimos 60 días
 router.get('/clients/:id/adherence-detail', async (req, res) => {
-  const uid = req.params.id;
-  const [rows] = await db.query(
-    `SELECT tracked_date, workout_done, diet_followed, water_glasses
-     FROM daily_tracking WHERE user_id=? AND tracked_date >= DATE_SUB(CURDATE(), INTERVAL 60 DAY)
-     ORDER BY tracked_date DESC`, [uid]
-  );
-  res.json({ days: rows });
+  try {
+    const uid = req.params.id;
+    const [rows] = await db.query(
+      `SELECT tracked_date, workout_done, diet_followed, water_glasses
+       FROM daily_tracking WHERE user_id=? AND tracked_date >= DATE_SUB(CURDATE(), INTERVAL 60 DAY)
+       ORDER BY tracked_date DESC`, [uid]
+    );
+    res.json({ days: rows });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // GET /trainer/clients/:id/workout-logs — sesiones agrupadas por fecha + resumen
@@ -485,25 +503,31 @@ router.put('/clients/:id/notes', async (req, res) => {
 
 // POST /trainer/invite-new — crea cliente nuevo y envía valoración/onboarding
 router.post('/invite-new', async (req, res) => {
-  const { email, name } = req.body;
-  if (!email || !name) return res.status(400).json({ error: 'Email y nombre requeridos' });
+  try {
+    const { email, name } = req.body;
+    if (!email || !name) return res.status(400).json({ error: 'Email y nombre requeridos' });
 
-  const [[existing]] = await db.query('SELECT id FROM users WHERE email=?', [email]);
-  let userId;
-  if (existing) {
-    userId = existing.id;
-  } else {
-    userId = uuidv4();
-    await db.query('INSERT INTO users (id, email, name, role) VALUES (?, ?, ?, "client")', [userId, email, name]);
-  }
+    const [[existing]] = await db.query('SELECT id FROM users WHERE email=?', [email]);
+    let userId;
+    if (existing) {
+      userId = existing.id;
+    } else {
+      userId = uuidv4();
+      await db.query('INSERT INTO users (id, email, name, role) VALUES (?, ?, ?, "client")', [userId, email, name]);
+    }
 
-  const { sendMagicLink } = require('../services/email');
-  const token = uuidv4();
-  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-  await db.query('INSERT INTO magic_links (user_id, token, expires_at) VALUES (?, ?, ?)', [userId, token, expiresAt]);
-  await sendMagicLink(email, name, token, 'onboarding');
-
-  res.json({ message: 'Valoración enviada', userId });
+    const { sendMagicLink } = require('../services/email');
+    const token = uuidv4();
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    await db.query('INSERT INTO magic_links (user_id, token, expires_at) VALUES (?, ?, ?)', [userId, token, expiresAt]);
+    try {
+      await sendMagicLink(email, name, token, 'onboarding');
+    } catch (emailErr) {
+      await db.query('DELETE FROM magic_links WHERE token=?', [token]);
+      throw emailErr;
+    }
+    res.json({ message: 'Valoración enviada', userId });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // POST /trainer/weekly-summary — envía resumen manualmente
@@ -697,37 +721,43 @@ router.delete('/library/:id', async (req, res) => {
 
 // GET /trainer/billing — panel de ingresos
 router.get('/billing', requireTrainer, async (req, res) => {
-  const [clients] = await db.query(
-    `SELECT u.id, u.name, u.email,
-       cb.monthly_fee, cb.next_payment_date, cb.notes,
-       wp.duration_days, wp.start_date
-     FROM users u
-     LEFT JOIN client_billing cb ON cb.client_id = u.id
-     LEFT JOIN workout_plans wp ON wp.user_id = u.id AND wp.is_active = TRUE
-     WHERE u.role = 'client'
-     ORDER BY u.name`
-  );
-  res.json({ clients });
+  try {
+    const [clients] = await db.query(
+      `SELECT u.id, u.name, u.email,
+         cb.monthly_fee, cb.next_payment_date, cb.notes,
+         wp.duration_days, wp.start_date
+       FROM users u
+       LEFT JOIN client_billing cb ON cb.client_id = u.id
+       LEFT JOIN workout_plans wp ON wp.user_id = u.id AND wp.is_active = TRUE
+       WHERE u.role = 'client'
+       ORDER BY u.name`
+    );
+    res.json({ clients });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // PUT /trainer/billing/:clientId — actualizar facturación de cliente
 router.put('/billing/:clientId', requireTrainer, async (req, res) => {
-  const { monthly_fee, next_payment_date, notes } = req.body;
-  await db.query(
-    `INSERT INTO client_billing (id, client_id, monthly_fee, next_payment_date, notes)
-     VALUES (?, ?, ?, ?, ?)
-     ON DUPLICATE KEY UPDATE monthly_fee=VALUES(monthly_fee), next_payment_date=VALUES(next_payment_date), notes=VALUES(notes)`,
-    [uuidv4(), req.params.clientId, monthly_fee || 0, next_payment_date || null, notes || '']
-  );
-  res.json({ ok: true });
+  try {
+    const { monthly_fee, next_payment_date, notes } = req.body;
+    await db.query(
+      `INSERT INTO client_billing (id, client_id, monthly_fee, next_payment_date, notes)
+       VALUES (?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE monthly_fee=VALUES(monthly_fee), next_payment_date=VALUES(next_payment_date), notes=VALUES(notes)`,
+      [uuidv4(), req.params.clientId, monthly_fee || 0, next_payment_date || null, notes || '']
+    );
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // DELETE /trainer/clients/:id
 router.delete('/clients/:id', requireTrainer, async (req, res) => {
-  const [[user]] = await db.query('SELECT id FROM users WHERE id=? AND role="client"', [req.params.id]);
-  if (!user) return res.status(404).json({ error: 'Cliente no encontrado' });
-  await db.query('DELETE FROM users WHERE id=?', [req.params.id]);
-  res.json({ ok: true });
+  try {
+    const [[user]] = await db.query('SELECT id FROM users WHERE id=? AND role="client"', [req.params.id]);
+    if (!user) return res.status(404).json({ error: 'Cliente no encontrado' });
+    await db.query('DELETE FROM users WHERE id=?', [req.params.id]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // POST /trainer/push-reminder — envía recordatorio push a un cliente

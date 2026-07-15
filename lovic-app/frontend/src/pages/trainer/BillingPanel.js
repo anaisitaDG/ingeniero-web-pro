@@ -10,6 +10,7 @@ function fmt(amount) {
 export default function BillingPanel() {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm]       = useState({ monthly_fee: '', next_payment_date: '', notes: '' });
   const [saving, setSaving]   = useState(false);
@@ -17,9 +18,12 @@ export default function BillingPanel() {
 
   async function load() {
     setLoading(true);
+    setLoadError(false);
     try {
       const res = await api.trainer.getBilling();
       setClients(res.clients || []);
+    } catch (e) {
+      setLoadError(true);
     } finally { setLoading(false); }
   }
 
@@ -49,6 +53,7 @@ export default function BillingPanel() {
   }
 
   if (loading) return <div style={{ textAlign: 'center', padding: 64 }}><div className="spinner" style={{ borderTopColor: 'var(--coral)', borderColor: 'var(--border)', width: 36, height: 36 }} /></div>;
+  if (loadError) return <div className="empty-state"><div className="icon">📡</div><p>No se pudo cargar la facturación.</p><button className="btn-primary" style={{ marginTop: 16 }} onClick={load}>Reintentar</button></div>;
 
   const totalMonthly = clients.reduce((s, c) => s + (Number(c.monthly_fee) || 0), 0);
   const today = new Date().toISOString().slice(0, 10);

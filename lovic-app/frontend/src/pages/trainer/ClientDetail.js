@@ -135,6 +135,8 @@ export default function ClientDetail() {
           })),
         })));
       }
+    } catch (e) {
+      console.error('loadWorkout error:', e.message);
     } finally { setWorkoutLoading(false); }
   }, [id]);
 
@@ -341,8 +343,13 @@ export default function ClientDetail() {
     setPickerTarget({ dayIdx, exIdx });
     setLibSearch('');
     if (!library) {
-      const res = await api.trainer.getLibrary();
-      setLibrary(res.exercises || []);
+      try {
+        const res = await api.trainer.getLibrary();
+        setLibrary(res.exercises || []);
+      } catch (e) {
+        console.error('Error cargando biblioteca:', e.message);
+        setLibrary([]);
+      }
     }
   }
 
