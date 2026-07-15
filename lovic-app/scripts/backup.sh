@@ -3,6 +3,7 @@
 # Uso: bash backup.sh
 # Lee las credenciales del .env del backend automáticamente.
 set -euo pipefail
+trap 'echo "❌ Backup FALLÓ en la línea $LINENO. Revisa el error de arriba." >&2' ERR
 
 APP_DIR="$HOME/webapps/lovic/lovic-app"
 ENV_FILE="$APP_DIR/backend/.env"
@@ -15,7 +16,8 @@ if [ ! -f "$ENV_FILE" ]; then
   exit 1
 fi
 
-get_env() { grep -E "^$1=" "$ENV_FILE" | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'" | tr -d '\r'; }
+# El "|| true" evita que set -e aborte el script cuando una variable opcional no existe
+get_env() { { grep -E "^$1=" "$ENV_FILE" || true; } | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'" | tr -d '\r'; }
 
 DB_HOST="$(get_env DB_HOST)";     DB_HOST="${DB_HOST:-localhost}"
 DB_PORT="$(get_env DB_PORT)";     DB_PORT="${DB_PORT:-3306}"
