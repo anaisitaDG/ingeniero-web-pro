@@ -1233,7 +1233,7 @@ function CelebrationModal({ dayName, kcal, streak, completedDays, onClose }) {
             <div style={{ position: 'absolute', top: -30, right: -30, width: 130, height: 130, background: 'rgba(255,255,255,0.08)', borderRadius: '50%' }} />
             <p style={{ fontSize: 10, fontWeight: 800, color: 'rgba(255,255,255,0.7)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 12 }}>LOVIC GYM</p>
             <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', fontWeight: 600, marginBottom: 4 }}>Rutina del día · "{dayName}"</p>
-            <p style={{ fontSize: 22, fontWeight: 900, color: '#ffffff', marginBottom: 16 }}>Día 💪</p>
+            <p style={{ fontSize: 22, fontWeight: 900, color: '#ffffff', marginBottom: 16 }}>{dayName} 💪</p>
             <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
               <div style={{ background: 'rgba(255,255,255,0.15)', borderRadius: 12, padding: '10px 14px', flex: 1 }}>
                 <p style={{ fontSize: 24, fontWeight: 900, color: '#ffffff', lineHeight: 1 }}>🔥 {streak}</p>
