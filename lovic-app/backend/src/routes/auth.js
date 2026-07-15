@@ -71,6 +71,7 @@ router.post('/onboarding', async (req, res) => { try {
       ON DUPLICATE KEY UPDATE age = VALUES(age)
     `, [
       userId,
+      // mysql2 lanza con undefined — el .map de abajo los convierte a null
       questionnaire.age, questionnaire.birth_date, questionnaire.height_cm, questionnaire.weight_kg,
       questionnaire.occupation, questionnaire.city, phone || questionnaire.phone,
       JSON.stringify(questionnaire.main_goal), questionnaire.goal_timeframe,
@@ -95,7 +96,7 @@ router.post('/onboarding', async (req, res) => { try {
       questionnaire.arm_cm, questionnaire.chest_cm, questionnaire.waist_cm,
       questionnaire.hip_cm, questionnaire.thigh_cm, questionnaire.calf_cm,
       questionnaire.forearm_cm, questionnaire.nutritional_notes,
-    ]);
+    ].map(v => v === undefined ? null : v));
   }
 
   // Enviar magic link automático

@@ -25,6 +25,7 @@ router.use(requireAuth);
 
 // POST /bioimpedance/upload
 router.post('/upload', upload.array('image', 4), async (req, res) => {
+  try {
   if (!req.files?.length) return res.status(400).json({ error: 'Imagen requerida' });
 
   let targetUserId = req.user.id;
@@ -63,26 +64,34 @@ router.post('/upload', upload.array('image', 4), async (req, res) => {
   await db.query(insertSql, loggedAt ? [baseParams[0], baseParams[1], baseParams[2], loggedAt, ...baseParams.slice(3)] : baseParams);
 
   res.json({ parsed: merged });
+  } catch (e) {
+    console.error('[bioimpedance upload]', e.message);
+    res.status(500).json({ error: 'No se pudo procesar la imagen. Intenta de nuevo.' });
+  }
 });
 
 // GET /bioimpedance
 router.get('/', async (req, res) => {
-  const uid = req.query.user_id && req.user.role === 'trainer' ? req.query.user_id : req.user.id;
-  const [rows] = await db.query(
-    'SELECT * FROM bioimpedance WHERE user_id=? ORDER BY logged_at DESC LIMIT 10', [uid]
-  );
-  res.json({ bioimpedance: rows });
+  try {
+    const uid = req.query.user_id && req.user.role === 'trainer' ? req.query.user_id : req.user.id;
+    const [rows] = await db.query(
+      'SELECT * FROM bioimpedance WHERE user_id=? ORDER BY logged_at DESC LIMIT 10', [uid]
+    );
+    res.json({ bioimpedance: rows });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // DELETE /bioimpedance/:id
 router.delete('/:id', async (req, res) => {
-  const [rows] = await db.query('SELECT user_id FROM bioimpedance WHERE id=?', [req.params.id]);
-  if (!rows.length) return res.status(404).json({ error: 'No encontrado' });
-  if (req.user.role !== 'trainer' && rows[0].user_id !== req.user.id) {
-    return res.status(403).json({ error: 'Sin permiso' });
-  }
-  await db.query('DELETE FROM bioimpedance WHERE id=?', [req.params.id]);
-  res.json({ ok: true });
+  try {
+    const [rows] = await db.query('SELECT user_id FROM bioimpedance WHERE id=?', [req.params.id]);
+    if (!rows.length) return res.status(404).json({ error: 'No encontrado' });
+    if (req.user.role !== 'trainer' && rows[0].user_id !== req.user.id) {
+      return res.status(403).json({ error: 'Sin permiso' });
+    }
+    await db.query('DELETE FROM bioimpedance WHERE id=?', [req.params.id]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 module.exports = router;

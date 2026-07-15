@@ -7,8 +7,12 @@ const { notifyTrainerOnboarding, sendWelcomeWithInstructions } = require('../ser
 
 router.use(requireAuth);
 
+// mysql2 lanza error con parámetros undefined — convertir a null
+const sqlSafe = (params) => params.map(v => v === undefined ? null : v);
+
 // POST /questionnaire
 router.post('/', async (req, res) => {
+  try {
   const q = req.body;
   const uid = req.user.id;
 
@@ -33,7 +37,7 @@ router.post('/', async (req, res) => {
       has_injury=VALUES(has_injury), injury_detail=VALUES(injury_detail),
       energy_level=VALUES(energy_level), diet_quality=VALUES(diet_quality),
       motivation=VALUES(motivation), commitment_level=VALUES(commitment_level)
-  `, [
+  `, sqlSafe([
     uid,
     q.age, q.birth_date, q.height_cm, q.weight_kg, q.occupation, q.city, q.phone,
     JSON.stringify(q.main_goal), q.goal_timeframe,
@@ -53,7 +57,7 @@ router.post('/', async (req, res) => {
     q.motivation, q.expectations, q.obstacles, q.commitment_level,
     q.arm_cm, q.chest_cm, q.waist_cm, q.hip_cm, q.thigh_cm, q.calf_cm, q.forearm_cm,
     q.nutritional_notes,
-  ]);
+  ]));
 
   // Calculate calorie target from biometrics if not provided
   let calorie_target = q.calorie_target || null;
@@ -95,6 +99,10 @@ router.post('/', async (req, res) => {
   notifyTrainerOnboarding(u?.name || 'Una clienta').catch(() => {});
 
   res.json({ message: 'Cuestionario guardado' });
+  } catch (e) {
+    console.error('[questionnaire]', e.message);
+    res.status(500).json({ error: 'Error al guardar el cuestionario. Intenta de nuevo.' });
+  }
 });
 
 module.exports = router;

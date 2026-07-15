@@ -28,6 +28,7 @@ export default function FoodLogger() {
   const [tab, setTab]           = useState('today');
   const [history, setHistory]   = useState([]);
   const [histLoading, setHistLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => { fetchToday(); }, []);
 
@@ -37,11 +38,14 @@ export default function FoodLogger() {
 
   async function fetchToday() {
     setFetching(true);
+    setLoadError(false);
     try {
       const d = await api.food.today();
       setLogs(d.logs);
       setDaily(d.daily);
       setStatus(d.status);
+    } catch (e) {
+      setLoadError(true);
     } finally {
       setFetching(false);
     }
@@ -60,6 +64,8 @@ export default function FoodLogger() {
         fat: Math.round(r.fat_g),
         target,
       })));
+    } catch (e) {
+      console.error('fetchHistory:', e.message);
     } finally {
       setHistLoading(false);
     }
@@ -166,6 +172,8 @@ export default function FoodLogger() {
           <p className="label">Registros de hoy</p>
           {fetching ? (
             <div style={{ textAlign: 'center', padding: 32 }}><div className="spinner" style={{ borderTopColor: 'var(--coral)', borderColor: 'var(--border)', width: 28, height: 28 }} /></div>
+          ) : loadError ? (
+            <div className="empty-state"><div className="icon">📡</div><p>No se pudo cargar. Revisa tu conexión.</p><button className="btn-primary" style={{ marginTop: 16 }} onClick={fetchToday}>Reintentar</button></div>
           ) : logs.length === 0 ? (
             <div className="empty-state"><div className="icon">🍽️</div><p>Aún no has registrado nada hoy</p></div>
           ) : (
@@ -258,7 +266,11 @@ function MacroBox({ label, value, color }) {
 
 function LogCard({ log, onDelete }) {
   const [open, setOpen] = useState(false);
-  const items = typeof log.parsed_items === 'string' ? JSON.parse(log.parsed_items) : (log.parsed_items || []);
+  let items = [];
+  try {
+    items = typeof log.parsed_items === 'string' ? JSON.parse(log.parsed_items) : (log.parsed_items || []);
+    if (!Array.isArray(items)) items = [];
+  } catch { items = []; }
   const mealIcons = { breakfast: '🌅', lunch: '☀️', dinner: '🌙', snack: '🍎' };
 
   return (
