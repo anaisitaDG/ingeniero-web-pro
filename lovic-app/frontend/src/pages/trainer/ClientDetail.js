@@ -39,6 +39,7 @@ export default function ClientDetail() {
 
   // Workout builder state
   const [workoutDays, setWorkoutDays]     = useState([EMPTY_DAY()]);
+  const [originalDayCount, setOriginalDayCount] = useState(0);
   const [workoutLoading, setWorkoutLoading] = useState(false);
   const [savingWorkout, setSavingWorkout]   = useState(false);
   const [durationDays, setDurationDays]     = useState('');
@@ -111,6 +112,7 @@ export default function ClientDetail() {
         setStartDate(res.plan.start_date ? res.plan.start_date.slice(0, 10) : new Date().toISOString().slice(0, 10));
       }
       if (res.plan?.days?.length > 0) {
+        setOriginalDayCount(res.plan.days.length);
         setWorkoutDays(res.plan.days.map(d => ({
           _key: Math.random(),
           day_name: d.day_name,
@@ -186,6 +188,10 @@ export default function ClientDetail() {
           })),
       }));
     if (days.length === 0) { setSaveMsg('❌ Agrega al menos un día con ejercicios'); setTimeout(() => setSaveMsg(''), 3000); return; }
+    if (originalDayCount > 0 && days.length < originalDayCount) {
+      const ok = window.confirm(`⚠️ El plan actual tiene ${originalDayCount} días pero vas a guardar solo ${days.length}. Los días sin nombre se eliminarán. ¿Continuar?`);
+      if (!ok) return;
+    }
     setSavingWorkout(true);
     try { await api.trainer.saveWorkout(id, days, durationDays ? Number(durationDays) : null, startDate || null); setSaveMsg('✅ Plan guardado'); setTimeout(() => setSaveMsg(''), 3000); }
     catch (e) { setSaveMsg('❌ ' + e.message); setTimeout(() => setSaveMsg(''), 4000); }
