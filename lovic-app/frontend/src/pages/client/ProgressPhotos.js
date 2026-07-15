@@ -312,6 +312,7 @@ export default function ProgressPhotos() {
   if (comparing && selected.length === 2) {
     const a = registers.find(r => r.id === selected[0]);
     const b = registers.find(r => r.id === selected[1]);
+    if (!a || !b) { setComparing(false); setSelected([]); return null; }
     return <CompareView a={a} b={b} onClose={() => setComparing(false)} />;
   }
 

@@ -60,7 +60,7 @@ router.get('/clients/:id', async (req, res) => {
     );
 
     const [adherence] = await db.query(
-      `SELECT COUNT(*) as total_days, SUM(workout_done) as workout_days, SUM(diet_followed) as diet_days
+      `SELECT 30 as total_days, SUM(workout_done) as workout_days, SUM(diet_followed) as diet_days
        FROM daily_tracking WHERE user_id=? AND tracked_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)`,
       [uid]
     );
@@ -497,6 +497,7 @@ router.post('/weekly-summary', async (req, res) => {
     // Trigger via app-level function isn't exported cleanly; replicate inline
     const { sendWeeklySummary } = require('../services/email');
     const [[trainer]] = await db.query(`SELECT * FROM users WHERE role='trainer' LIMIT 1`);
+    if (!trainer) return res.status(404).json({ error: 'No se encontró entrenador' });
     const [clients] = await db.query(`SELECT id, name FROM users WHERE role='client' ORDER BY name`);
     const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
     const weekStr = weekAgo.toISOString().slice(0, 10);
@@ -623,7 +624,13 @@ router.put('/library/:id', async (req, res) => {
 // DELETE /trainer/library/variations/:varId  — must come before /library/:id
 router.delete('/library/variations/:varId', async (req, res) => {
   try {
-    await db.query('DELETE FROM exercise_variations WHERE id=?', [req.params.varId]);
+    const trainerId = req.user.id;
+    await db.query(
+      `DELETE ev FROM exercise_variations ev
+       JOIN exercise_library el ON el.id = ev.exercise_id
+       WHERE ev.id = ? AND el.trainer_id = ?`,
+      [req.params.varId, trainerId]
+    );
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -644,12 +651,20 @@ router.post('/library/:id/variations', async (req, res) => {
 
 // DELETE /trainer/library/:id
 router.delete('/library/:id', async (req, res) => {
+  const conn = await db.getConnection();
   try {
     const trainerId = req.user.id;
-    await db.query('DELETE FROM exercise_variations WHERE exercise_id=?', [req.params.id]);
-    await db.query('DELETE FROM exercise_library WHERE id=? AND trainer_id=?', [req.params.id, trainerId]);
+    await conn.beginTransaction();
+    await conn.query('DELETE FROM exercise_variations WHERE exercise_id=?', [req.params.id]);
+    await conn.query('DELETE FROM exercise_library WHERE id=? AND trainer_id=?', [req.params.id, trainerId]);
+    await conn.commit();
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) {
+    await conn.rollback();
+    res.status(500).json({ error: e.message });
+  } finally {
+    conn.release();
+  }
 });
 
 // GET /trainer/billing — panel de ingresos

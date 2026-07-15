@@ -436,7 +436,7 @@ function NutritionView({ content, updatedAt }) {
 }
 
 function PlanProgress({ startDate, durationDays }) {
-  const start = new Date(startDate);
+  const start = new Date(startDate + 'T00:00:00');
   const elapsed = Math.floor((Date.now() - start) / 86400000);
   const dayOfPlan = Math.min(elapsed + 1, durationDays);
   const pct = Math.min(Math.round((elapsed / durationDays) * 100), 100);
@@ -610,14 +610,14 @@ function DayCard({ day, onLogged, completedDate, onToggleComplete }) {
     if (warmupChoice && warmupChoice !== 'Otro') {
       api.workout.saveActivity(day.id, 'warmup', warmupChoice, Number(warmupMins) || null).catch(() => {});
     }
-  }, [warmupChoice, warmupMins, warmupDone, activityLoaded]); // eslint-disable-line
+  }, [warmupChoice, warmupMins, warmupDone, activityLoaded, day.id]); // eslint-disable-line
 
   useEffect(() => {
     if (!activityLoaded) return;
     if (cardioChoice && cardioChoice !== 'Otro') {
       api.workout.saveActivity(day.id, 'cardio', cardioChoice, Number(cardioMins) || null).catch(() => {});
     }
-  }, [cardioChoice, cardioMins, cardioDone, activityLoaded]); // eslint-disable-line
+  }, [cardioChoice, cardioMins, cardioDone, activityLoaded, day.id]); // eslint-disable-line
   // kcal per exercise keyed by ex.id, updated by ExerciseCard
   const [exKcal, setExKcal] = useState({});
 
@@ -747,7 +747,7 @@ function ExerciseCard({ exercise: ex, onLogged, onKcalChange }) {
   // Report kcal to parent whenever weights change
   useEffect(() => {
     onKcalChange?.(calcStrengthKcal(setWeights));
-  }, [setWeights]); // eslint-disable-line
+  }, [setWeights, onKcalChange]); // eslint-disable-line
 
   const today = new Date().toLocaleDateString('en-CA');
   const lastSession = ex.last_session;

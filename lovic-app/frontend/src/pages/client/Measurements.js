@@ -532,7 +532,7 @@ function InfoRow({ label, value }) {
 }
 
 function MeasureCard({ field, value: val, prev: pval }) {
-  const diff = pval != null ? (val - pval).toFixed(1) : null;
+  const diff = pval != null ? parseFloat((val - pval).toFixed(1)) : null;
   const up   = diff > 0;
   const isWeight = field.key === 'weight_kg';
 

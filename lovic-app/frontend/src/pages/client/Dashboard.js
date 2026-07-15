@@ -378,7 +378,7 @@ export default function Dashboard() {
         if (!calories?.consumed) reminders.push({ icon: '🥗', text: 'Registra tus comidas de hoy', to: '/food' });
         if (!tracking.workout_done) reminders.push({ icon: '💪', text: 'Marca tu entrenamiento cuando lo hagas', to: '/plan' });
         const lastWeight = weightData[weightData.length - 1];
-        const accountAgeDays = Math.floor((Date.now() - new Date(data?.user_created_at || Date.now())) / 86400000);
+        const accountAgeDays = Math.floor((Date.now() - new Date(data?.user?.created_at || Date.now())) / 86400000);
         const daysSinceWeight = lastWeight
           ? Math.floor((Date.now() - new Date(data?.weight_history?.[0]?.logged_at)) / 86400000)
           : 999;
@@ -387,14 +387,14 @@ export default function Dashboard() {
         return (
           <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
             {reminders.map((r, i) => (
-              <a key={i} href={r.to} style={{
+              <Link key={i} to={r.to} style={{
                 display: 'flex', alignItems: 'center', gap: 10, background: '#FFF8E7',
                 border: '1.5px solid #F5D87A', borderRadius: 12, padding: '10px 14px', textDecoration: 'none',
               }}>
                 <span style={{ fontSize: 20 }}>{r.icon}</span>
                 <span style={{ fontSize: 13, fontWeight: 600, color: '#7A5C00', flex: 1 }}>{r.text}</span>
                 <span style={{ color: '#C99A1E', fontSize: 16 }}>→</span>
-              </a>
+              </Link>
             ))}
           </div>
         );

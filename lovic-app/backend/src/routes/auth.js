@@ -9,26 +9,36 @@ const { requireAuth } = require('../middleware/auth');
 
 // POST /auth/magic-link — solicita enlace de acceso
 router.post('/magic-link', async (req, res) => {
-  const { email } = req.body;
-  if (!email) return res.status(400).json({ error: 'Email requerido' });
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email requerido' });
 
-  const [[user]] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
-  if (!user) return res.status(404).json({ error: 'No existe una cuenta con ese email' });
+    const [[user]] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
+    if (!user) return res.status(404).json({ error: 'No existe una cuenta con ese email' });
 
-  const token = uuidv4();
-  const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+    const token = uuidv4();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
-  await db.query(
-    'INSERT INTO magic_links (user_id, token, expires_at) VALUES (?, ?, ?)',
-    [user.id, token, expiresAt]
-  );
+    await db.query(
+      'INSERT INTO magic_links (user_id, token, expires_at) VALUES (?, ?, ?)',
+      [user.id, token, expiresAt]
+    );
 
-  await sendMagicLink(email, user.name, token);
-  res.json({ message: 'Enlace enviado a tu correo' });
+    try {
+      await sendMagicLink(email, user.name, token);
+    } catch (emailErr) {
+      await db.query('DELETE FROM magic_links WHERE token=?', [token]);
+      throw emailErr;
+    }
+    res.json({ message: 'Enlace enviado a tu correo' });
+  } catch (e) {
+    console.error('[magic-link]', e.message);
+    res.status(500).json({ error: 'No se pudo enviar el enlace. Intenta de nuevo.' });
+  }
 });
 
 // POST /auth/onboarding — crea cuenta desde formulario de valoración
-router.post('/onboarding', async (req, res) => {
+router.post('/onboarding', async (req, res) => { try {
   const { email, name, phone, questionnaire } = req.body;
   if (!email || !name) return res.status(400).json({ error: 'Email y nombre requeridos' });
 
@@ -96,6 +106,10 @@ router.post('/onboarding', async (req, res) => {
   await sendMagicLink(email, name, token);
 
   res.json({ message: 'Perfil creado. Revisa tu correo para acceder.' });
+} catch (e) {
+  console.error('[onboarding]', e.message);
+  res.status(500).json({ error: 'Error al crear perfil. Intenta de nuevo.' });
+}
 });
 
 // GET /auth/verify?token=xxx

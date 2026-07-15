@@ -33,7 +33,7 @@ export default function FoodLogger() {
 
   useEffect(() => {
     if (tab === 'history' && history.length === 0) fetchHistory();
-  }, [tab]);
+  }, [tab, history.length]); // eslint-disable-line
 
   async function fetchToday() {
     setFetching(true);
