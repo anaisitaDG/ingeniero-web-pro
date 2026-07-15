@@ -116,10 +116,16 @@ router.get('/clients/:id/workout', async (req, res) => {
 // PUT /trainer/clients/:id/workout — guarda plan estructurado completo
 router.put('/clients/:id/workout', async (req, res) => {
   const uid = req.params.id;
-  const { days, duration_days, start_date, plan_id } = req.body;
+  const { days, duration_days, start_date } = req.body;
   if (!Array.isArray(days)) return res.status(400).json({ error: 'days requerido' });
 
-  // If editing an existing plan, update in place to preserve workout_logs history
+  // Always look up the active plan on the backend to avoid relying on frontend state
+  const [[activePlan]] = await db.query(
+    'SELECT id FROM workout_plans WHERE user_id=? AND is_active=TRUE ORDER BY created_at DESC LIMIT 1', [uid]
+  );
+  const plan_id = activePlan?.id || null;
+
+  // If an active plan exists, update in place to preserve workout_logs history
   if (plan_id) {
     await db.query(
       'UPDATE workout_plans SET duration_days=?, start_date=? WHERE id=? AND user_id=?',
