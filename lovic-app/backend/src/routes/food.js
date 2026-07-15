@@ -121,9 +121,9 @@ router.get('/history', async (req, res) => {
   const [rows] = await db.query(
     `SELECT logged_at, SUM(calories) as calories, SUM(protein_g) as protein_g,
             SUM(carbs_g) as carbs_g, SUM(fat_g) as fat_g
-     FROM food_logs WHERE user_id = ? AND logged_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+     FROM food_logs WHERE user_id = ? AND logged_at >= DATE_SUB(?, INTERVAL ? DAY)
      GROUP BY logged_at ORDER BY logged_at ASC`,
-    [req.user.id, days]
+    [req.user.id, colombiaToday(), days]
   );
   res.json({ history: rows, target: req.user.calorie_target });
 });

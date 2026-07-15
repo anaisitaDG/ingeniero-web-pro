@@ -296,9 +296,13 @@ export default function ProgressPhotos() {
 
   async function handleDelete(id) {
     if (!window.confirm('¿Eliminar este registro completo?')) return;
-    await api.progressPhotos.removeRegister(id);
-    setSelected(s => s.filter(sid => sid !== id));
-    load();
+    try {
+      await api.progressPhotos.removeRegister(id);
+      setSelected(s => s.filter(sid => sid !== id));
+      load();
+    } catch (e) {
+      alert('No se pudo eliminar. Intenta de nuevo.');
+    }
   }
 
   function toggleSelect(id) {

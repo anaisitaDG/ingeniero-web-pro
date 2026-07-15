@@ -120,8 +120,18 @@ router.get('/completed-days', async (req, res) => {
 router.post('/log', async (req, res) => {
   const uid = req.user.id;
   const { exercise_id, logged_date, sets } = req.body;
-  // sets = [{ set_number, weight_kg, reps_done }]
   if (!exercise_id || !Array.isArray(sets)) return res.status(400).json({ error: 'Datos requeridos' });
+
+  // Verify exercise belongs to this user's active plan
+  const [[ownerCheck]] = await db.query(
+    `SELECT we.id FROM workout_exercises we
+     JOIN workout_days wd ON wd.id = we.day_id
+     JOIN workout_plans wp ON wp.id = wd.plan_id
+     WHERE we.id = ? AND wp.user_id = ?`,
+    [exercise_id, uid]
+  );
+  if (!ownerCheck) return res.status(403).json({ error: 'Ejercicio no encontrado en tu plan' });
+
   const date = logged_date || colombiaToday();
 
   // Delete previous logs for this exercise on this date

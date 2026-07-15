@@ -27,7 +27,7 @@ async function request(path, options = {}) {
   if (res.status === 401) {
     clearToken();
     window.location.href = '/login';
-    return;
+    throw new Error('Sesión expirada');
   }
 
   let data;

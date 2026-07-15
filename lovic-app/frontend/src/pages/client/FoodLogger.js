@@ -83,8 +83,12 @@ export default function FoodLogger() {
 
   async function handleDelete(id) {
     if (!window.confirm('¿Eliminar este registro de comida?')) return;
-    await api.food.remove(id);
-    fetchToday();
+    try {
+      await api.food.remove(id);
+      fetchToday();
+    } catch (e) {
+      alert('No se pudo eliminar. Intenta de nuevo.');
+    }
   }
 
   const pct = daily ? Math.min(Math.round((daily.consumed / daily.target) * 100), 100) : 0;

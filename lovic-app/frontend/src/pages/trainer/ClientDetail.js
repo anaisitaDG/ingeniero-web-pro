@@ -153,7 +153,7 @@ export default function ClientDetail() {
       const c = (res.clients || []).find(c => String(c.id) === String(id));
       if (c) setBilling({ monthly_fee: c.monthly_fee != null ? String(c.monthly_fee) : '', next_payment_date: c.next_payment_date ? String(c.next_payment_date).slice(0, 10) : '', notes: c.notes || '' });
     });
-  }, [tab]); // eslint-disable-line
+  }, [tab, id]); // eslint-disable-line
 
   async function saveTargets() {
     setSavingTargets(true);

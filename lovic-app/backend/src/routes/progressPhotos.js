@@ -33,8 +33,13 @@ router.post('/register', upload.fields([
     return res.status(400).json({ error: 'Al menos una foto es requerida' });
   }
 
-  // Allow trainer to upload on behalf of a client
-  const targetUserId = req.body.user_id && req.user.role === 'trainer' ? req.body.user_id : req.user.id;
+  // Allow trainer to upload on behalf of a client (verified)
+  let targetUserId = req.user.id;
+  if (req.body.user_id && req.user.role === 'trainer') {
+    const [[target]] = await db.query('SELECT id FROM users WHERE id=? AND role="client"', [req.body.user_id]);
+    if (!target) return res.status(403).json({ error: 'Usuario destino no válido' });
+    targetUserId = target.id;
+  }
 
   const registerId = uuidv4();
   const note = req.body.note || '';
@@ -90,15 +95,19 @@ router.get('/', async (req, res) => {
 
 // DELETE /progress-photos/register/:id
 router.delete('/register/:id', async (req, res) => {
-  await db.query(
-    'DELETE FROM progress_photos WHERE register_id=? AND user_id=?',
-    [req.params.id, req.user.id]
-  );
-  await db.query(
-    'DELETE FROM progress_registers WHERE id=? AND user_id=?',
-    [req.params.id, req.user.id]
-  );
-  res.json({ message: 'Registro eliminado' });
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+    await conn.query('DELETE FROM progress_photos WHERE register_id=? AND user_id=?', [req.params.id, req.user.id]);
+    await conn.query('DELETE FROM progress_registers WHERE id=? AND user_id=?', [req.params.id, req.user.id]);
+    await conn.commit();
+    res.json({ message: 'Registro eliminado' });
+  } catch (e) {
+    await conn.rollback();
+    res.status(500).json({ error: e.message });
+  } finally {
+    conn.release();
+  }
 });
 
 // Legacy single upload kept for backwards compatibility

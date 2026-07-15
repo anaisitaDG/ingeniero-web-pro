@@ -34,7 +34,11 @@ export default function MyPlan() {
   async function toggleDay(dayId, dayName, kcal, date) {
     const done = !completedDays[dayId];
     const useDate = date || new Date().toLocaleDateString('en-CA');
-    setCompletedDays(prev => ({ ...prev, [dayId]: done ? useDate : undefined }));
+    setCompletedDays(prev => {
+      const next = { ...prev };
+      if (done) next[dayId] = useDate; else delete next[dayId];
+      return next;
+    });
     try { await api.workout.completeDay(dayId, done, useDate); } catch (_) {}
     if (done) {
       const dRes = await api.dashboard.get().catch(() => null);
@@ -590,8 +594,9 @@ function DayCard({ day, onLogged, completedDate, onToggleComplete }) {
 
   const today = new Date().toLocaleDateString('en-CA');
 
-  // Load today's activity from backend on mount
+  // Load today's activity from backend only when card is open
   useEffect(() => {
+    if (!open) return;
     api.workout.getActivity(day.id).then(res => {
       const acts = res.activities || [];
       setAllActivities(acts);
@@ -602,7 +607,7 @@ function DayCard({ day, onLogged, completedDate, onToggleComplete }) {
       if (c) { setCardioChoice(c.activity_name); setCardioMins(c.duration_mins || ''); setCardioDone(true); }
       setActivityLoaded(true);
     }).catch(err => { console.error('Activity load error:', err); setActivityLoaded(true); });
-  }, [day.id]); // eslint-disable-line
+  }, [day.id, open]); // eslint-disable-line
 
   // Save to backend when done is toggled or choice/mins change (only after initial load)
   useEffect(() => {
@@ -770,9 +775,13 @@ function ExerciseCard({ exercise: ex, onLogged, onKcalChange }) {
 
   async function loadHistory() {
     if (history) { setShowHistory(h => !h); return; }
-    const res = await api.workout.history(ex.id);
-    setHistory(res.history);
-    setShowHistory(true);
+    try {
+      const res = await api.workout.history(ex.id);
+      setHistory(res.history);
+      setShowHistory(true);
+    } catch (e) {
+      alert('No se pudo cargar el historial.');
+    }
   }
 
   const isLoggedToday = lastSession?.logged_date &&
