@@ -102,8 +102,13 @@ router.post('/onboarding', async (req, res) => { try {
   const token = uuidv4();
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
   await db.query('INSERT INTO magic_links (user_id, token, expires_at) VALUES (?, ?, ?)', [userId, token, expiresAt]);
-  await sendWelcome(email, name);
-  await sendMagicLink(email, name, token);
+  try {
+    await sendWelcome(email, name);
+    await sendMagicLink(email, name, token);
+  } catch (emailErr) {
+    await db.query('DELETE FROM magic_links WHERE token=?', [token]);
+    throw emailErr;
+  }
 
   res.json({ message: 'Perfil creado. Revisa tu correo para acceder.' });
 } catch (e) {
@@ -114,24 +119,28 @@ router.post('/onboarding', async (req, res) => { try {
 
 // GET /auth/verify?token=xxx
 router.get('/verify', async (req, res) => {
-  const { token } = req.query;
-  if (!token) return res.redirect(`${process.env.APP_URL}/login?error=token-requerido`);
+  try {
+    const { token } = req.query;
+    if (!token) return res.redirect(`${process.env.APP_URL}/login?error=token-requerido`);
 
-  const [[link]] = await db.query(
-    'SELECT * FROM magic_links WHERE token = ? AND used = FALSE AND expires_at > NOW()',
-    [token]
-  );
-  if (!link) return res.redirect(`${process.env.APP_URL}/login?error=link-expirado`);
+    const [[link]] = await db.query(
+      'SELECT * FROM magic_links WHERE token = ? AND used = FALSE AND expires_at > NOW()',
+      [token]
+    );
+    if (!link) return res.redirect(`${process.env.APP_URL}/login?error=link-expirado`);
 
-  await db.query('UPDATE magic_links SET used = TRUE WHERE id = ?', [link.id]);
+    await db.query('UPDATE magic_links SET used = TRUE WHERE id = ?', [link.id]);
 
-  const [[tokenUser]] = await db.query('SELECT role FROM users WHERE id=?', [link.user_id]);
-  const jwt_token = jwt.sign({ sub: link.user_id, role: tokenUser?.role }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN,
-  });
+    const [[tokenUser]] = await db.query('SELECT role FROM users WHERE id=?', [link.user_id]);
+    const jwt_token = jwt.sign({ sub: link.user_id, role: tokenUser?.role }, process.env.JWT_SECRET, {
+      expiresIn: process.env.JWT_EXPIRES_IN,
+    });
 
-  // En producción redirige al frontend con el token
-  res.redirect(`${process.env.APP_URL}/?token=${jwt_token}`);
+    res.redirect(`${process.env.APP_URL}/?token=${jwt_token}`);
+  } catch (e) {
+    console.error('[verify]', e.message);
+    res.redirect(`${process.env.APP_URL}/login?error=error-interno`);
+  }
 });
 
 // POST /auth/login — login con contraseña

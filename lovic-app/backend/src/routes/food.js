@@ -14,6 +14,7 @@ function colombiaToday() {
 
 // POST /food/log
 router.post('/log', async (req, res) => {
+  try {
   const { input_text, meal_type } = req.body;
   if (!input_text?.trim()) return res.status(400).json({ error: 'Texto requerido' });
 
@@ -79,30 +80,33 @@ router.post('/log', async (req, res) => {
       remaining: Math.max(remaining, 0),
     },
   });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // GET /food/today
 router.get('/today', async (req, res) => {
-  const today = req.query.date || colombiaToday();
-  const [logs] = await db.query(
-    `SELECT * FROM food_logs WHERE user_id = ? AND logged_at = ? ORDER BY created_at DESC`,
-    [req.user.id, today]
-  );
+  try {
+    const today = req.query.date || colombiaToday();
+    const [logs] = await db.query(
+      `SELECT * FROM food_logs WHERE user_id = ? AND logged_at = ? ORDER BY created_at DESC`,
+      [req.user.id, today]
+    );
 
-  const [[{ total }]] = await db.query(
-    `SELECT COALESCE(SUM(calories), 0) AS total FROM food_logs
-     WHERE user_id = ? AND logged_at = ?`,
-    [req.user.id, today]
-  );
+    const [[{ total }]] = await db.query(
+      `SELECT COALESCE(SUM(calories), 0) AS total FROM food_logs
+       WHERE user_id = ? AND logged_at = ?`,
+      [req.user.id, today]
+    );
 
-  const target    = req.user.calorie_target || 2000;
-  const remaining = Math.max(target - total, 0);
+    const target    = req.user.calorie_target || 2000;
+    const remaining = Math.max(target - total, 0);
 
-  res.json({
-    logs,
-    daily: { target, consumed: total, remaining },
-    status: deficitStatus(total, target),
-  });
+    res.json({
+      logs,
+      daily: { target, consumed: total, remaining },
+      status: deficitStatus(total, target),
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // Estado calórico basado en reglas (sin IA)
@@ -117,21 +121,25 @@ function deficitStatus(consumed, target) {
 
 // GET /food/history?days=7
 router.get('/history', async (req, res) => {
-  const days = Math.min(parseInt(req.query.days) || 7, 30);
-  const [rows] = await db.query(
-    `SELECT logged_at, SUM(calories) as calories, SUM(protein_g) as protein_g,
-            SUM(carbs_g) as carbs_g, SUM(fat_g) as fat_g
-     FROM food_logs WHERE user_id = ? AND logged_at >= DATE_SUB(?, INTERVAL ? DAY)
-     GROUP BY logged_at ORDER BY logged_at ASC`,
-    [req.user.id, colombiaToday(), days]
-  );
-  res.json({ history: rows, target: req.user.calorie_target });
+  try {
+    const days = Math.min(parseInt(req.query.days) || 7, 30);
+    const [rows] = await db.query(
+      `SELECT logged_at, SUM(calories) as calories, SUM(protein_g) as protein_g,
+              SUM(carbs_g) as carbs_g, SUM(fat_g) as fat_g
+       FROM food_logs WHERE user_id = ? AND logged_at >= DATE_SUB(?, INTERVAL ? DAY)
+       GROUP BY logged_at ORDER BY logged_at ASC`,
+      [req.user.id, colombiaToday(), days]
+    );
+    res.json({ history: rows, target: req.user.calorie_target });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // DELETE /food/log/:id
 router.delete('/log/:id', async (req, res) => {
-  await db.query('DELETE FROM food_logs WHERE id = ? AND user_id = ?', [req.params.id, req.user.id]);
-  res.json({ message: 'Registro eliminado' });
+  try {
+    await db.query('DELETE FROM food_logs WHERE id = ? AND user_id = ?', [req.params.id, req.user.id]);
+    res.json({ message: 'Registro eliminado' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 module.exports = router;

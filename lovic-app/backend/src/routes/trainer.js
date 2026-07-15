@@ -664,6 +664,10 @@ router.post('/library/:id/variations', async (req, res) => {
   try {
     const { name, youtube_url, notes } = req.body;
     if (!name?.trim()) return res.status(400).json({ error: 'name requerido' });
+    const [[ex]] = await db.query(
+      'SELECT id FROM exercise_library WHERE id=? AND trainer_id=?', [req.params.id, req.user.id]
+    );
+    if (!ex) return res.status(403).json({ error: 'Ejercicio no encontrado' });
     const id = uuidv4();
     await db.query(
       'INSERT INTO exercise_variations (id, exercise_id, name, youtube_url, notes) VALUES (?, ?, ?, ?, ?)',

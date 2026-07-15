@@ -34,12 +34,18 @@ export default function MyPlan() {
   async function toggleDay(dayId, dayName, kcal, date) {
     const done = !completedDays[dayId];
     const useDate = date || new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString().slice(0, 10);
-    setCompletedDays(prev => {
-      const next = { ...prev };
+    const prev = completedDays;
+    setCompletedDays(p => {
+      const next = { ...p };
       if (done) next[dayId] = useDate; else delete next[dayId];
       return next;
     });
-    try { await api.workout.completeDay(dayId, done, useDate); } catch (_) {}
+    try {
+      await api.workout.completeDay(dayId, done, useDate);
+    } catch (_) {
+      setCompletedDays(prev);
+      return;
+    }
     if (done) {
       const dRes = await api.dashboard.get().catch(() => null);
       const newStreak = dRes?.streak ?? streak + 1;

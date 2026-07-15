@@ -25,12 +25,14 @@ router.post('/', async (req, res) => {
 
 // GET /measurements
 router.get('/', async (req, res) => {
-  const limit = Math.min(parseInt(req.query.limit) || 10, 50);
-  const [rows] = await db.query(
-    `SELECT * FROM measurements WHERE user_id=? ORDER BY logged_at DESC LIMIT ?`,
-    [req.user.id, limit]
-  );
-  res.json({ measurements: rows });
+  try {
+    const limit = Math.min(parseInt(req.query.limit) || 10, 50);
+    const [rows] = await db.query(
+      `SELECT * FROM measurements WHERE user_id=? ORDER BY logged_at DESC LIMIT ?`,
+      [req.user.id, limit]
+    );
+    res.json({ measurements: rows });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 module.exports = router;

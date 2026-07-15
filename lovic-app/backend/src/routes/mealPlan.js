@@ -15,7 +15,6 @@ router.get('/', async (req, res) => {
   try {
     const uid = req.user.id;
     const today = colombiaToday();
-    // JS getDay: 0=Sun,1=Mon... we use 1=Mon,7=Sun
     const jsDay = new Date(today + 'T12:00:00').getDay();
     const dow = jsDay === 0 ? 7 : jsDay;
 
@@ -57,6 +56,7 @@ router.get('/week', async (req, res) => {
     res.json({ plan });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+
 
 // POST /meal-plan/complete
 router.post('/complete', async (req, res) => {

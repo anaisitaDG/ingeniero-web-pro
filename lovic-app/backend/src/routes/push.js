@@ -4,8 +4,8 @@ const webpush = require('web-push');
 const db = require('../database/db');
 const { requireAuth: auth } = require('../middleware/auth');
 
-const VAPID_PUBLIC  = 'BMyXu344UMSX0IoqheXZQnVnk9LC5bSMUVYza66Ht5jrY_LpeSe3y5b3npONMOM33uI-Rsg7z5XJBza4CHbwD6s';
-const VAPID_PRIVATE = '0zl7Psjn5I2o8gyQMDmWiEgKuqgsC5hl9kG2zWvxZ30';
+const VAPID_PUBLIC  = process.env.VAPID_PUBLIC_KEY  || 'BMyXu344UMSX0IoqheXZQnVnk9LC5bSMUVYza66Ht5jrY_LpeSe3y5b3npONMOM33uI-Rsg7z5XJBza4CHbwD6s';
+const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY || '0zl7Psjn5I2o8gyQMDmWiEgKuqgsC5hl9kG2zWvxZ30';
 
 webpush.setVapidDetails('mailto:hola@anaismoralesmkt.com', VAPID_PUBLIC, VAPID_PRIVATE);
 
