@@ -383,9 +383,9 @@ export default function Dashboard() {
     <div>
       <div style={{ marginBottom: 24 }}>
         <p style={{ color: 'var(--muted)', fontSize: 14 }}>{new Date().toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
           <h1 style={{ fontSize: 24, fontWeight: 800 }}>Hola, {user?.name?.split(' ')[0]} 👋</h1>
-          <div style={{ display: 'flex', gap: 6 }}>
+          <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
             {streak > 0 && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'var(--gold-light)', borderRadius: 20, padding: '6px 12px' }}>
                 <span style={{ fontSize: 18 }}>🔥</span>
