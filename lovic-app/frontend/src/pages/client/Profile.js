@@ -152,6 +152,22 @@ export default function Profile() {
 
 function NotificationsCard() {
   const { supported, permission, subscribed, loading, subscribe, unsubscribe } = usePushNotifications();
+  const [testMsg, setTestMsg] = useState('');
+  const [testing, setTesting] = useState(false);
+
+  async function sendTest() {
+    setTesting(true);
+    setTestMsg('');
+    try {
+      const r = await api.push.test();
+      setTestMsg(r.sent > 0 ? '✅ Enviada — revisa tu pantalla en unos segundos' : '⚠️ No se pudo entregar. Reactiva las notificaciones.');
+    } catch (e) {
+      setTestMsg('❌ ' + e.message);
+    } finally {
+      setTesting(false);
+      setTimeout(() => setTestMsg(''), 6000);
+    }
+  }
 
   if (!supported) return (
     <div className="card">
@@ -170,6 +186,10 @@ function NotificationsCard() {
       ) : subscribed ? (
         <>
           <p style={{ fontSize: 13, color: 'var(--green)', marginBottom: 12 }}>✅ Notificaciones activas</p>
+          <button className="btn-primary" onClick={sendTest} disabled={testing} style={{ width: '100%', justifyContent: 'center', fontSize: 14, marginBottom: 10 }}>
+            {testing ? <span className="spinner" /> : '🧪 Enviar notificación de prueba'}
+          </button>
+          {testMsg && <p style={{ fontSize: 13, textAlign: 'center', marginBottom: 10, color: testMsg.startsWith('✅') ? 'var(--green)' : 'var(--coral)' }}>{testMsg}</p>}
           <button className="btn-ghost" onClick={unsubscribe} disabled={loading} style={{ width: '100%', justifyContent: 'center', fontSize: 14 }}>
             {loading ? <span className="spinner" /> : 'Desactivar notificaciones'}
           </button>

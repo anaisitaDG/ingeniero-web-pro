@@ -53,11 +53,40 @@ router.post('/send', auth, async (req, res) => {
     const [subs] = await db.query('SELECT subscription FROM push_subscriptions WHERE user_id=?', [user_id]);
     if (!subs.length) return res.status(404).json({ error: 'El cliente no tiene notificaciones activas' });
 
-    const payload = JSON.stringify({ title, body, icon: '/icons/icon-192.png' });
+    const payload = JSON.stringify({ title, body, icon: '/icon-192.png' });
     const results = await Promise.allSettled(
       subs.map(s => webpush.sendNotification(JSON.parse(s.subscription), payload))
     );
     const sent = results.filter(r => r.status === 'fulfilled').length;
+    res.json({ ok: true, sent });
+  } catch (e) {
+    res.status(500).json({ error: e.message || 'Error enviando notificación' });
+  }
+});
+
+// POST /push/test — el propio usuario se envía una notificación de prueba
+router.post('/test', auth, async (req, res) => {
+  try {
+    const [subs] = await db.query('SELECT subscription FROM push_subscriptions WHERE user_id=?', [req.user.id]);
+    if (!subs.length) return res.status(404).json({ error: 'Este dispositivo no tiene notificaciones activas' });
+
+    const payload = JSON.stringify({
+      title: '🧪 Prueba de Lovic',
+      body: '¡Funciona! Vic ya puede recordarte agua, entrenos y motivación 🎉',
+      icon: '/icon-192.png',
+    });
+    const results = await Promise.allSettled(
+      subs.map(s => webpush.sendNotification(JSON.parse(s.subscription), payload))
+    );
+    const sent = results.filter(r => r.status === 'fulfilled').length;
+    // Limpia suscripciones muertas (410/404)
+    for (let i = 0; i < results.length; i++) {
+      const r = results[i];
+      if (r.status === 'rejected' && [410, 404].includes(r.reason?.statusCode)) {
+        const ep = JSON.parse(subs[i].subscription).endpoint;
+        await db.query('DELETE FROM push_subscriptions WHERE user_id=? AND endpoint=?', [req.user.id, ep]);
+      }
+    }
     res.json({ ok: true, sent });
   } catch (e) {
     res.status(500).json({ error: e.message || 'Error enviando notificación' });

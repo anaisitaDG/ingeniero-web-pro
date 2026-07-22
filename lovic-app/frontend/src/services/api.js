@@ -126,6 +126,7 @@ export const api = {
     vapidKey:      ()                       => request('/push/vapid-public-key'),
     subscribe:     (s)                      => request('/profile/push-subscribe',  { method: 'POST',   body: JSON.stringify({ subscription: s }) }),
     unsubscribe:   (e)                      => request('/profile/push-subscribe',  { method: 'DELETE', body: JSON.stringify({ endpoint: e }) }),
+    test:          ()                       => request('/push/test', { method: 'POST' }),
     sendToClient:  (user_id, title, body)   => request('/trainer/push-reminder', { method: 'POST', body: JSON.stringify({ user_id, title, body }) }),
   },
   mealPlan: {
