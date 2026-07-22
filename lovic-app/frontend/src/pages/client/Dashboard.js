@@ -351,7 +351,7 @@ export default function Dashboard() {
   if (loading) return <div style={{ textAlign: 'center', padding: 48 }}><div className="spinner" style={{ borderTopColor: 'var(--coral)', borderColor: 'var(--border)', width: 32, height: 32 }} /></div>;
   if (error) return <div className="empty-state"><div className="icon">📡</div><p>No se pudo cargar. Revisa tu conexión.</p><button className="btn-primary" style={{ marginTop: 16 }} onClick={() => { setError(false); setLoading(true); api.dashboard.get().then(d => { setData(d); setTracking({ workout_done: !!d.tracking?.workout_done, diet_followed: !!d.tracking?.diet_followed, water_glasses: d.tracking?.water_glasses || 0, mood: d.tracking?.mood || null, sleep_hours: d.tracking?.sleep_hours || null }); setLoading(false); }).catch(() => { setError(true); setLoading(false); }); }}>Reintentar</button></div>;
 
-  const { calories, macros, bio, weight_history, adherence, routine, streak } = data || {};
+  const { calories, macros, bio, weight_history, adherence, routine, streak, week_streak } = data || {};
   const pct = calories ? Math.min(Math.round((calories.consumed / calories.target) * 100), 100) : 0;
 
   const weightData = (weight_history || []).map(w => ({
@@ -365,12 +365,20 @@ export default function Dashboard() {
         <p style={{ color: 'var(--muted)', fontSize: 14 }}>{new Date().toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <h1 style={{ fontSize: 24, fontWeight: 800 }}>Hola, {user?.name?.split(' ')[0]} 👋</h1>
-          {streak > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'var(--gold-light)', borderRadius: 20, padding: '6px 12px' }}>
-              <span style={{ fontSize: 18 }}>🔥</span>
-              <span style={{ fontWeight: 800, fontSize: 15, color: '#C99A1E' }}>{streak} días</span>
-            </div>
-          )}
+          <div style={{ display: 'flex', gap: 6 }}>
+            {streak > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'var(--gold-light)', borderRadius: 20, padding: '6px 12px' }}>
+                <span style={{ fontSize: 18 }}>🔥</span>
+                <span style={{ fontWeight: 800, fontSize: 15, color: '#C99A1E' }}>{streak} días</span>
+              </div>
+            )}
+            {week_streak > 1 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#dcfce7', borderRadius: 20, padding: '6px 12px' }} title="Semanas seguidas cumpliendo tu plan">
+                <span style={{ fontSize: 16 }}>📅</span>
+                <span style={{ fontWeight: 800, fontSize: 14, color: '#16a34a' }}>{week_streak} sem</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

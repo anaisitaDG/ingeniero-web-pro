@@ -125,6 +125,55 @@ function startCronJobs() {
     } catch (e) { console.error('[push] Error tarde:', e.message); }
   });
 
+  // 6pm Colombia (23:00 UTC) — aviso de racha en riesgo
+  cron.schedule('0 23 * * *', async () => {
+    try {
+      console.log('[push] Revisando rachas en riesgo');
+      const [subs] = await db.query('SELECT DISTINCT user_id FROM push_subscriptions');
+      const today = colombiaToday();
+      for (const { user_id } of subs) {
+        try {
+          const [logDays] = await db.query(
+            `SELECT DISTINCT DATE_FORMAT(logged_date,'%Y-%m-%d') as d FROM workout_logs WHERE user_id=? AND logged_date <= ? ORDER BY d DESC LIMIT 60`,
+            [user_id, today]
+          );
+          const [trackDays] = await db.query(
+            `SELECT DATE_FORMAT(tracked_date,'%Y-%m-%d') as d FROM daily_tracking WHERE user_id=? AND (workout_done=1 OR diet_followed=1) AND tracked_date <= ? ORDER BY d DESC LIMIT 60`,
+            [user_id, today]
+          );
+          const active = new Set([...logDays.map(r => r.d), ...trackDays.map(r => r.d)]);
+
+          // Días seguidos sin actividad contando desde hoy hacia atrás
+          let gap = 0;
+          let t = new Date(today).getTime();
+          while (gap <= 4 && !active.has(new Date(t).toISOString().slice(0, 10))) { gap++; t -= 86400000; }
+
+          // En riesgo: 2 o 3 días sin actividad (al 4to se rompe). Solo avisar una vez (gap exacto 2 o 3).
+          if (gap < 2 || gap > 3) continue;
+
+          // Racha acumulada antes del hueco (con la misma regla de 3 días de gracia)
+          let streak = 0, restRun = 0;
+          while (true) {
+            const ds = new Date(t).toISOString().slice(0, 10);
+            if (active.has(ds)) { streak++; restRun = 0; }
+            else { restRun++; if (restRun > 3) break; }
+            t -= 86400000;
+          }
+          if (streak < 3) continue; // rachas cortas no ameritan alarma
+
+          const daysLeft = 4 - gap;
+          await sendToUser(user_id, {
+            title: `🔥 ¡Tu racha de ${streak} días está en riesgo!`,
+            body: daysLeft === 1
+              ? 'Entrena hoy o se reinicia. ¡No dejes que se apague! 💪'
+              : `Llevas ${gap} días sin actividad. Entrena pronto para no perderla 💪`,
+            url: '/plan',
+          });
+        } catch (err) { console.error('[push racha] usuario', user_id, err.message); }
+      }
+    } catch (e) { console.error('[push] Error racha en riesgo:', e.message); }
+  });
+
   console.log('[push] Cron jobs de notificaciones activos');
 }
 

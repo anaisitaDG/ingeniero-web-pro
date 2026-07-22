@@ -1151,10 +1151,13 @@ function FreeWorkout({ onCompleted }) {
   );
 }
 
+const MILESTONES = { 7: '¡1 SEMANA DE RACHA!', 14: '¡2 SEMANAS DE RACHA!', 30: '¡1 MES DE RACHA!', 50: '¡50 DÍAS DE RACHA!', 100: '¡100 DÍAS! IMPARABLE', 200: '¡200 DÍAS! LEYENDA', 365: '¡1 AÑO DE RACHA! 👑' };
+
 function CelebrationModal({ dayName, kcal, streak, completedDays, onClose }) {
   const shareRef = useRef(null);
   const today = new Date();
   const dateLabel = today.toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' });
+  const milestone = MILESTONES[streak] || null;
 
   // Fechas completadas esta semana
   const completedDates = new Set(
@@ -1184,7 +1187,7 @@ function CelebrationModal({ dayName, kcal, streak, completedDays, onClose }) {
       canvas.toBlob(async blob => {
         const file = new File([blob], 'lovic-entrenamiento.png', { type: 'image/png' });
         if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({ files: [file], title: '¡Entrené hoy! 💪', text: `#LovicGym #YoEntreno` });
+          await navigator.share({ files: [file], title: milestone ? `🏅 ${milestone}` : '¡Entrené hoy! 💪', text: milestone ? `${milestone} #LovicGym #YoEntreno` : `#LovicGym #YoEntreno` });
         } else {
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a'); a.href = url; a.download = 'lovic-entrenamiento.png'; a.click();
@@ -1216,10 +1219,21 @@ function CelebrationModal({ dayName, kcal, streak, completedDays, onClose }) {
         }}>
           {/* Trofeo y título */}
           <div style={{ textAlign: 'center', marginBottom: 20 }}>
-            <div style={{ fontSize: 60, lineHeight: 1, marginBottom: 10 }}>🏆</div>
+            <div style={{ fontSize: 60, lineHeight: 1, marginBottom: 10 }}>{milestone ? '🏅' : '🏆'}</div>
             <h2 style={{ color: '#ffffff', fontSize: 24, fontWeight: 900, marginBottom: 4 }}>¡Rutina completada!</h2>
             <p style={{ color: '#FF6B4A', fontWeight: 600, fontSize: 13, textTransform: 'capitalize' }}>{dateLabel}</p>
           </div>
+
+          {/* Banner de hito */}
+          {milestone && (
+            <div style={{
+              background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
+              borderRadius: 14, padding: '12px 16px', marginBottom: 20, textAlign: 'center',
+            }}>
+              <p style={{ fontSize: 18, fontWeight: 900, color: '#1a1a1a', letterSpacing: 1 }}>🏅 {milestone}</p>
+              <p style={{ fontSize: 11, fontWeight: 700, color: 'rgba(0,0,0,0.6)', marginTop: 2 }}>Hito desbloqueado</p>
+            </div>
+          )}
 
           {/* Semana */}
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>

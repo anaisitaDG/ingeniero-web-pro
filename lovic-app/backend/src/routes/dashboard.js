@@ -83,6 +83,33 @@ router.get('/', async (req, res) => {
     expected -= msPerDay;
   }
 
+  // Racha semanal (estilo Strava): semanas seguidas cumpliendo el plan
+  // Meta semanal: días del plan menos 1 de tolerancia (mínimo 1)
+  const weekGoal = Math.max(trainingDaysPerWeek - 1, 1);
+  const todayDate = new Date(today + 'T12:00:00');
+  const dowJs = todayDate.getDay(); // 0=Dom
+  const monday = new Date(todayDate); monday.setDate(todayDate.getDate() - ((dowJs + 6) % 7));
+  const countWeek = (weekStart) => {
+    let n = 0;
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(weekStart); d.setDate(weekStart.getDate() + i);
+      const ds = d.toISOString().slice(0, 10);
+      if (ds > today) break;
+      if (activeDates.has(ds)) n++;
+    }
+    return n;
+  };
+  let week_streak = 0;
+  // La semana en curso suma si ya cumplió la meta, pero no rompe la racha si aún va a mitad
+  if (countWeek(monday) >= weekGoal) week_streak++;
+  let cursor = new Date(monday);
+  while (true) {
+    cursor.setDate(cursor.getDate() - 7);
+    if (countWeek(cursor) >= weekGoal) week_streak++;
+    else break;
+    if (week_streak > 520) break;
+  }
+
   const latest = bioRows[0] || null;
   const target  = req.user.calorie_target || 2000;
   const consumed = caloriesRow.consumed;
@@ -104,6 +131,8 @@ router.get('/', async (req, res) => {
     nutrition_plan: nutrition,
     adherence: adherence[0],
     streak,
+    week_streak,
+    week_goal: weekGoal,
   });
 });
 
