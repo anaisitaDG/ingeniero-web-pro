@@ -64,9 +64,9 @@ router.get('/', async (req, res) => {
   for (const r of trackDays) activeDates.add(r.d);
 
   // Streak: only breaks if more rest days pass than the plan allows
-  // e.g. training 5 days/week → max 2 consecutive rest days allowed
+  // Mínimo 3 días de gracia siempre: cubre fin de semana + festivo sin romper la racha
   const trainingDaysPerWeek = Math.min(Math.max(parseInt(questRow?.training_days_week) || 5, 1), 6);
-  const maxRestDays = 7 - trainingDaysPerWeek;
+  const maxRestDays = Math.max(7 - trainingDaysPerWeek, 3);
   let streak = 0;
   let restDaysSinceLastWorkout = 0;
   const msPerDay = 86400000;

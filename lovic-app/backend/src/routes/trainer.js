@@ -463,16 +463,16 @@ router.get('/clients/:id/workout-logs', async (req, res) => {
   const thirtyStr = thirtyDaysAgo.toISOString().slice(0,10);
   const daysThisMonth = [...trainedDates].filter(d => d >= thirtyStr).length;
 
-  // Racha
-  const sorted = [...trainedDates].sort().reverse();
-  let streak = 0;
-  const today = new Date().toISOString().slice(0,10);
+  // Racha (misma regla que el dashboard: 3 días de gracia)
+  let streak = 0, restRun = 0;
+  const today = new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const msPerDay = 86400000;
   let expected = new Date(today).getTime();
   while (true) {
     const ds = new Date(expected).toISOString().slice(0,10);
-    if (!trainedDates.has(ds)) break;
-    streak++; expected -= msPerDay;
+    if (trainedDates.has(ds)) { streak++; restRun = 0; }
+    else { restRun++; if (restRun > 3) break; }
+    expected -= msPerDay;
   }
 
   res.json({ sessions, summary: { streak, days_this_month: daysThisMonth, total_sessions: sessions.length } });
@@ -548,8 +548,13 @@ router.post('/weekly-summary', async (req, res) => {
       const [logDays] = await db.query(`SELECT DISTINCT DATE_FORMAT(logged_date,'%Y-%m-%d') as d FROM workout_logs WHERE user_id=? ORDER BY d DESC LIMIT 60`, [c.id]);
       const [tDays]   = await db.query(`SELECT DATE_FORMAT(tracked_date,'%Y-%m-%d') as d FROM daily_tracking WHERE user_id=? AND workout_done=1 ORDER BY d DESC LIMIT 60`, [c.id]);
       const allDates  = new Set([...logDays.map(r=>r.d), ...tDays.map(r=>r.d)]);
-      let streak = 0, expected = new Date().getTime();
-      while (allDates.has(new Date(expected).toISOString().slice(0,10))) { streak++; expected -= 86400000; }
+      let streak = 0, restRun = 0, expected = Date.now() - 5 * 60 * 60 * 1000;
+      while (true) {
+        const ds = new Date(expected).toISOString().slice(0,10);
+        if (allDates.has(ds)) { streak++; restRun = 0; }
+        else { restRun++; if (restRun > 3) break; }
+        expected -= 86400000;
+      }
       return { name: c.name, workout_days: track.workout_days, diet_days: diet.diet_days, streak, last_trained: lastT.last_trained };
     }));
     await sendWeeklySummary(trainer.email, trainer.name, clientStats);

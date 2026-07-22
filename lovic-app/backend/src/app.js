@@ -338,9 +338,14 @@ async function sendWeeklySummaryJob() {
         `SELECT DATE_FORMAT(tracked_date,'%Y-%m-%d') as d FROM daily_tracking WHERE user_id=? AND workout_done=1 ORDER BY d DESC LIMIT 60`, [c.id]
       );
       const allDates = new Set([...logDays.map(r=>r.d), ...trackDays.map(r=>r.d)]);
-      const todayStr = new Date().toISOString().slice(0,10);
-      let streak = 0, expected = new Date(todayStr).getTime();
-      while (allDates.has(new Date(expected).toISOString().slice(0,10))) { streak++; expected -= 86400000; }
+      const todayStr = new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString().slice(0,10);
+      let streak = 0, restRun = 0, expected = new Date(todayStr).getTime();
+      while (true) {
+        const ds = new Date(expected).toISOString().slice(0,10);
+        if (allDates.has(ds)) { streak++; restRun = 0; }
+        else { restRun++; if (restRun > 3) break; }
+        expected -= 86400000;
+      }
 
       return { name: c.name, workout_days: track.workout_days, diet_days: diet.diet_days, streak, last_trained: lastT.last_trained };
     }));
