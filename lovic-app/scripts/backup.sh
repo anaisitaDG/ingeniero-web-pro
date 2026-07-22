@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Backup diario de Lovic: base de datos + fotos subidas
+# Backup diario de Lovic: base de datos (últimos 5 dumps) + fotos (espejo incremental)
 # Uso: bash backup.sh
 # Lee las credenciales del .env del backend automáticamente.
 set -euo pipefail
@@ -8,7 +8,7 @@ trap 'echo "❌ Backup FALLÓ en la línea $LINENO. Revisa el error de arriba." 
 APP_DIR="$HOME/webapps/lovic/lovic-app"
 ENV_FILE="$APP_DIR/backend/.env"
 BACKUP_DIR="$HOME/backups/lovic"
-KEEP_DAYS=14
+KEEP_DB=5   # cuántos dumps de BD conservar
 
 # ── Leer credenciales del .env ────────────────────────────────────────────────
 if [ ! -f "$ENV_FILE" ]; then
@@ -41,17 +41,23 @@ fi
 mysqldump "${DUMP_ARGS[@]}" | gzip > "$DB_FILE"
 echo "✅ BD respaldada: $DB_FILE ($(du -h "$DB_FILE" | cut -f1))"
 
-# ── 2. Backup de fotos (uploads) ──────────────────────────────────────────────
+# Conservar solo los últimos $KEEP_DB dumps
+ls -1t "$BACKUP_DIR"/db_*.sql.gz 2>/dev/null | tail -n +$((KEEP_DB + 1)) | xargs -r rm -f
+echo "🧹 Conservando los últimos $KEEP_DB dumps de BD"
+
+# ── 2. Espejo incremental de fotos (solo copia lo nuevo/cambiado) ─────────────
 if [ -d "$UPLOAD_PATH" ]; then
-  UP_FILE="$BACKUP_DIR/uploads_${STAMP}.tar.gz"
-  tar -czf "$UP_FILE" -C "$(dirname "$UPLOAD_PATH")" "$(basename "$UPLOAD_PATH")"
-  echo "✅ Fotos respaldadas: $UP_FILE ($(du -h "$UP_FILE" | cut -f1))"
+  MIRROR_DIR="$BACKUP_DIR/uploads_mirror"
+  mkdir -p "$MIRROR_DIR"
+  CHANGES=$(rsync -a --delete --stats "$UPLOAD_PATH/" "$MIRROR_DIR/" | grep -E 'Number of (regular files transferred|deleted files)' || true)
+  echo "✅ Fotos sincronizadas en: $MIRROR_DIR ($(du -sh "$MIRROR_DIR" | cut -f1))"
+  [ -n "$CHANGES" ] && echo "   $CHANGES"
 else
   echo "⚠️  No se encontró la carpeta de uploads en $UPLOAD_PATH (omitido)"
 fi
 
-# ── 3. Rotación: borrar backups de más de $KEEP_DAYS días ─────────────────────
-find "$BACKUP_DIR" -name '*.gz' -mtime +"$KEEP_DAYS" -delete
-echo "🧹 Backups de más de $KEEP_DAYS días eliminados"
-echo "📦 Backups actuales:"
-ls -lh "$BACKUP_DIR" | tail -5
+# Limpiar tars antiguos del formato anterior (si existen)
+rm -f "$BACKUP_DIR"/uploads_*.tar.gz
+
+echo "📦 Estado de los backups:"
+ls -lh "$BACKUP_DIR" | grep -v '^total' || true
