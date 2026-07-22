@@ -1,6 +1,22 @@
 // Envía una notificación push de prueba a un usuario (por correo).
 // Uso: node scripts/test-push.js correo@ejemplo.com
-require('dotenv').config({ path: __dirname + '/../backend/.env' });
+const fs = require('fs');
+const path = require('path');
+
+// Cargar variables del .env del backend a mano (sin depender de dotenv)
+const envPath = path.join(__dirname, '../backend/.env');
+try {
+  for (const line of fs.readFileSync(envPath, 'utf8').split('\n')) {
+    const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)$/);
+    if (m && !(m[1] in process.env)) {
+      process.env[m[1]] = m[2].trim().replace(/^["']|["']$/g, '');
+    }
+  }
+} catch (e) {
+  console.error('No se pudo leer', envPath, '-', e.message);
+  process.exit(1);
+}
+
 const db = require('../backend/src/database/db');
 const { sendToUser } = require('../backend/src/notifications');
 
