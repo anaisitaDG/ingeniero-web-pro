@@ -20,18 +20,22 @@ cd "$APP_DIR/frontend"
 npm run build
 
 echo "── 3/4  Publicando a la carpeta en vivo ───────────────────────"
-if [ ! -d "$SERVED_DIR" ]; then
+if [ -L "$SERVED_DIR" ]; then
+  # La carpeta servida es un ENLACE al build → ya está publicado, no hay que copiar
+  echo "   La carpeta servida es un enlace directo al build — nada que copiar ✅"
+elif [ -d "$SERVED_DIR" ]; then
+  # Carpeta real → copiar el build encima
+  rm -rf "$SERVED_DIR/static"
+  cp -r "$BUILD_DIR/." "$SERVED_DIR/"
+  SERVED_HASH="$(grep -o 'main\.[a-z0-9]*\.js' "$SERVED_DIR/index.html" | head -1)"
+  BUILD_HASH="$(grep -o 'main\.[a-z0-9]*\.js' "$BUILD_DIR/index.html" | head -1)"
+  echo "   build:   $BUILD_HASH"
+  echo "   servido: $SERVED_HASH"
+  [ "$SERVED_HASH" = "$BUILD_HASH" ] && echo "   ✅ Coinciden" || echo "   ⚠️  No coinciden — revisar"
+else
   echo "ERROR: no existe la carpeta servida $SERVED_DIR" >&2
   exit 1
 fi
-# Reemplaza los assets con hash (limpios) y copia el resto del build encima
-rm -rf "$SERVED_DIR/static"
-cp -r "$BUILD_DIR/." "$SERVED_DIR/"
-SERVED_HASH="$(grep -o 'main\.[a-z0-9]*\.js' "$SERVED_DIR/index.html" | head -1)"
-BUILD_HASH="$(grep -o 'main\.[a-z0-9]*\.js' "$BUILD_DIR/index.html" | head -1)"
-echo "   build:   $BUILD_HASH"
-echo "   servido: $SERVED_HASH"
-[ "$SERVED_HASH" = "$BUILD_HASH" ] && echo "   ✅ Coinciden" || echo "   ⚠️  No coinciden — revisar"
 
 echo "── 4/4  Reiniciando backend ───────────────────────────────────"
 cd "$APP_DIR"
