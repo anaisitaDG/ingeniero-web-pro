@@ -1164,11 +1164,24 @@ function FreeWorkout({ onCompleted }) {
 
 const MILESTONES = { 7: '¡1 SEMANA DE RACHA!', 14: '¡2 SEMANAS DE RACHA!', 30: '¡1 MES DE RACHA!', 50: '¡50 DÍAS DE RACHA!', 100: '¡100 DÍAS! IMPARABLE', 200: '¡200 DÍAS! LEYENDA', 365: '¡1 AÑO DE RACHA! 👑' };
 
+// Separa "Lunes — Pecho" / "Martes: Espalda Imponente" en { weekday, routine }
+function splitDayName(fullName) {
+  const raw = (fullName || '').trim();
+  const m = raw.match(/^(.*?)\s*[—–\-:·]\s*(.+)$/);
+  if (m) return { weekday: m[1].trim(), routine: m[2].trim() };
+  const DAYS = ['domingo', 'lunes', 'martes', 'miércoles', 'miercoles', 'jueves', 'viernes', 'sábado', 'sabado'];
+  if (DAYS.includes(raw.toLowerCase())) return { weekday: raw, routine: '' };
+  return { weekday: '', routine: raw };
+}
+
 function CelebrationModal({ dayName, kcal, streak, completedDays, onClose }) {
   const shareRef = useRef(null);
   const today = new Date();
   const dateLabel = today.toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' });
   const milestone = MILESTONES[streak] || null;
+  const { weekday, routine } = splitDayName(dayName);
+  const bigTitle = routine || weekday || 'Entrenamiento';
+  const subtitle = weekday ? `Rutina del día · "${weekday}"` : 'Rutina del día';
 
   // Fechas completadas esta semana
   const completedDates = new Set(
@@ -1272,8 +1285,8 @@ function CelebrationModal({ dayName, kcal, streak, completedDays, onClose }) {
           }}>
             <div style={{ position: 'absolute', top: -30, right: -30, width: 130, height: 130, background: 'rgba(255,255,255,0.08)', borderRadius: '50%' }} />
             <p style={{ fontSize: 10, fontWeight: 800, color: 'rgba(255,255,255,0.7)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 12 }}>LOVIC GYM</p>
-            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', fontWeight: 600, marginBottom: 4 }}>Rutina del día · "{dayName}"</p>
-            <p style={{ fontSize: 22, fontWeight: 900, color: '#ffffff', marginBottom: 16 }}>{dayName} 💪</p>
+            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', fontWeight: 600, marginBottom: 4 }}>{subtitle}</p>
+            <p style={{ fontSize: 22, fontWeight: 900, color: '#ffffff', marginBottom: 16 }}>{bigTitle} 💪</p>
             <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
               <div style={{ background: 'rgba(255,255,255,0.15)', borderRadius: 12, padding: '10px 14px', flex: 1 }}>
                 <p style={{ fontSize: 24, fontWeight: 900, color: '#ffffff', lineHeight: 1 }}>🔥 {streak}</p>
