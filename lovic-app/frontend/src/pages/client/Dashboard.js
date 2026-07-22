@@ -462,11 +462,11 @@ export default function Dashboard() {
       {/* Daily tracking */}
       <div className="card" style={{ marginBottom: 16 }}>
         <p className="label" style={{ marginBottom: 12 }}>Seguimiento de hoy {saving && <span style={{ color: 'var(--muted)', fontWeight: 400 }}>guardando…</span>}</p>
-        <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+        <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
           <TrackToggle label="Entrenamiento" icon="💪" active={tracking.workout_done} onChange={v => saveTracking({ workout_done: v })} />
           <TrackToggle label="Dieta" icon="🥗" active={tracking.diet_followed} onChange={v => saveTracking({ diet_followed: v })} />
-          <SleepInput value={tracking.sleep_hours} onChange={v => saveTracking({ sleep_hours: v })} />
         </div>
+        <SleepInput value={tracking.sleep_hours} onChange={v => saveTracking({ sleep_hours: v })} />
         <MoodSelector value={tracking.mood} onChange={v => saveTracking({ mood: v })} />
         <WaterTracker tracking={tracking} bio={bio} onSave={saveTracking} />
       </div>
@@ -602,23 +602,25 @@ function AdherenceBar({ label, done, total, color }) {
 function SleepInput({ value, onChange }) {
   return (
     <div style={{
-      flex: 1, padding: '14px', borderRadius: 14, border: '2px solid var(--border)',
-      background: value ? 'var(--bg)' : 'transparent',
-      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+      padding: '12px 16px', borderRadius: 14, border: '2px solid var(--border)',
+      background: value != null ? 'var(--bg)' : 'transparent', marginBottom: 16,
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
     }}>
-      <span style={{ fontSize: 24 }}>😴</span>
-      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)' }}>Sueño</span>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <button onClick={() => onChange(Math.max((value || 7) - 0.5, 0))} style={{
-          width: 28, height: 28, borderRadius: 8, border: 'none', background: 'var(--border)',
-          fontWeight: 700, fontSize: 16, cursor: 'pointer', color: 'var(--text)',
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+        <span style={{ fontSize: 22 }}>😴</span>
+        <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--muted)' }}>Sueño anoche</span>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+        <button onClick={() => onChange(Math.max((value != null ? value : 7) - 0.5, 0))} style={{
+          width: 32, height: 32, borderRadius: 9, border: 'none', background: 'var(--border)',
+          fontWeight: 700, fontSize: 18, cursor: 'pointer', color: 'var(--text)',
         }}>−</button>
-        <span style={{ fontWeight: 800, fontSize: 16, minWidth: 36, textAlign: 'center' }}>
+        <span style={{ fontWeight: 800, fontSize: 17, minWidth: 44, textAlign: 'center' }}>
           {value != null ? `${value}h` : '—'}
         </span>
-        <button onClick={() => onChange(Math.min((value || 6) + 0.5, 14))} style={{
-          width: 28, height: 28, borderRadius: 8, border: 'none', background: 'var(--border)',
-          fontWeight: 700, fontSize: 16, cursor: 'pointer', color: 'var(--text)',
+        <button onClick={() => onChange(Math.min((value != null ? value : 7) + 0.5, 14))} style={{
+          width: 32, height: 32, borderRadius: 9, border: 'none', background: 'var(--border)',
+          fontWeight: 700, fontSize: 18, cursor: 'pointer', color: 'var(--text)',
         }}>+</button>
       </div>
     </div>
