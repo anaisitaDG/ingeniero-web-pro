@@ -387,7 +387,7 @@ export default function Dashboard() {
                 <span style={{ fontWeight: 800, fontSize: 15, color: '#C99A1E' }}>{streak} días</span>
               </div>
             )}
-            {week_streak > 1 && (
+            {week_streak > 0 && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#dcfce7', borderRadius: 20, padding: '6px 12px' }} title="Semanas seguidas cumpliendo tu plan">
                 <span style={{ fontSize: 16 }}>📅</span>
                 <span style={{ fontWeight: 800, fontSize: 14, color: '#16a34a' }}>{week_streak} sem</span>
