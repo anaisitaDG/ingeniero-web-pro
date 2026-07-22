@@ -1,6 +1,7 @@
-const CACHE = 'lovic-v10';
+const CACHE = 'lovic-v11';
 
-const API_PATHS = ['/auth/', '/food/', '/dashboard/', '/measurements/', '/bioimpedance/', '/questionnaire/', '/trainer/', '/profile', '/progress-photos', '/workout'];
+// Sin barra final: '/dashboard' debe cubrir tanto '/dashboard' como '/dashboard?date=...'
+const API_PATHS = ['/auth', '/food', '/dashboard', '/measurements', '/bioimpedance', '/questionnaire', '/trainer', '/profile', '/progress-photos', '/workout', '/meal-plan', '/push'];
 
 self.addEventListener('install', e => {
   self.skipWaiting();
