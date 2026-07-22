@@ -56,6 +56,17 @@ export default function MyPlan() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Recargar al volver la app a primer plano (PWA reanudada)
+  useEffect(() => {
+    const onVisible = () => { if (document.visibilityState === 'visible') load(false); };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
+    };
+  }, [load]);
+
   if (loading) return <div style={{ textAlign: 'center', padding: 48 }}><div className="spinner" style={{ borderTopColor: 'var(--coral)', borderColor: 'var(--border)', width: 28, height: 28 }} /></div>;
   if (loadError) return <div className="empty-state"><div className="icon">📡</div><p>No se pudo cargar tu plan. Revisa tu conexión.</p><button className="btn-primary" style={{ marginTop: 16 }} onClick={() => load()}>Reintentar</button></div>;
 

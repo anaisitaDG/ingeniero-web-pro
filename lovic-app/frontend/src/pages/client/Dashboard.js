@@ -318,9 +318,11 @@ export default function Dashboard() {
   const [saving, setSaving]   = useState(false);
   const [tracking, setTracking] = useState({ workout_done: false, diet_followed: false, water_glasses: 0, mood: null, sleep_hours: null });
 
-  useEffect(() => {
+  const load = React.useCallback((showSpinner = true) => {
+    if (showSpinner) setLoading(true);
     api.dashboard.get()
       .then(d => {
+        setError(false);
         setData(d);
         setTracking({
           workout_done:  !!d.tracking?.workout_done,
@@ -330,9 +332,22 @@ export default function Dashboard() {
           sleep_hours:   d.tracking?.sleep_hours || null,
         });
       })
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
+      .catch(() => { if (showSpinner) setError(true); })
+      .finally(() => { if (showSpinner) setLoading(false); });
   }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  // Al volver la app a primer plano (PWA reanudada), recargar datos frescos sin spinner
+  useEffect(() => {
+    const onVisible = () => { if (document.visibilityState === 'visible') load(false); };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
+    };
+  }, [load]);
 
   async function saveTracking(update) {
     const prev = tracking;
@@ -349,7 +364,7 @@ export default function Dashboard() {
   }
 
   if (loading) return <div style={{ textAlign: 'center', padding: 48 }}><div className="spinner" style={{ borderTopColor: 'var(--coral)', borderColor: 'var(--border)', width: 32, height: 32 }} /></div>;
-  if (error) return <div className="empty-state"><div className="icon">📡</div><p>No se pudo cargar. Revisa tu conexión.</p><button className="btn-primary" style={{ marginTop: 16 }} onClick={() => { setError(false); setLoading(true); api.dashboard.get().then(d => { setData(d); setTracking({ workout_done: !!d.tracking?.workout_done, diet_followed: !!d.tracking?.diet_followed, water_glasses: d.tracking?.water_glasses || 0, mood: d.tracking?.mood || null, sleep_hours: d.tracking?.sleep_hours || null }); setLoading(false); }).catch(() => { setError(true); setLoading(false); }); }}>Reintentar</button></div>;
+  if (error) return <div className="empty-state"><div className="icon">📡</div><p>No se pudo cargar. Revisa tu conexión.</p><button className="btn-primary" style={{ marginTop: 16 }} onClick={() => load()}>Reintentar</button></div>;
 
   const { calories, macros, bio, weight_history, adherence, routine, streak, week_streak } = data || {};
   const pct = calories ? Math.min(Math.round((calories.consumed / calories.target) * 100), 100) : 0;

@@ -32,6 +32,17 @@ export default function FoodLogger() {
 
   useEffect(() => { fetchToday(); }, []);
 
+  // Recargar al volver la app a primer plano (PWA reanudada)
+  useEffect(() => {
+    const onVisible = () => { if (document.visibilityState === 'visible') fetchToday(); };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
+    };
+  }, []); // eslint-disable-line
+
   useEffect(() => {
     if (tab === 'history' && history.length === 0) fetchHistory();
   }, [tab, history.length]); // eslint-disable-line
