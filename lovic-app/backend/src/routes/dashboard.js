@@ -84,8 +84,9 @@ router.get('/', async (req, res) => {
   }
 
   // Racha semanal (estilo Strava): semanas seguidas cumpliendo el plan
-  // Meta semanal: días del plan menos 1 de tolerancia (mínimo 1)
-  const weekGoal = Math.max(trainingDaysPerWeek - 1, 1);
+  // Meta semanal: la mitad de los días del plan (mínimo 2). Refleja constancia real,
+  // no perfección — igual que la tolerancia de la racha diaria.
+  const weekGoal = Math.max(Math.ceil(trainingDaysPerWeek / 2), 2);
   const todayDate = new Date(today + 'T12:00:00');
   const dowJs = todayDate.getDay(); // 0=Dom
   const monday = new Date(todayDate); monday.setDate(todayDate.getDate() - ((dowJs + 6) % 7));

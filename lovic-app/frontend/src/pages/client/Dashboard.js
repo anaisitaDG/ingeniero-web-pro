@@ -366,7 +366,7 @@ export default function Dashboard() {
   if (loading) return <div style={{ textAlign: 'center', padding: 48 }}><div className="spinner" style={{ borderTopColor: 'var(--coral)', borderColor: 'var(--border)', width: 32, height: 32 }} /></div>;
   if (error) return <div className="empty-state"><div className="icon">📡</div><p>No se pudo cargar. Revisa tu conexión.</p><button className="btn-primary" style={{ marginTop: 16 }} onClick={() => load()}>Reintentar</button></div>;
 
-  const { calories, macros, bio, weight_history, adherence, routine, streak, week_streak } = data || {};
+  const { calories, macros, bio, weight_history, adherence, routine, streak, week_streak, week_goal } = data || {};
   const pct = calories ? Math.min(Math.round((calories.consumed / calories.target) * 100), 100) : 0;
 
   const weightData = (weight_history || []).map(w => ({
@@ -378,6 +378,7 @@ export default function Dashboard() {
     <div>
       <div style={{ marginBottom: 24 }}>
         <p style={{ color: 'var(--muted)', fontSize: 14 }}>{new Date().toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+        <p style={{ color: '#16a34a', fontSize: 11, fontWeight: 700 }}>diag · sem={String(week_streak)} meta={String(week_goal)}</p>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <h1 style={{ fontSize: 24, fontWeight: 800 }}>Hola, {user?.name?.split(' ')[0]} 👋</h1>
           <div style={{ display: 'flex', gap: 6 }}>
