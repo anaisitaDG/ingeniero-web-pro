@@ -66,6 +66,21 @@ router.post('/push-subscribe', async (req, res) => {
   res.json({ ok: true });
 });
 
+// POST /profile/push-test — el usuario se envía una notificación de prueba a sí mismo
+router.post('/push-test', async (req, res) => {
+  try {
+    const [subs] = await db.query('SELECT id FROM push_subscriptions WHERE user_id=?', [req.user.id]);
+    if (!subs.length) return res.status(404).json({ error: 'Este dispositivo no tiene notificaciones activas' });
+    const { sendToUser } = require('../notifications');
+    await sendToUser(req.user.id, {
+      title: '🧪 Prueba de Lovic',
+      body: '¡Funciona! Vic ya puede recordarte agua, entrenos y motivación 🎉',
+      url: '/',
+    });
+    res.json({ ok: true, sent: subs.length });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // DELETE /profile/push-subscribe
 router.delete('/push-subscribe', async (req, res) => {
   const { endpoint } = req.body;
