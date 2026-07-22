@@ -69,7 +69,7 @@ router.post('/push-subscribe', async (req, res) => {
 // POST /profile/push-test — el usuario se envía una notificación de prueba a sí mismo
 router.post('/push-test', async (req, res) => {
   try {
-    const [subs] = await db.query('SELECT id FROM push_subscriptions WHERE user_id=?', [req.user.id]);
+    const [subs] = await db.query('SELECT endpoint FROM push_subscriptions WHERE user_id=?', [req.user.id]);
     if (!subs.length) return res.status(404).json({ error: 'Este dispositivo no tiene notificaciones activas' });
     const { sendToUser } = require('../notifications');
     await sendToUser(req.user.id, {
