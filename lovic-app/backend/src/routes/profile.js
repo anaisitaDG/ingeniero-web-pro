@@ -52,6 +52,17 @@ router.post('/push-subscribe', async (req, res) => {
      ON DUPLICATE KEY UPDATE subscription = VALUES(subscription)`,
     [uid, subscription.endpoint, JSON.stringify(subscription)]
   );
+
+  // Notificación de bienvenida inmediata: confirma que las push funcionan de punta a punta
+  try {
+    const { sendToUser } = require('../notifications');
+    await sendToUser(uid, {
+      title: '🔥 ¡Notificaciones activadas!',
+      body: 'Vic ya puede recordarte agua, entrenos y motivación. ¡Vamos con todo! 💪',
+      url: '/',
+    });
+  } catch (e) { console.error('[push welcome]', e.message); }
+
   res.json({ ok: true });
 });
 

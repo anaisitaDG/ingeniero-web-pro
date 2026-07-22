@@ -114,12 +114,17 @@ const VIC_STATES = {
 function getVicState(streak, tracking, macros) {
   const { workout_done, diet_followed, water_glasses, sleep_hours } = tracking || {};
   const carbsOver = macros?.carbs > 0 && macros?.carbs_target > 0 && macros.carbs > macros.carbs_target * 1.35;
+  const h = getHourCO();
+  // Avisos de salud accionables HOY tienen prioridad sobre la racha (combinado).
+  // El agua no se molesta de madrugada: solo a partir de las 11am si va baja.
+  const lowWater = (water_glasses || 0) < 3 && h >= 11;
 
+  if (sleep_hours != null && sleep_hours < 6)         return 'ojeras';
+  if (lowWater)                                       return 'deshidratada';
+  if (carbsOver && !workout_done)                     return 'inflamada';
+  // Ya cubierto lo urgente → refleja la racha como recompensa
   if (streak >= 7)                                    return 'bestia';
   if (streak >= 3)                                    return 'racha';
-  if (sleep_hours != null && sleep_hours < 6)         return 'ojeras';
-  if (carbsOver && !workout_done)                     return 'inflamada';
-  if ((water_glasses || 0) < 3)                       return 'deshidratada';
   if (!workout_done && !diet_followed)                return streak === 0 ? 'apagada' : 'triste';
   if (!workout_done || !diet_followed)                return 'triste';
   if (workout_done && diet_followed)                  return 'celebrando';
