@@ -23,7 +23,12 @@ export function usePushNotifications() {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
     navigator.serviceWorker.ready.then(reg => {
       swReg.current = reg;
-      reg.pushManager.getSubscription().then(sub => setSubscribed(!!sub));
+      reg.pushManager.getSubscription().then(sub => {
+        setSubscribed(!!sub);
+        // Auto-sincroniza: si el navegador ya tiene suscripción pero el backend
+        // no la registró (p.ej. un guardado falló antes), la reenvía en silencio.
+        if (sub) api.push.subscribe(sub.toJSON()).catch(() => {});
+      });
     });
   }, []);
 
