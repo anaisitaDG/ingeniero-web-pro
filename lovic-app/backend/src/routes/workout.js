@@ -194,6 +194,21 @@ router.post('/activity', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// DELETE /workout/activity — borra el calentamiento/cardio de un día para una fecha
+router.delete('/activity', async (req, res) => {
+  try {
+    const uid = req.user.id;
+    const { day_id, type, date } = req.body;
+    if (!day_id || !type) return res.status(400).json({ error: 'day_id y type requeridos' });
+    const session_date = date || colombiaToday();
+    await db.query(
+      'DELETE FROM workout_activity_logs WHERE user_id=? AND day_id=? AND type=? AND session_date=?',
+      [uid, day_id, type, session_date]
+    );
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // GET /workout/activity/:dayId — trae actividades de las últimas sesiones de un día
 router.get('/activity/:dayId', async (req, res) => {
   try {

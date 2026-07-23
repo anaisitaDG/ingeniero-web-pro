@@ -32,8 +32,10 @@ export default function MyPlan() {
   }, []);
 
   async function toggleDay(dayId, dayName, kcal, date) {
-    const done = !completedDays[dayId];
-    const useDate = date || new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const today = new Date().toLocaleDateString('en-CA');
+    // "Completado" se juzga contra HOY: una rutina hecha días atrás no cuenta como hecha hoy
+    const done = completedDays[dayId] !== today;
+    const useDate = date || today;
     const prev = completedDays;
     setCompletedDays(p => {
       const next = { ...p };
@@ -636,6 +638,9 @@ function DayCard({ day, onLogged, completedDate, onToggleComplete }) {
     if (!activityLoaded) return;
     if (warmupChoice && warmupChoice !== 'Otro') {
       api.workout.saveActivity(day.id, 'warmup', warmupChoice, Number(warmupMins) || null).catch(() => {});
+    } else if (!warmupChoice) {
+      // "Sin calentamiento hoy" → borra la actividad de hoy en vez de dejarla pegada
+      api.workout.deleteActivity(day.id, 'warmup').catch(() => {});
     }
   }, [warmupChoice, warmupMins, warmupDone, activityLoaded, day.id]); // eslint-disable-line
 
@@ -643,6 +648,8 @@ function DayCard({ day, onLogged, completedDate, onToggleComplete }) {
     if (!activityLoaded) return;
     if (cardioChoice && cardioChoice !== 'Otro') {
       api.workout.saveActivity(day.id, 'cardio', cardioChoice, Number(cardioMins) || null).catch(() => {});
+    } else if (!cardioChoice) {
+      api.workout.deleteActivity(day.id, 'cardio').catch(() => {});
     }
   }, [cardioChoice, cardioMins, cardioDone, activityLoaded, day.id]); // eslint-disable-line
   // kcal per exercise keyed by ex.id, updated by ExerciseCard
@@ -665,6 +672,7 @@ function DayCard({ day, onLogged, completedDate, onToggleComplete }) {
   const completedLabel = completedDate && typeof completedDate === 'string'
     ? formatDayDate(completedDate)
     : null;
+  const completedToday = completedDate === today;
 
   return (
     <div className="card" style={{
@@ -685,9 +693,11 @@ function DayCard({ day, onLogged, completedDate, onToggleComplete }) {
       }}>
         <div style={{ textAlign: 'left' }}>
           <p style={{ fontWeight: 800, fontSize: 16 }}>{day.day_name}</p>
-          {completedLabel && (
-            <p style={{ fontSize: 11, color: '#059669', marginTop: 2, fontWeight: 600 }}>✅ Completado el {completedLabel}</p>
-          )}
+          {completedToday ? (
+            <p style={{ fontSize: 11, color: '#059669', marginTop: 2, fontWeight: 600 }}>✅ Completado hoy</p>
+          ) : completedLabel ? (
+            <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>Completado por última vez: {completedLabel}</p>
+          ) : null}
           {lastSessionLabel && (
             <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>Última sesión: {lastSessionLabel}</p>
           )}
@@ -717,7 +727,7 @@ function DayCard({ day, onLogged, completedDate, onToggleComplete }) {
             </div>
             <p style={{ fontSize: 28, fontWeight: 900, color: 'var(--coral)' }}>~{totalKcal}</p>
           </div>
-          {completedDate ? (
+          {completedToday ? (
             <button onClick={() => onToggleComplete(totalKcal, today)} style={{
               width: '100%', padding: '11px', borderRadius: 12, border: 'none', cursor: 'pointer',
               fontWeight: 700, fontSize: 14, background: '#065f46', color: '#fff',
