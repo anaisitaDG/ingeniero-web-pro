@@ -59,5 +59,18 @@ fi
 # Limpiar tars antiguos del formato anterior (si existen)
 rm -f "$BACKUP_DIR"/uploads_*.tar.gz
 
+# ── 3. Subida externa a Google Drive de Lorena (rclone) ───────────────────────
+RCLONE="$HOME/bin/rclone"
+if [ -x "$RCLONE" ] && "$RCLONE" listremotes 2>/dev/null | grep -q '^drive:'; then
+  echo "☁️  Subiendo a Google Drive (Lovic-Backups)…"
+  if "$RCLONE" sync "$BACKUP_DIR" drive:Lovic-Backups --transfers 4 2>&1 | tail -3; then
+    echo "✅ Backup externo en Drive actualizado"
+  else
+    echo "⚠️  Falló la subida a Drive (revisa la conexión / rclone)"
+  fi
+else
+  echo "ℹ️  rclone no configurado — se omite la subida a Drive"
+fi
+
 echo "📦 Estado de los backups:"
 ls -lh "$BACKUP_DIR" | grep -v '^total' || true
