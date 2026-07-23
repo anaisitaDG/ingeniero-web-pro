@@ -617,9 +617,14 @@ function DayCard({ day, onLogged, completedDate, onToggleComplete }) {
     api.workout.getActivity(day.id).then(res => {
       const acts = res.activities || [];
       setAllActivities(acts);
-      // Find most recent entry for each type
-      const w = acts.find(a => a.type === 'warmup');
-      const c = acts.find(a => a.type === 'cardio');
+      // Solo pre-cargar y marcar como hecho lo de HOY (no la última sesión previa)
+      const isToday = a => {
+        const d = a.session_date;
+        const ds = d instanceof Date ? d.toISOString().slice(0, 10) : String(d).slice(0, 10);
+        return ds === today;
+      };
+      const w = acts.find(a => a.type === 'warmup' && isToday(a));
+      const c = acts.find(a => a.type === 'cardio' && isToday(a));
       if (w) { setWarmupChoice(w.activity_name); setWarmupMins(w.duration_mins || ''); setWarmupDone(true); }
       if (c) { setCardioChoice(c.activity_name); setCardioMins(c.duration_mins || ''); setCardioDone(true); }
       setActivityLoaded(true);
