@@ -124,34 +124,56 @@ router.get('/completed-days', async (req, res) => {
 });
 
 
+// Normaliza y valida un valor numérico opcional dentro de un rango.
+// Devuelve { value } si está bien (null si venía vacío), o { error } si no.
+function sanitizeNumber(raw, { min, max, label, integer }) {
+  if (raw === undefined || raw === null || raw === '') return { value: null };
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return { error: `${label} no es un número válido` };
+  if (n < min || n > max) return { error: `${label} debe estar entre ${min} y ${max}` };
+  return { value: integer ? Math.round(n) : Math.round(n * 100) / 100 };
+}
+
 router.post('/log', async (req, res) => {
-  const uid = req.user.id;
-  const { exercise_id, logged_date, sets } = req.body;
-  if (!exercise_id || !Array.isArray(sets)) return res.status(400).json({ error: 'Datos requeridos' });
+  try {
+    const uid = req.user.id;
+    const { exercise_id, logged_date, sets } = req.body;
+    if (!exercise_id || !Array.isArray(sets)) return res.status(400).json({ error: 'Datos requeridos' });
 
-  // Verify exercise belongs to this user's active plan
-  const [[ownerCheck]] = await db.query(
-    `SELECT we.id FROM workout_exercises we
-     JOIN workout_days wd ON wd.id = we.day_id
-     JOIN workout_plans wp ON wp.id = wd.plan_id
-     WHERE we.id = ? AND wp.user_id = ?`,
-    [exercise_id, uid]
-  );
-  if (!ownerCheck) return res.status(403).json({ error: 'Ejercicio no encontrado en tu plan' });
+    // Validar TODOS los sets antes de tocar la base de datos (evita borrados a medias)
+    const cleanSets = [];
+    for (const s of sets) {
+      const w = sanitizeNumber(s.weight_kg, { min: 0, max: 999.99, label: 'El peso (kg)' });
+      if (w.error) return res.status(400).json({ error: w.error });
+      const r = sanitizeNumber(s.reps_done, { min: 0, max: 9999, label: 'Las repeticiones', integer: true });
+      if (r.error) return res.status(400).json({ error: r.error });
+      cleanSets.push({ set_number: s.set_number, weight_kg: w.value, reps_done: r.value });
+    }
 
-  const date = logged_date || colombiaToday();
-
-  // Delete previous logs for this exercise on this date
-  await db.query('DELETE FROM workout_logs WHERE exercise_id=? AND user_id=? AND logged_date=?',
-    [exercise_id, uid, date]);
-
-  for (const s of sets) {
-    await db.query(
-      'INSERT INTO workout_logs (id, exercise_id, user_id, logged_date, set_number, weight_kg, reps_done) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [uuidv4(), exercise_id, uid, date, s.set_number, s.weight_kg || null, s.reps_done || null]
+    // Verify exercise belongs to this user's active plan
+    const [[ownerCheck]] = await db.query(
+      `SELECT we.id FROM workout_exercises we
+       JOIN workout_days wd ON wd.id = we.day_id
+       JOIN workout_plans wp ON wp.id = wd.plan_id
+       WHERE we.id = ? AND wp.user_id = ?`,
+      [exercise_id, uid]
     );
-  }
-  res.json({ message: 'Registrado' });
+    if (!ownerCheck) return res.status(403).json({ error: 'Ejercicio no encontrado en tu plan' });
+
+    const date = logged_date || colombiaToday();
+
+    // Delete previous logs for this exercise on this date
+    await db.query('DELETE FROM workout_logs WHERE exercise_id=? AND user_id=? AND logged_date=?',
+      [exercise_id, uid, date]);
+
+    for (const s of cleanSets) {
+      await db.query(
+        'INSERT INTO workout_logs (id, exercise_id, user_id, logged_date, set_number, weight_kg, reps_done) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [uuidv4(), exercise_id, uid, date, s.set_number, s.weight_kg, s.reps_done]
+      );
+    }
+    res.json({ message: 'Registrado' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // GET /workout/history/:exerciseId — historial de un ejercicio

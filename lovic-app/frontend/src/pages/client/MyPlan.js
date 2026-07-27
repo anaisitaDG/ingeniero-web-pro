@@ -896,7 +896,7 @@ function ExerciseCard({ exercise: ex, onLogged, onKcalChange }) {
                 <label style={{ fontSize: 11, color: 'var(--muted)', display: 'block', marginBottom: 2 }}>Peso (kg)</label>
                 <input
                   className="input"
-                  type="number" step="0.5" min="0"
+                  type="number" step="0.5" min="0" max="999"
                   placeholder={ex.weight_kg || '0'}
                   value={s.weight_kg}
                   onChange={e => setSetWeights(w => w.map((x, j) => j === i ? { ...x, weight_kg: e.target.value } : x))}
