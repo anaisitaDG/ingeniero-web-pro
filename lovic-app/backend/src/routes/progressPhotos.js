@@ -23,6 +23,10 @@ const upload = multer({
 
 router.use(requireAuth);
 
+function safeParse(s) {
+  try { const v = JSON.parse(s); return Array.isArray(v) ? v : []; } catch { return []; }
+}
+
 // POST /progress-photos/register — upload a 3-angle set (frente, espalda, perfil)
 router.post('/register', upload.fields([
   { name: 'frente', maxCount: 1 },
@@ -166,7 +170,27 @@ router.post('/compare', async (req, res) => {
 
     const dateBefore = String(older.date).slice(0, 10);
     const dateAfter  = String(newer.date).slice(0, 10);
-    const result = await comparePhotos(pairs, dateBefore, dateAfter, older.note || newer.note || '');
+
+    // Caché: mismo par de registros → no volver a llamar a la IA (salvo refresh)
+    const pairKey = [register_a, register_b].sort().join('|');
+    let result = null;
+    if (!req.body.refresh) {
+      const [[cached]] = await db.query(
+        'SELECT analysis, zones FROM photo_comparisons WHERE user_id=? AND pair_key=?',
+        [targetUserId, pairKey]
+      );
+      if (cached) {
+        result = { summary: cached.analysis || '', zones: safeParse(cached.zones) };
+      }
+    }
+    if (!result) {
+      result = await comparePhotos(pairs, dateBefore, dateAfter, older.note || newer.note || '');
+      await db.query(
+        `INSERT INTO photo_comparisons (id, user_id, pair_key, analysis, zones) VALUES (?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE analysis=VALUES(analysis), zones=VALUES(zones), created_at=CURRENT_TIMESTAMP`,
+        [uuidv4(), targetUserId, pairKey, result.summary, JSON.stringify(result.zones || [])]
+      );
+    }
 
     // Bioimpedancia más cercana a cada fecha (para mostrar números reales al lado)
     const [bios] = await db.query(

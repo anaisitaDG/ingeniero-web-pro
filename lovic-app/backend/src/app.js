@@ -214,6 +214,18 @@ const db = require('./database/db');
         PRIMARY KEY (user_id, endpoint(255))
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
+    // Caché de análisis IA de comparación de fotos (evita repetir la llamada por el mismo par)
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS photo_comparisons (
+        id         VARCHAR(36) PRIMARY KEY,
+        user_id    VARCHAR(36) NOT NULL,
+        pair_key   VARCHAR(120) NOT NULL,
+        analysis   TEXT,
+        zones      TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uniq_pair (user_id, pair_key)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
   } catch (e) {
     console.error('Migration error:', e.message);
   }

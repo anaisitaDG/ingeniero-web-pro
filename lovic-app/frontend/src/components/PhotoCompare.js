@@ -176,11 +176,11 @@ export default function PhotoCompareView({ a, b, onClose, userId, embedded }) {
 
   const [older, newer] = [a, b].sort((x, y) => String(x.date).localeCompare(String(y.date)));
 
-  async function runAnalysis() {
+  async function runAnalysis(refresh) {
     setAnalyzing(true);
     setAiError(null);
     try {
-      const res = await api.progressPhotos.compare(a.id, b.id, userId);
+      const res = await api.progressPhotos.compare(a.id, b.id, userId, refresh);
       setAnalysis(res.analysis);
       setZones(res.zones || []);
       setBio({ bioBefore: res.bioBefore, bioAfter: res.bioAfter, dateBefore: res.dateBefore, dateAfter: res.dateAfter });
@@ -244,9 +244,18 @@ export default function PhotoCompareView({ a, b, onClose, userId, embedded }) {
               </>
             )}
 
-            <p style={{ fontSize: 10, color: 'var(--muted)', marginTop: 12 }}>
-              Análisis generado por IA a partir de las fotos. Es orientativo, no un diagnóstico médico.
-            </p>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, gap: 8 }}>
+              <p style={{ fontSize: 10, color: 'var(--muted)', margin: 0 }}>
+                Análisis por IA a partir de las fotos. Orientativo, no un diagnóstico médico.
+              </p>
+              <button
+                onClick={() => runAnalysis(true)}
+                disabled={analyzing}
+                style={{ flexShrink: 0, fontSize: 11, color: 'var(--coral)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700 }}
+              >
+                {analyzing ? '…' : '↻ Regenerar'}
+              </button>
+            </div>
           </>
         ) : (
           <>
