@@ -245,7 +245,19 @@ app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 200, standardHeaders: true })
 app.use(express.json());
 app.use('/uploads', express.static(path.resolve(uploadPath)));
 
+// Límite estricto contra fuerza bruta en autenticación:
+// máx. 10 intentos de login/magic-link cada 15 min por IP.
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  message: { error: 'Demasiados intentos. Espera unos minutos e inténtalo de nuevo.' },
+  skipSuccessfulRequests: true, // solo cuentan los intentos fallidos
+});
+
 // Routes
+app.use('/auth/login',      authLimiter);
+app.use('/auth/magic-link', authLimiter);
 app.use('/auth',          require('./routes/auth'));
 app.use('/food',          require('./routes/food'));
 app.use('/dashboard',     require('./routes/dashboard'));

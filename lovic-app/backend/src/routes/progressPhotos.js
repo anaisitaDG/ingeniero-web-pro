@@ -9,7 +9,9 @@ const multer  = require('multer');
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, process.env.UPLOAD_PATH || 'uploads/'),
-  filename:    (req, file, cb) => cb(null, `progress_${Date.now()}_${file.fieldname}${path.extname(file.originalname)}`),
+  // Nombre con token aleatorio (uuid): la URL de la foto es imposible de adivinar,
+  // así solo la ve quien recibe el enlace exacto desde la API autenticada.
+  filename:    (req, file, cb) => cb(null, `progress_${Date.now()}_${file.fieldname}_${uuidv4()}${path.extname(file.originalname)}`),
 });
 
 const upload = multer({

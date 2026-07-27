@@ -9,7 +9,8 @@ const multer  = require('multer');
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, process.env.UPLOAD_PATH || 'uploads/'),
-  filename:    (req, file, cb) => cb(null, `bio_${Date.now()}${path.extname(file.originalname)}`),
+  // Token aleatorio (uuid) → URL imposible de adivinar (dato médico sensible)
+  filename:    (req, file, cb) => cb(null, `bio_${Date.now()}_${uuidv4()}${path.extname(file.originalname)}`),
 });
 
 const upload = multer({
