@@ -49,23 +49,46 @@ fi
 
 case "$MODE" in
   test)
-    TEST_DB="${DB_NAME}_restoretest"
     echo "🧪 PRUEBA de restauración (no toca producción)"
     echo "   Dump:  $DUMP"
-    echo "   BD temporal: $TEST_DB"
-    mysql "${CONN[@]}" -e "DROP DATABASE IF EXISTS \`$TEST_DB\`; CREATE DATABASE \`$TEST_DB\` CHARACTER SET utf8mb4;"
-    gunzip -c "$DUMP" | mysql "${CONN[@]}" "$TEST_DB"
-    # Verificar que se restauró con datos reales
-    TABLES=$(mysql "${CONN[@]}" -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='$TEST_DB';")
-    USERS=$(mysql "${CONN[@]}" -N -e "SELECT COUNT(*) FROM \`$TEST_DB\`.users;" 2>/dev/null || echo "0")
-    echo "   ✅ Restaurada: $TABLES tablas, $USERS usuarios."
-    mysql "${CONN[@]}" -e "DROP DATABASE \`$TEST_DB\`;"
-    echo "   🧹 Base temporal eliminada."
-    if [ "$TABLES" -gt 0 ] && [ "$USERS" -gt 0 ]; then
-      echo "✅ El backup es válido y se puede restaurar."
+    TEST_DB="${DB_NAME}_restoretest"
+
+    # Intento A: restaurar de verdad en una base temporal (lo más completo).
+    # Requiere que el usuario de BD pueda crear bases (CREATE/DROP DATABASE).
+    if mysql "${CONN[@]}" -e "CREATE DATABASE IF NOT EXISTS \`$TEST_DB\` CHARACTER SET utf8mb4;" 2>/dev/null; then
+      echo "   BD temporal: $TEST_DB"
+      gunzip -c "$DUMP" | mysql "${CONN[@]}" "$TEST_DB"
+      TABLES=$(mysql "${CONN[@]}" -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='$TEST_DB';")
+      USERS=$(mysql "${CONN[@]}" -N -e "SELECT COUNT(*) FROM \`$TEST_DB\`.users;" 2>/dev/null || echo "0")
+      mysql "${CONN[@]}" -e "DROP DATABASE \`$TEST_DB\`;"
+      echo "   🧹 Base temporal eliminada."
+      if [ "$TABLES" -gt 0 ] && [ "$USERS" -gt 0 ]; then
+        echo "✅ Restauración COMPLETA verificada: $TABLES tablas, $USERS usuarios. El backup sirve."
+      else
+        echo "⚠️  Se restauró pero quedó vacío — revísalo." >&2; exit 1
+      fi
     else
-      echo "⚠️  El backup se restauró pero parece vacío — revísalo." >&2
-      exit 1
+      # Intento B: sin permiso para crear bases → verificar INTEGRIDAD del archivo.
+      # Comprueba que el .gz no esté corrupto y contenga el esquema y los datos clave.
+      echo "   ℹ️  El usuario de BD no puede crear bases temporales."
+      echo "   → Verificando la INTEGRIDAD del archivo de backup en su lugar…"
+      if ! gunzip -t "$DUMP" 2>/dev/null; then
+        echo "❌ El archivo está CORRUPTO (gzip inválido). Backup NO utilizable." >&2; exit 1
+      fi
+      CONTENT=$(gunzip -c "$DUMP")
+      HAS_SCHEMA=$(printf '%s' "$CONTENT" | grep -c "CREATE TABLE \`users\`" || true)
+      HAS_DATA=$(printf '%s'   "$CONTENT" | grep -c "INSERT INTO \`users\`" || true)
+      HAS_END=$(printf '%s'    "$CONTENT" | grep -c "Dump completed" || true)
+      TABLE_COUNT=$(printf '%s' "$CONTENT" | grep -c "CREATE TABLE" || true)
+      echo "   Tablas en el dump: $TABLE_COUNT"
+      if [ "$HAS_SCHEMA" -ge 1 ] && [ "$HAS_DATA" -ge 1 ] && [ "$HAS_END" -ge 1 ]; then
+        echo "✅ Backup ÍNTEGRO: archivo sano, con esquema, datos de usuarios y cierre correcto."
+        echo "   (Para una prueba de restauración COMPLETA, pídele al admin de la BD permiso"
+        echo "    CREATE/DROP, o restaura manualmente en una base de prueba.)"
+      else
+        echo "❌ El backup parece incompleto o truncado (falta esquema/datos/cierre). Revísalo." >&2
+        exit 1
+      fi
     fi
     ;;
 
