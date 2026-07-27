@@ -4,6 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const db      = require('../database/db');
 const { requireAuth } = require('../middleware/auth');
 const { generateRoutine, generateNutritionPlan, suggestDayName } = require('../services/ai');
+const { gravatarUrl } = require('../utils/gravatar');
 const { webpush } = require('./push');
 
 router.use(requireAuth);
@@ -19,7 +20,7 @@ router.use(requireTrainer);
 router.get('/clients', async (req, res) => {
   try {
     const [clients] = await db.query(
-      `SELECT u.id, u.name, u.email, u.created_at,
+      `SELECT u.id, u.name, u.email, u.created_at, u.avatar_url,
          q.main_goal, q.weight_kg AS initial_weight_kg, q.height_cm,
          (SELECT weight_kg FROM measurements WHERE user_id=u.id ORDER BY logged_at DESC LIMIT 1) AS current_weight_kg,
          (SELECT logged_at FROM measurements WHERE user_id=u.id ORDER BY logged_at DESC LIMIT 1) AS last_measurement,
@@ -31,6 +32,7 @@ router.get('/clients', async (req, res) => {
        ORDER BY u.created_at DESC`,
       []
     );
+    for (const c of clients) c.gravatar_url = gravatarUrl(c.email);
     res.json({ clients });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -68,6 +70,7 @@ router.get('/clients/:id', async (req, res) => {
     );
 
     const { password_hash, ...safeUser } = user;
+    safeUser.gravatar_url = gravatarUrl(user.email);
     res.json({ user: safeUser, questionnaire, measurements, bioimpedance, routine, nutrition_plan: nutrition, adherence: adherence[0] });
   } catch (e) {
     console.error('[GET /clients/:id] ERROR:', e.message);

@@ -1,13 +1,6 @@
 const jwt = require('jsonwebtoken');
-const crypto = require('crypto');
 const db  = require('../database/db');
-
-// Gravatar del correo: si el usuario tiene foto asociada a su email, se muestra;
-// si no, d=404 hace que la imagen falle y el front cae a las iniciales.
-function gravatarUrl(email) {
-  const hash = crypto.createHash('md5').update(String(email || '').trim().toLowerCase()).digest('hex');
-  return `https://www.gravatar.com/avatar/${hash}?d=404&s=200`;
-}
+const { gravatarUrl } = require('../utils/gravatar');
 
 function calcMacroTargets(calorieTarget, fitnessGoal) {
   const kcal = calorieTarget || 2000;

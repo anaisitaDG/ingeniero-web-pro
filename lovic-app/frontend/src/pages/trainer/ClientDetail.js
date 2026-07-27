@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
 import { AreaChart, Area, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import PhotoCompareView from '../../components/PhotoCompare';
+import Avatar from '../../components/Avatar';
 
 const API_BASE = process.env.REACT_APP_API_URL || '';
 function fmtDate(str, opts = { day: 'numeric', month: 'short' }) {
@@ -15,11 +16,6 @@ function photoUrl(p) {
   return p.startsWith('http') ? p : `${API_BASE}/${p}`;
 }
 
-const AVATAR_COLORS = ['#FF6B6B','#F4A261','#2A9D8F','#E76F51','#457B9D','#9B5DE5','#F15BB5','#00BBF9','#06D6A0','#FF9F1C'];
-function avatarColor(name = '') {
-  let h = 0; for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xffffffff;
-  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
-}
 
 const EMPTY_EXERCISE = () => ({ _key: Math.random(), name: '', youtube_url: '', sets: 3, reps: '10', weight_kg: '' });
 const EMPTY_DAY = () => ({ _key: Math.random(), day_name: '', warmup_type: '', warmup_duration: '', cardio_type: '', cardio_duration: '', exercises: [EMPTY_EXERCISE()] });
@@ -397,9 +393,7 @@ export default function ClientDetail() {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
         <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-          <div style={{ width: 56, height: 56, borderRadius: '50%', background: avatarColor(user.name), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 800, color: '#fff' }}>
-            {user.name.charAt(0).toUpperCase()}
-          </div>
+          <Avatar user={user} size={56} />
           <div>
             <h1 style={{ fontSize: 22, fontWeight: 800 }}>{user.name}</h1>
             <p style={{ color: 'var(--muted)', fontSize: 14 }}>{user.email}</p>
