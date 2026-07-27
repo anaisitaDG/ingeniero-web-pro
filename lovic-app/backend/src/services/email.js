@@ -256,4 +256,142 @@ async function sendRenewalReminder(clientEmail, clientName, daysLeft, trainerEma
   });
 }
 
-module.exports = { sendMagicLink, sendWelcome, sendWelcomeWithInstructions, notifyTrainerOnboarding, sendWeeklySummary, sendRenewalReminder };
+// ── Aviso a la entrenadora: nuevas medidas de una clienta ─────────────────────
+const MEASURE_FIELDS = [
+  { key: 'weight_kg',  label: 'Peso',    unit: 'kg', better: 'down' },
+  { key: 'waist_cm',   label: 'Cintura', unit: 'cm', better: 'down' },
+  { key: 'hip_cm',     label: 'Cadera',  unit: 'cm', better: 'down' },
+  { key: 'chest_cm',   label: 'Pecho',   unit: 'cm', better: 'up'   },
+  { key: 'arm_cm',     label: 'Brazo',   unit: 'cm', better: 'up'   },
+  { key: 'forearm_cm', label: 'Antebrazo', unit: 'cm', better: 'up' },
+  { key: 'thigh_cm',   label: 'Muslo',   unit: 'cm', better: 'up'   },
+  { key: 'calf_cm',    label: 'Pantorrilla', unit: 'cm', better: 'up' },
+];
+const numOrNull = (v) => (v == null || v === '' ? null : Number(v));
+
+async function sendMeasurementUpdate(trainerEmail, trainerName, clientName, clientId, current, previous) {
+  const appUrl = process.env.APP_URL || 'https://app.lovicgym.com';
+  const link = `${appUrl}/trainer/clients/${clientId}`;
+
+  const rows = [];
+  let weightDelta = null;
+  for (const f of MEASURE_FIELDS) {
+    const now = numOrNull(current[f.key]);
+    if (now == null) continue;
+    const before = previous ? numOrNull(previous[f.key]) : null;
+    const delta = before != null ? +(now - before).toFixed(1) : null;
+    if (f.key === 'weight_kg' && delta != null) weightDelta = delta;
+    let color = '#8A8F98', arrow = '', deltaTxt = '—';
+    if (delta != null) {
+      if (delta === 0) { deltaTxt = '='; }
+      else {
+        const good = f.better === 'down' ? delta < 0 : delta > 0;
+        color = good ? '#2E9E6B' : '#E0A32E';
+        arrow = delta < 0 ? '▼' : '▲';
+        deltaTxt = `${arrow} ${delta > 0 ? '+' : ''}${delta}`;
+      }
+    }
+    rows.push(`
+      <tr>
+        <td style="padding:9px 8px;font-weight:600;color:#1A1A1A;border-top:1px solid #EFEDEA;font-size:14px">${f.label}</td>
+        <td style="padding:9px 8px;text-align:right;color:#666;border-top:1px solid #EFEDEA;font-size:14px">${before != null ? `${before}${f.unit}` : '—'}</td>
+        <td style="padding:9px 8px;text-align:right;color:#1A1A1A;border-top:1px solid #EFEDEA;font-size:14px">${now}${f.unit}</td>
+        <td style="padding:9px 8px;text-align:right;font-weight:800;color:${color};border-top:1px solid #EFEDEA;font-size:14px">${deltaTxt}</td>
+      </tr>`);
+  }
+
+  // Asunto con el cambio principal
+  let change = 'actualizó sus medidas';
+  if (weightDelta != null && weightDelta !== 0) {
+    change = weightDelta < 0 ? `bajó ${Math.abs(weightDelta)} kg 📉` : `subió ${Math.abs(weightDelta)} kg 📈`;
+  } else if (!previous) {
+    change = 'registró sus primeras medidas';
+  }
+  const subject = `${clientName} subió medidas — ${change}`;
+  const initial = (clientName || '?').charAt(0).toUpperCase();
+
+  await resend.emails.send({
+    from: FROM,
+    to: trainerEmail,
+    subject,
+    html: `
+    <div style="font-family:-apple-system,Helvetica,Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)">
+      <div style="background:linear-gradient(135deg,#FF6B6B,#FF8E53);padding:28px;text-align:center">
+        <h1 style="color:#fff;margin:0;font-size:20px;letter-spacing:.06em;font-weight:800">LOVIC</h1>
+        <p style="color:rgba(255,255,255,.9);margin:4px 0 0;font-size:12px;letter-spacing:.12em">NUEVAS MEDIDAS DE UNA CLIENTA</p>
+      </div>
+      <div style="padding:26px 28px 30px">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:22px">
+          <div style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#FF6B6B,#FF8E53);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px">${initial}</div>
+          <div>
+            <div style="font-weight:800;font-size:17px;color:#1A1A1A">${clientName}</div>
+            <div style="color:#8A8F98;font-size:13px">${previous ? 'Comparado con su registro anterior' : 'Primer registro de medidas'}</div>
+          </div>
+        </div>
+        <p style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#FF6B6B;font-weight:800;margin:0 0 12px">📏 Medidas</p>
+        <table style="width:100%;border-collapse:collapse">
+          <thead><tr>
+            <th style="text-align:left;font-size:11px;color:#8A8F98;padding:0 8px 8px">MEDIDA</th>
+            <th style="text-align:right;font-size:11px;color:#8A8F98;padding:0 8px 8px">ANTES</th>
+            <th style="text-align:right;font-size:11px;color:#8A8F98;padding:0 8px 8px">AHORA</th>
+            <th style="text-align:right;font-size:11px;color:#8A8F98;padding:0 8px 8px">CAMBIO</th>
+          </tr></thead>
+          <tbody>${rows.join('')}</tbody>
+        </table>
+        ${current.notes ? `<p style="font-size:13px;color:#666;margin-top:14px"><b>Nota de la clienta:</b> ${current.notes}</p>` : ''}
+        <a href="${link}" style="display:block;text-align:center;margin-top:24px;text-decoration:none;background:linear-gradient(135deg,#FF6B6B,#FF8E53);color:#fff;font-weight:800;padding:14px;border-radius:12px;font-size:15px">Ver perfil de ${clientName.split(' ')[0]} →</a>
+        <p style="text-align:center;color:#bbb;font-size:11px;margin-top:16px">Recibes este correo porque una clienta registró nuevas medidas en Lovic.</p>
+      </div>
+    </div>`,
+  });
+}
+
+// ── Aviso a la entrenadora: nuevas fotos de progreso (con análisis IA) ─────────
+async function sendProgressPhotoUpdate(trainerEmail, trainerName, clientName, clientId, { summary, zones, dateBefore, dateAfter, isFirst }) {
+  const appUrl = process.env.APP_URL || 'https://app.lovicgym.com';
+  const link = `${appUrl}/trainer/clients/${clientId}`;
+  const initial = (clientName || '?').charAt(0).toUpperCase();
+  const TREND = { mejora: '#2E9E6B', atencion: '#E0A32E', estable: '#8A8F98' };
+  const LABEL = { mejora: 'Mejora', atencion: 'A cuidar', estable: 'Estable' };
+  const AREA = { hombros:'Hombros', pecho:'Pecho', espalda:'Espalda', brazos:'Brazos', cintura:'Cintura', abdomen:'Abdomen', gluteos:'Glúteos', piernas:'Piernas', postura:'Postura', general:'General' };
+
+  const zonesHtml = (zones || []).filter(z => AREA[z.area]).map(z => `
+    <div style="display:flex;align-items:center;gap:8px;font-size:13.5px;color:#1A1A1A;margin:6px 0">
+      <span style="width:9px;height:9px;border-radius:50%;background:${TREND[z.trend] || TREND.estable};display:inline-block"></span>
+      <span><b>${AREA[z.area]}:</b> ${z.change} · ${LABEL[z.trend] || 'Estable'}</span>
+    </div>`).join('');
+
+  const subject = `${clientName} subió fotos de progreso${isFirst ? '' : ' — hay cambios 📸'}`;
+
+  await resend.emails.send({
+    from: FROM,
+    to: trainerEmail,
+    subject,
+    html: `
+    <div style="font-family:-apple-system,Helvetica,Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)">
+      <div style="background:linear-gradient(135deg,#FF6B6B,#FF8E53);padding:28px;text-align:center">
+        <h1 style="color:#fff;margin:0;font-size:20px;letter-spacing:.06em;font-weight:800">LOVIC</h1>
+        <p style="color:rgba(255,255,255,.9);margin:4px 0 0;font-size:12px;letter-spacing:.12em">NUEVAS FOTOS DE PROGRESO</p>
+      </div>
+      <div style="padding:26px 28px 30px">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:22px">
+          <div style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#FF6B6B,#FF8E53);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px">${initial}</div>
+          <div>
+            <div style="font-weight:800;font-size:17px;color:#1A1A1A">${clientName}</div>
+            <div style="color:#8A8F98;font-size:13px">${isFirst ? 'Primer registro de fotos' : `Registro del ${dateAfter} · vs. ${dateBefore}`}</div>
+          </div>
+        </div>
+        <p style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#FF6B6B;font-weight:800;margin:0 0 12px">📸 Análisis de fotos (IA)</p>
+        <div style="background:#FFF8F5;border:1px solid #FDE6DC;border-radius:12px;padding:16px 18px">
+          <p style="margin:0;font-size:14px;line-height:1.65;color:#3a3a3a">${summary || 'Se registraron nuevas fotos de progreso.'}</p>
+          ${zonesHtml ? `<div style="margin-top:12px">${zonesHtml}</div>` : ''}
+          <p style="font-size:11px;color:#8A8F98;margin-top:12px">Análisis generado por IA a partir de las fotos. Es orientativo, no un diagnóstico médico.</p>
+        </div>
+        <a href="${link}" style="display:block;text-align:center;margin-top:24px;text-decoration:none;background:linear-gradient(135deg,#FF6B6B,#FF8E53);color:#fff;font-weight:800;padding:14px;border-radius:12px;font-size:15px">Ver fotos en la app →</a>
+        <p style="text-align:center;color:#bbb;font-size:11px;margin-top:16px">Por privacidad, las fotos no se adjuntan — ábrelas de forma segura en la app.</p>
+      </div>
+    </div>`,
+  });
+}
+
+module.exports = { sendMagicLink, sendWelcome, sendWelcomeWithInstructions, notifyTrainerOnboarding, sendWeeklySummary, sendRenewalReminder, sendMeasurementUpdate, sendProgressPhotoUpdate };

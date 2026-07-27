@@ -5,6 +5,7 @@ const path    = require('path');
 const db      = require('../database/db');
 const { requireAuth } = require('../middleware/auth');
 const { comparePhotos } = require('../services/ai');
+const { sendProgressPhotoUpdate } = require('../services/email');
 const multer  = require('multer');
 
 const storage = multer.diskStorage({
@@ -27,6 +28,54 @@ router.use(requireAuth);
 
 function safeParse(s) {
   try { const v = JSON.parse(s); return Array.isArray(v) ? v : []; } catch { return []; }
+}
+
+// Avisa a la entrenadora (en segundo plano) cuando una CLIENTA sube fotos nuevas.
+// Si hay un registro anterior, incluye análisis IA comparativo; si es el primero,
+// solo notifica (sin gasto de IA).
+async function notifyTrainerPhotos(userId, newRegisterId) {
+  try {
+    const [[trainer]] = await db.query(`SELECT name, email FROM users WHERE role='trainer' LIMIT 1`);
+    if (!trainer?.email) return;
+    const [[client]] = await db.query('SELECT name FROM users WHERE id=?', [userId]);
+    if (!client) return;
+
+    // Los dos registros más recientes: [0] el nuevo, [1] el anterior
+    const [regs] = await db.query(
+      'SELECT * FROM progress_registers WHERE user_id=? ORDER BY date DESC, created_at DESC LIMIT 2',
+      [userId]
+    );
+    const current = regs.find(r => r.id === newRegisterId) || regs[0];
+    const previous = regs.find(r => r.id !== newRegisterId) || null;
+
+    if (!previous) {
+      await sendProgressPhotoUpdate(trainer.email, trainer.name, client.name, userId, { isFirst: true });
+      return;
+    }
+
+    const [photos] = await db.query(
+      'SELECT * FROM progress_photos WHERE register_id IN (?, ?) AND user_id=?',
+      [current.id, previous.id, userId]
+    );
+    const photoOf = (regId, angle) => photos.find(p => p.register_id === regId && p.angle === angle);
+    const pairs = [];
+    for (const angle of ['frente', 'espalda', 'perfil']) {
+      const b = photoOf(previous.id, angle);
+      const a = photoOf(current.id, angle);
+      if (b && a) pairs.push({ angle, beforePath: path.resolve(b.image_url), afterPath: path.resolve(a.image_url) });
+    }
+
+    const dateBefore = String(previous.date).slice(0, 10);
+    const dateAfter  = String(current.date).slice(0, 10);
+    let summary = 'Se registraron nuevas fotos de progreso.', zones = [];
+    if (pairs.length) {
+      const res = await comparePhotos(pairs, dateBefore, dateAfter, current.note || '');
+      summary = res.summary; zones = res.zones;
+    }
+    await sendProgressPhotoUpdate(trainer.email, trainer.name, client.name, userId, { summary, zones, dateBefore, dateAfter, isFirst: false });
+  } catch (e) {
+    console.error('[notifyTrainerPhotos]', e.message);
+  }
 }
 
 // POST /progress-photos/register — upload a 3-angle set (frente, espalda, perfil)
@@ -68,6 +117,9 @@ router.post('/register', upload.fields([
     }
 
     res.json({ message: 'Registro guardado', registerId });
+
+    // Aviso a la entrenadora (solo si quien sube es la propia clienta), en segundo plano
+    if (req.user.role === 'client') notifyTrainerPhotos(targetUserId, registerId);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

@@ -3,8 +3,27 @@ const router  = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const db      = require('../database/db');
 const { requireAuth } = require('../middleware/auth');
+const { sendMeasurementUpdate } = require('../services/email');
 
 router.use(requireAuth);
+
+// Avisa a la entrenadora (en segundo plano) cuando una CLIENTA registra medidas.
+async function notifyTrainerMeasurements(user) {
+  try {
+    const [[trainer]] = await db.query(`SELECT name, email FROM users WHERE role='trainer' LIMIT 1`);
+    if (!trainer?.email) return;
+    const [rows] = await db.query(
+      `SELECT * FROM measurements WHERE user_id=? ORDER BY logged_at DESC, created_at DESC LIMIT 2`,
+      [user.id]
+    );
+    if (!rows.length) return;
+    const current = rows[0];
+    const previous = rows[1] || null;
+    await sendMeasurementUpdate(trainer.email, trainer.name, user.name, user.id, current, previous);
+  } catch (e) {
+    console.error('[notifyTrainerMeasurements]', e.message);
+  }
+}
 
 // POST /measurements
 router.post('/', async (req, res) => {
@@ -20,6 +39,9 @@ router.post('/', async (req, res) => {
     );
 
     res.json({ message: 'Medidas guardadas' });
+
+    // Aviso a la entrenadora (solo si quien registra es una clienta), en segundo plano
+    if (req.user.role === 'client') notifyTrainerMeasurements(req.user);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
