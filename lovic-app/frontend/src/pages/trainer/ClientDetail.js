@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
 import { AreaChart, Area, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import PhotoCompareView from '../../components/PhotoCompare';
 
 const API_BASE = process.env.REACT_APP_API_URL || '';
 function fmtDate(str, opts = { day: 'numeric', month: 'short' }) {
@@ -36,6 +37,10 @@ export default function ClientDetail() {
   const [bioUploading, setBioUploading] = useState(false);
   const [targets, setTargets]   = useState({ calorie_target: '', protein_target_g: '', carbs_target_g: '', fat_target_g: '' });
   const [savingTargets, setSavingTargets] = useState(false);
+
+  // Comparación de fotos de progreso
+  const [photoSelected, setPhotoSelected] = useState([]); // ids de registros
+  const [photoComparing, setPhotoComparing] = useState(false);
 
   // Workout builder state
   const [workoutDays, setWorkoutDays]     = useState([EMPTY_DAY()]);
@@ -985,6 +990,14 @@ export default function ClientDetail() {
         </div>
       )}
 
+      {/* Comparación de fotos (overlay) */}
+      {photoComparing && photoSelected.length === 2 && progress && (() => {
+        const a = progress.photos.find(r => r.id === photoSelected[0]);
+        const b = progress.photos.find(r => r.id === photoSelected[1]);
+        if (!a || !b) return null;
+        return <PhotoCompareView a={a} b={b} userId={id} onClose={() => setPhotoComparing(false)} />;
+      })()}
+
       {/* PROGRESO */}
       {tab === 'progreso' && (
         <div>
@@ -1042,18 +1055,36 @@ export default function ClientDetail() {
               {/* Gallery */}
               {progress.photos.length > 0 ? (
                 <div>
-                  <p style={{ fontWeight: 700, marginBottom: 12 }}>Registros anteriores</p>
-                  {progress.photos.map(reg => (
-                    <div key={reg.id} className="card" style={{ marginBottom: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                    <p style={{ fontWeight: 700 }}>Registros anteriores</p>
+                    {photoSelected.length === 2 && (
+                      <button className="btn-primary" style={{ fontSize: 13, padding: '6px 14px' }} onClick={() => setPhotoComparing(true)}>
+                        Comparar →
+                      </button>
+                    )}
+                  </div>
+                  {progress.photos.length >= 2 && (
+                    <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>
+                      {photoSelected.length === 0 ? 'Toca 2 registros para compararlos con IA'
+                        : photoSelected.length === 1 ? 'Selecciona otro para comparar'
+                        : '2 seleccionados'}
+                    </p>
+                  )}
+                  {progress.photos.map(reg => {
+                    const sel = photoSelected.includes(reg.id);
+                    return (
+                    <div key={reg.id} className="card" style={{ marginBottom: 12, border: sel ? '2px solid var(--coral)' : '2px solid transparent', cursor: 'pointer' }}
+                      onClick={() => setPhotoSelected(prev => prev.includes(reg.id) ? prev.filter(x => x !== reg.id) : prev.length >= 2 ? [prev[1], reg.id] : [...prev, reg.id])}>
                       <p style={{ fontWeight: 700, fontSize: 13, marginBottom: 10 }}>
                         {new Date(reg.date).toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' })}
                         {reg.note ? <span style={{ fontWeight: 400, color: 'var(--muted)', marginLeft: 8 }}>{reg.note}</span> : null}
+                        {sel ? <span style={{ float: 'right', color: 'var(--coral)', fontWeight: 700 }}>✓</span> : null}
                       </p>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
                         {['frente','espalda','perfil'].map(angle => (
                           <div key={angle}>
                             {reg.photos[angle] ? (
-                              <img src={photoUrl(reg.photos[angle].image_url)} alt={angle} onClick={() => setLightbox(photoUrl(reg.photos[angle].image_url))} style={{ width: '100%', aspectRatio: '3/4', objectFit: 'cover', borderRadius: 10, cursor: 'zoom-in', display: 'block' }} />
+                              <img src={photoUrl(reg.photos[angle].image_url)} alt={angle} onClick={e => { e.stopPropagation(); setLightbox(photoUrl(reg.photos[angle].image_url)); }} style={{ width: '100%', aspectRatio: '3/4', objectFit: 'cover', borderRadius: 10, cursor: 'zoom-in', display: 'block' }} />
                             ) : (
                               <div style={{ width: '100%', aspectRatio: '3/4', borderRadius: 10, background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                 <span style={{ fontSize: 10, color: 'var(--muted)' }}>Sin foto</span>
@@ -1064,7 +1095,8 @@ export default function ClientDetail() {
                         ))}
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : null}
             </>

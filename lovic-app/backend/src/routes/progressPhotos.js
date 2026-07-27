@@ -120,15 +120,23 @@ router.post('/compare', async (req, res) => {
     const { register_a, register_b } = req.body;
     if (!register_a || !register_b) return res.status(400).json({ error: 'Se requieren dos registros' });
 
+    // La entrenadora puede comparar las fotos de su clienta (user_id); si no, usa su propio id
+    let targetUserId = req.user.id;
+    if (req.body.user_id && req.user.role === 'trainer') {
+      const [[target]] = await db.query('SELECT id FROM users WHERE id=? AND role="client"', [req.body.user_id]);
+      if (!target) return res.status(403).json({ error: 'Usuario destino no válido' });
+      targetUserId = target.id;
+    }
+
     const [regs] = await db.query(
       'SELECT * FROM progress_registers WHERE id IN (?, ?) AND user_id=?',
-      [register_a, register_b, req.user.id]
+      [register_a, register_b, targetUserId]
     );
     if (regs.length !== 2) return res.status(404).json({ error: 'Registros no encontrados' });
 
     const [photos] = await db.query(
       'SELECT * FROM progress_photos WHERE register_id IN (?, ?) AND user_id=?',
-      [register_a, register_b, req.user.id]
+      [register_a, register_b, targetUserId]
     );
 
     // Ordenar por fecha: antes = más antiguo, después = más reciente
@@ -163,7 +171,7 @@ router.post('/compare', async (req, res) => {
     // Bioimpedancia más cercana a cada fecha (para mostrar números reales al lado)
     const [bios] = await db.query(
       'SELECT weight_kg, body_fat_pct, muscle_mass_kg, skeletal_muscle_kg, visceral_fat, logged_at, created_at FROM bioimpedance WHERE user_id=? ORDER BY logged_at DESC LIMIT 40',
-      [req.user.id]
+      [targetUserId]
     );
     const closestBio = (dateStr) => {
       if (!bios.length) return null;
