@@ -1,4 +1,4 @@
-const CACHE = 'lovic-v11';
+const CACHE = 'lovic-v12';
 
 // Sin barra final: '/dashboard' debe cubrir tanto '/dashboard' como '/dashboard?date=...'
 const API_PATHS = ['/auth', '/food', '/dashboard', '/measurements', '/bioimpedance', '/questionnaire', '/trainer', '/profile', '/progress-photos', '/workout', '/meal-plan', '/push'];
@@ -45,6 +45,7 @@ self.addEventListener('fetch', e => {
   // Never intercept: API calls, navigation (HTML), SW itself, JS/CSS bundles (hashed, let browser cache)
   if (url.port === '4000') return;
   if (API_PATHS.some(p => url.pathname.startsWith(p))) return;
+  if (url.pathname.startsWith('/uploads/')) return;   // fotos subidas: siempre de red, nunca caché
   if (e.request.mode === 'navigate') return;
   if (url.pathname === '/sw.js') return;
   if (url.pathname.startsWith('/static/js/') || url.pathname.startsWith('/static/css/')) return;
