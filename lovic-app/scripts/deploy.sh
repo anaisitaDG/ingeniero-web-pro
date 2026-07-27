@@ -19,6 +19,11 @@ echo "── 2/4  Compilando frontend ──────────────
 cd "$APP_DIR/frontend"
 npm run build
 
+# npm run build borra la carpeta build → recrear el enlace de las fotos subidas
+# para que /uploads/... sirva las imágenes (si no, nginx devuelve index.html)
+ln -sfn "$APP_DIR/backend/uploads" "$BUILD_DIR/uploads"
+echo "   🔗 Enlace de /uploads recreado (fotos de progreso / bioimpedancia)"
+
 echo "── 3/4  Publicando a la carpeta en vivo ───────────────────────"
 if [ -L "$SERVED_DIR" ]; then
   # La carpeta servida es un ENLACE al build → ya está publicado, no hay que copiar
