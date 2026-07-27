@@ -1,9 +1,40 @@
 const express = require('express');
 const router  = express.Router();
+const path    = require('path');
+const multer  = require('multer');
 const db      = require('../database/db');
 const { requireAuth, calcMacroTargets } = require('../middleware/auth');
 
 router.use(requireAuth);
+
+// ── Foto de perfil ────────────────────────────────────────────────────────────
+const avatarStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, process.env.UPLOAD_PATH || 'uploads/'),
+  filename:    (req, file, cb) => cb(null, `avatar_${req.user.id}_${Date.now()}${path.extname(file.originalname)}`),
+});
+const avatarUpload = multer({
+  storage: avatarStorage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => file.mimetype.startsWith('image/') ? cb(null, true) : cb(new Error('Solo imágenes')),
+});
+
+// POST /profile/avatar — sube foto de perfil personalizada
+router.post('/avatar', avatarUpload.single('avatar'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'Imagen requerida' });
+    const url = 'uploads/' + req.file.filename;
+    await db.query('UPDATE users SET avatar_url=? WHERE id=?', [url, req.user.id]);
+    res.json({ avatar_url: url });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// DELETE /profile/avatar — quita la foto personalizada (vuelve a Gravatar/iniciales)
+router.delete('/avatar', async (req, res) => {
+  try {
+    await db.query('UPDATE users SET avatar_url=NULL WHERE id=?', [req.user.id]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 
 // PUT /profile
 router.put('/', async (req, res) => {

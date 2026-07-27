@@ -1,6 +1,7 @@
 import React from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import Avatar from '../../components/Avatar';
 
 const navItems = [
   { to: '/',             label: 'Inicio',   icon: '🏠' },
@@ -32,7 +33,8 @@ export default function ClientLayout() {
             </svg>
             <span style={{ fontWeight: 800, fontSize: 16 }}>Lovic</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Avatar user={user} size={30} />
             <span style={{ fontSize: 13, color: 'var(--muted)' }}>Hola, {user?.name?.split(' ')[0]}</span>
             <button className="btn-ghost" onClick={handleLogout} style={{ padding: '6px 12px', fontSize: 13 }}>Salir</button>
           </div>

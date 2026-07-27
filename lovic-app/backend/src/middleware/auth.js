@@ -1,5 +1,13 @@
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const db  = require('../database/db');
+
+// Gravatar del correo: si el usuario tiene foto asociada a su email, se muestra;
+// si no, d=404 hace que la imagen falle y el front cae a las iniciales.
+function gravatarUrl(email) {
+  const hash = crypto.createHash('md5').update(String(email || '').trim().toLowerCase()).digest('hex');
+  return `https://www.gravatar.com/avatar/${hash}?d=404&s=200`;
+}
 
 function calcMacroTargets(calorieTarget, fitnessGoal) {
   const kcal = calorieTarget || 2000;
@@ -36,13 +44,14 @@ async function requireAuth(req, res, next) {
 
   try {
     const [[user]] = await db.query(
-      `SELECT u.id, u.email, u.name, u.role, u.calorie_target, u.fitness_goal,
+      `SELECT u.id, u.email, u.name, u.role, u.avatar_url, u.calorie_target, u.fitness_goal,
               u.protein_target_g, u.carbs_target_g, u.fat_target_g,
               (SELECT COUNT(*) FROM questionnaire_data q WHERE q.user_id = u.id) > 0 AS has_questionnaire
        FROM users u WHERE u.id = ?`,
       [payload.sub]
     );
     if (!user) return res.status(401).json({ error: 'Usuario no encontrado' });
+    user.gravatar_url = gravatarUrl(user.email);
 
     // Skip calorie/macro calculations for trainers
     if (user.role === 'trainer') {

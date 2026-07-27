@@ -78,6 +78,15 @@ export const api = {
   },
   profile: {
     update: (data) => request('/profile', { method: 'PUT', body: JSON.stringify(data) }),
+    uploadAvatar: (formData) => {
+      const token = getToken();
+      return fetch(`${BASE}/profile/avatar`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      }).then(r => r.json());
+    },
+    removeAvatar: () => request('/profile/avatar', { method: 'DELETE' }),
   },
   progressPhotos: {
     list:           ()         => request('/progress-photos'),

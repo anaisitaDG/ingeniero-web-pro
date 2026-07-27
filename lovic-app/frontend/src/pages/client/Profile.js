@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import { usePushNotifications } from '../../hooks/usePushNotifications';
+import Avatar from '../../components/Avatar';
 
 function SetPasswordCard() {
   const [pw, setPw]       = useState('');
@@ -61,6 +62,40 @@ export default function Profile() {
 
   function set(k, v) { setForm(f => ({ ...f, [k]: v })); }
 
+  const fileRef = useRef(null);
+  const [avatarBusy, setAvatarBusy] = useState(false);
+
+  async function handleAvatarPick(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarBusy(true);
+    try {
+      const fd = new FormData();
+      fd.append('avatar', file);
+      const res = await api.profile.uploadAvatar(fd);
+      if (res.error) throw new Error(res.error);
+      setUser(u => ({ ...u, avatar_url: res.avatar_url }));
+    } catch (err) {
+      alert(err.message || 'No se pudo subir la foto');
+    } finally {
+      setAvatarBusy(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  }
+
+  async function handleAvatarRemove() {
+    if (!window.confirm('¿Quitar tu foto de perfil?')) return;
+    setAvatarBusy(true);
+    try {
+      await api.profile.removeAvatar();
+      setUser(u => ({ ...u, avatar_url: null }));
+    } catch (err) {
+      alert(err.message || 'No se pudo quitar la foto');
+    } finally {
+      setAvatarBusy(false);
+    }
+  }
+
   async function handleSave() {
     setSaving(true);
     try {
@@ -89,11 +124,34 @@ export default function Profile() {
 
       {/* Avatar */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 28 }}>
-        <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'var(--coral-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, fontWeight: 800, color: 'var(--coral)', marginBottom: 10 }}>
-          {user?.name?.charAt(0).toUpperCase()}
+        <div style={{ position: 'relative', marginBottom: 10 }}>
+          <Avatar user={user} size={88} style={{ opacity: avatarBusy ? 0.5 : 1 }} />
+          <button
+            onClick={() => fileRef.current?.click()}
+            disabled={avatarBusy}
+            aria-label="Cambiar foto"
+            style={{
+              position: 'absolute', bottom: 0, right: 0, width: 30, height: 30, borderRadius: '50%',
+              background: 'var(--coral)', color: '#fff', border: '2px solid var(--card)', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, padding: 0,
+            }}
+          >📷</button>
+          <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarPick} />
         </div>
         <p style={{ fontWeight: 800, fontSize: 18 }}>{user?.name}</p>
         <p style={{ color: 'var(--muted)', fontSize: 13 }}>{user?.email}</p>
+        <div style={{ display: 'flex', gap: 14, marginTop: 8 }}>
+          <button onClick={() => fileRef.current?.click()} disabled={avatarBusy}
+            style={{ background: 'none', border: 'none', color: 'var(--coral)', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+            {avatarBusy ? 'Subiendo…' : 'Cambiar foto'}
+          </button>
+          {user?.avatar_url && (
+            <button onClick={handleAvatarRemove} disabled={avatarBusy}
+              style={{ background: 'none', border: 'none', color: 'var(--muted)', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+              Quitar
+            </button>
+          )}
+        </div>
       </div>
 
       {editing ? (

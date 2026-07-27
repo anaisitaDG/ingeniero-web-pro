@@ -214,6 +214,8 @@ const db = require('./database/db');
         PRIMARY KEY (user_id, endpoint(255))
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
+    // Foto de perfil personalizada (si no hay, se usa el Gravatar del correo)
+    await db.query(`ALTER TABLE users ADD COLUMN avatar_url VARCHAR(255) DEFAULT NULL`).catch(() => {});
     // Caché de análisis IA de comparación de fotos (evita repetir la llamada por el mismo par)
     await db.query(`
       CREATE TABLE IF NOT EXISTS photo_comparisons (
