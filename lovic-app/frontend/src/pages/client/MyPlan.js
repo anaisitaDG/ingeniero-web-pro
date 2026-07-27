@@ -52,7 +52,7 @@ export default function MyPlan() {
       const dRes = await api.dashboard.get().catch(() => null);
       const newStreak = dRes?.streak ?? streak + 1;
       setStreak(newStreak);
-      setCelebration({ dayName, kcal, streak: newStreak });
+      setCelebration({ dayName, kcal, streak: newStreak, date: useDate });
     }
   }
 
@@ -95,6 +95,7 @@ export default function MyPlan() {
           dayName={celebration.dayName}
           kcal={celebration.kcal}
           streak={celebration.streak}
+          completedDate={celebration.date}
           completedDays={completedDays}
           onClose={() => setCelebration(null)}
         />
@@ -120,11 +121,11 @@ export default function MyPlan() {
           <div style={{ marginTop: 20, borderTop: '2px dashed var(--border)', paddingTop: 20 }}>
             <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>🆓 ¿Entrenaste algo diferente hoy?</p>
             <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 14 }}>Registra aquí cualquier actividad fuera de tu rutina asignada.</p>
-            <FreeWorkout onCompleted={(kcal) => {
+            <FreeWorkout onCompleted={(kcal, date) => {
               api.dashboard.get().then(d => {
-                setCelebration({ dayName: 'Entrenamiento libre', kcal, streak: d.streak || streak });
+                setCelebration({ dayName: 'Entrenamiento libre', kcal, streak: d.streak || streak, date });
                 setStreak(d.streak || streak);
-              }).catch(() => setCelebration({ dayName: 'Entrenamiento libre', kcal, streak }));
+              }).catch(() => setCelebration({ dayName: 'Entrenamiento libre', kcal, streak, date }));
             }} />
           </div>
         </>
@@ -1021,7 +1022,7 @@ function FreeWorkout({ onCompleted }) {
         return sum + ((e.sets || 3) * (e.reps || 10) * (e.weight_kg || 0) * 0.1);
       }, 0);
       setExercises([emptyExercise()]); setNote(''); setOpen(false);
-      onCompleted(Math.round(kcal));
+      onCompleted(Math.round(kcal), date);
     } catch (e) { alert(e.message); }
     finally { setSaving(false); }
   }
@@ -1189,10 +1190,13 @@ function splitDayName(fullName) {
   return { weekday: '', routine: raw };
 }
 
-function CelebrationModal({ dayName, kcal, streak, completedDays, onClose }) {
+function CelebrationModal({ dayName, kcal, streak, completedDate, completedDays, onClose }) {
   const shareRef = useRef(null);
-  const today = new Date();
-  const dateLabel = today.toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' });
+  // Fecha de referencia = la del entrenamiento completado (no la de hoy). Así, si
+  // registras el sábado un día domingo, la tarjeta muestra el sábado correctamente.
+  const refDate = completedDate ? new Date(`${completedDate}T00:00:00`) : new Date();
+  const refDateStr = refDate.toLocaleDateString('en-CA');
+  const dateLabel = refDate.toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' });
   const milestone = MILESTONES[streak] || null;
   const { weekday, routine } = splitDayName(dayName);
   const bigTitle = routine || weekday || 'Entrenamiento';
@@ -1204,12 +1208,12 @@ function CelebrationModal({ dayName, kcal, streak, completedDays, onClose }) {
       .filter(v => typeof v === 'string')
   );
 
-  const dow = today.getDay();
-  const monday = new Date(today); monday.setDate(today.getDate() - ((dow + 6) % 7));
+  const dow = refDate.getDay();
+  const monday = new Date(refDate); monday.setDate(refDate.getDate() - ((dow + 6) % 7));
   const weekDays = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(monday); d.setDate(monday.getDate() + i);
     const dateStr = d.toLocaleDateString('en-CA');
-    const isToday = d.toDateString() === today.toDateString();
+    const isToday = dateStr === refDateStr;
     const isDone  = completedDates.has(dateStr) || isToday;
     return { label: ['L','M','M','J','V','S','D'][i], date: d.getDate(), isToday, isDone };
   });
