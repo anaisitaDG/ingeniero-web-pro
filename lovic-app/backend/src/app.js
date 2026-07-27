@@ -271,8 +271,16 @@ app.use('/workout',         require('./routes/workout'));
 app.use('/meal-plan',       require('./routes/mealPlan'));
 app.use('/push',            require('./routes/push').router);
 
-// Health
-app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }));
+// Health — verifica también que la base de datos responda, para que un monitor
+// externo (UptimeRobot) detecte caídas reales, no solo que el proceso esté vivo.
+app.get('/health', async (req, res) => {
+  try {
+    await db.query('SELECT 1');
+    res.json({ status: 'ok', db: 'ok', ts: new Date() });
+  } catch (e) {
+    res.status(503).json({ status: 'error', db: 'down', error: e.message });
+  }
+});
 
 // ── Daily renewal reminder ────────────────────────────────────────────────────
 async function sendRenewalRemindersJob() {
