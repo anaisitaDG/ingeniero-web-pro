@@ -81,6 +81,7 @@ export const api = {
   },
   progressPhotos: {
     list:           ()         => request('/progress-photos'),
+    compare:        (register_a, register_b) => request('/progress-photos/compare', { method: 'POST', body: JSON.stringify({ register_a, register_b }) }),
     removeRegister: (id)       => request(`/progress-photos/register/${id}`, { method: 'DELETE' }),
     uploadRegister: (formData) => {
       const token = getToken();

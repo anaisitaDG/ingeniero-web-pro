@@ -4,6 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const path    = require('path');
 const db      = require('../database/db');
 const { requireAuth } = require('../middleware/auth');
+const { comparePhotos } = require('../services/ai');
 const multer  = require('multer');
 
 const storage = multer.diskStorage({
@@ -111,6 +112,56 @@ router.delete('/register/:id', async (req, res) => {
   } finally {
     conn.release();
   }
+});
+
+// POST /progress-photos/compare — análisis IA de dos registros
+router.post('/compare', async (req, res) => {
+  try {
+    const { register_a, register_b } = req.body;
+    if (!register_a || !register_b) return res.status(400).json({ error: 'Se requieren dos registros' });
+
+    const [regs] = await db.query(
+      'SELECT * FROM progress_registers WHERE id IN (?, ?) AND user_id=?',
+      [register_a, register_b, req.user.id]
+    );
+    if (regs.length !== 2) return res.status(404).json({ error: 'Registros no encontrados' });
+
+    const [photos] = await db.query(
+      'SELECT * FROM progress_photos WHERE register_id IN (?, ?) AND user_id=?',
+      [register_a, register_b, req.user.id]
+    );
+
+    // Ordenar por fecha: antes = más antiguo, después = más reciente
+    const byId = {};
+    for (const r of regs) byId[r.id] = r;
+    const [older, newer] = [byId[register_a], byId[register_b]].sort(
+      (x, y) => String(x.date).localeCompare(String(y.date))
+    );
+
+    const photoOf = (regId, angle) => photos.find(p => p.register_id === regId && p.angle === angle);
+    const pairs = [];
+    for (const angle of ['frente', 'espalda', 'perfil']) {
+      const before = photoOf(older.id, angle);
+      const after  = photoOf(newer.id, angle);
+      if (before && after) {
+        pairs.push({
+          angle,
+          beforePath: path.resolve(before.image_url),
+          afterPath:  path.resolve(after.image_url),
+        });
+      }
+    }
+
+    if (!pairs.length) {
+      return res.status(400).json({ error: 'No hay ángulos en común entre los dos registros para comparar' });
+    }
+
+    const dateBefore = String(older.date).slice(0, 10);
+    const dateAfter  = String(newer.date).slice(0, 10);
+    const analysis = await comparePhotos(pairs, dateBefore, dateAfter, older.note || newer.note || '');
+
+    res.json({ analysis, dateBefore, dateAfter, angles: pairs.map(p => p.angle) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // Legacy single upload kept for backwards compatibility

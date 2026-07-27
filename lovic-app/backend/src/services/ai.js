@@ -193,6 +193,46 @@ Responde directamente el resumen, sin título ni encabezado.`,
   return message.content[0].text.trim();
 }
 
+// Compara dos registros de fotos de progreso (varios ángulos) y devuelve un
+// análisis cálido, motivador y respetuoso de los cambios visibles.
+async function comparePhotos(pairs, dateBefore, dateAfter, note) {
+  const fs = require('fs');
+  const mediaFor = (p) => {
+    const ext = p.split('.').pop().toLowerCase();
+    return ext === 'png' ? 'image/png' : 'image/jpeg';
+  };
+  const angleLabels = { frente: 'Frente', espalda: 'Espalda', perfil: 'Perfil' };
+
+  const content = [];
+  for (const { angle, beforePath, afterPath } of pairs) {
+    content.push({ type: 'text', text: `Ángulo: ${angleLabels[angle] || angle} — ANTES (${dateBefore}):` });
+    content.push({ type: 'image', source: { type: 'base64', media_type: mediaFor(beforePath), data: fs.readFileSync(beforePath).toString('base64') } });
+    content.push({ type: 'text', text: `Ángulo: ${angleLabels[angle] || angle} — DESPUÉS (${dateAfter}):` });
+    content.push({ type: 'image', source: { type: 'base64', media_type: mediaFor(afterPath), data: fs.readFileSync(afterPath).toString('base64') } });
+  }
+
+  content.push({
+    type: 'text',
+    text: `Eres una entrenadora personal experta, cálida y motivadora. Estás comparando fotos de progreso físico de una clienta tomadas en dos momentos (ANTES: ${dateBefore}, DESPUÉS: ${dateAfter}).${note ? ` Nota de la clienta: "${note}".` : ''}
+
+Analiza los cambios VISIBLES entre las fotos: postura, definición muscular, tono, volumen, composición corporal aparente. Sé específica sobre lo que observas por zonas (por ejemplo brazos, abdomen, piernas, espalda) cuando sea visible.
+
+Reglas MUY importantes:
+- Tono siempre respetuoso, positivo y de apoyo. Nunca hagas comentarios que puedan herir la autoestima ni juzgues el cuerpo.
+- No des diagnósticos médicos ni cifras exactas de peso o grasa (no se pueden saber por foto). Habla de cambios "aparentes" o "visibles".
+- Si las diferencias son sutiles o la iluminación/ángulo/ropa dificultan la comparación, dilo con honestidad y de forma amable, sin inventar cambios.
+- Termina con una recomendación breve y motivadora para seguir avanzando.
+- Escribe en español, en 4 a 6 oraciones, sin asteriscos ni markdown, sin títulos. Responde directamente el análisis.`,
+  });
+
+  const message = await client.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 600,
+    messages: [{ role: 'user', content }],
+  });
+  return message.content[0].text.trim();
+}
+
 async function suggestDayName(exerciseNames) {
   const message = await client.messages.create({
     model: 'claude-haiku-4-5-20251001',
@@ -208,4 +248,4 @@ Solo el nombre, sin puntuación ni explicación.`,
   return message.content[0].text.trim().replace(/[."]/g, '');
 }
 
-module.exports = { parseFood, getFoodRecommendation, generateRoutine, generateNutritionPlan, parseBioimpedance, generateBioSummary, suggestDayName };
+module.exports = { parseFood, getFoodRecommendation, generateRoutine, generateNutritionPlan, parseBioimpedance, generateBioSummary, comparePhotos, suggestDayName };

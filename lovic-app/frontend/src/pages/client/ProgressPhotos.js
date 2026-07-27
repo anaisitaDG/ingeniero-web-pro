@@ -168,12 +168,57 @@ function RegisterCard({ register, onDelete, onSelect, selected, onLightbox }) {
 // ── Comparison View ───────────────────────────────────────────────────────────
 function CompareView({ a, b, onClose }) {
   const [activeAngle, setActiveAngle] = useState('frente');
+  const [analysis, setAnalysis]   = useState(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [aiError, setAiError]     = useState(null);
+
+  async function runAnalysis() {
+    setAnalyzing(true);
+    setAiError(null);
+    try {
+      const res = await api.progressPhotos.compare(a.id, b.id);
+      setAnalysis(res.analysis);
+    } catch (e) {
+      setAiError(e.message || 'No se pudo generar el análisis');
+    } finally {
+      setAnalyzing(false);
+    }
+  }
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'var(--bg)', zIndex: 1000, overflowY: 'auto', padding: '16px 16px 40px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
         <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: 'var(--text)' }}>←</button>
         <h2 style={{ fontSize: 16, fontWeight: 700 }}>Comparar registros</h2>
+      </div>
+
+      {/* AI analysis */}
+      <div className="card" style={{ marginBottom: 16 }}>
+        {analysis ? (
+          <>
+            <p style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>✨ Análisis de tu progreso</p>
+            <p style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--text)', whiteSpace: 'pre-wrap' }}>{analysis}</p>
+            <p style={{ fontSize: 10, color: 'var(--muted)', marginTop: 10 }}>
+              Análisis generado por IA a partir de las fotos. Es orientativo, no un diagnóstico médico.
+            </p>
+          </>
+        ) : (
+          <>
+            <p style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>✨ Análisis con IA</p>
+            <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12 }}>
+              Deja que la IA compare tus fotos y te cuente los cambios visibles entre ambos registros.
+            </p>
+            <button
+              className="btn-primary"
+              onClick={runAnalysis}
+              disabled={analyzing}
+              style={{ width: '100%', justifyContent: 'center' }}
+            >
+              {analyzing ? <><span className="spinner" /> Analizando…</> : 'Analizar mi progreso'}
+            </button>
+            {aiError && <p style={{ fontSize: 12, color: '#E05252', marginTop: 8 }}>{aiError}</p>}
+          </>
+        )}
       </div>
 
       {/* Angle tabs */}
