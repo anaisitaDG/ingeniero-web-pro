@@ -158,9 +158,36 @@ router.post('/compare', async (req, res) => {
 
     const dateBefore = String(older.date).slice(0, 10);
     const dateAfter  = String(newer.date).slice(0, 10);
-    const analysis = await comparePhotos(pairs, dateBefore, dateAfter, older.note || newer.note || '');
+    const result = await comparePhotos(pairs, dateBefore, dateAfter, older.note || newer.note || '');
 
-    res.json({ analysis, dateBefore, dateAfter, angles: pairs.map(p => p.angle) });
+    // Bioimpedancia más cercana a cada fecha (para mostrar números reales al lado)
+    const [bios] = await db.query(
+      'SELECT weight_kg, body_fat_pct, muscle_mass_kg, skeletal_muscle_kg, visceral_fat, logged_at, created_at FROM bioimpedance WHERE user_id=? ORDER BY logged_at DESC LIMIT 40',
+      [req.user.id]
+    );
+    const closestBio = (dateStr) => {
+      if (!bios.length) return null;
+      const target = new Date(dateStr).getTime();
+      let best = null, bestDiff = Infinity;
+      for (const b of bios) {
+        const d = new Date(b.logged_at || b.created_at).getTime();
+        const diff = Math.abs(d - target);
+        if (diff < bestDiff) { bestDiff = diff; best = b; }
+      }
+      // Solo si está dentro de ~45 días de la foto, si no es engañoso
+      if (bestDiff > 45 * 24 * 60 * 60 * 1000) return null;
+      return best;
+    };
+
+    res.json({
+      analysis: result.summary,
+      zones: result.zones,
+      dateBefore,
+      dateAfter,
+      angles: pairs.map(p => p.angle),
+      bioBefore: closestBio(dateBefore),
+      bioAfter:  closestBio(dateAfter),
+    });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

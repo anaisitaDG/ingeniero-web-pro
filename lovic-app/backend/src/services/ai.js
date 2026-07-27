@@ -215,22 +215,40 @@ async function comparePhotos(pairs, dateBefore, dateAfter, note) {
     type: 'text',
     text: `Eres una entrenadora personal experta, cálida y motivadora. Estás comparando fotos de progreso físico de una clienta tomadas en dos momentos (ANTES: ${dateBefore}, DESPUÉS: ${dateAfter}).${note ? ` Nota de la clienta: "${note}".` : ''}
 
-Analiza los cambios VISIBLES entre las fotos: postura, definición muscular, tono, volumen, composición corporal aparente. Sé específica sobre lo que observas por zonas (por ejemplo brazos, abdomen, piernas, espalda) cuando sea visible.
+Analiza los cambios VISIBLES entre las fotos por zonas del cuerpo.
+
+Devuelve SOLO un JSON válido con este formato exacto:
+{
+  "summary": "resumen cálido y motivador de 3 a 5 oraciones sobre el progreso general",
+  "zones": [
+    { "area": "abdomen|cintura|brazos|hombros|pecho|espalda|piernas|gluteos|postura|general", "change": "cambio visible en esa zona, máximo 12 palabras", "trend": "mejora|estable|atencion" }
+  ]
+}
 
 Reglas MUY importantes:
-- Tono siempre respetuoso, positivo y de apoyo. Nunca hagas comentarios que puedan herir la autoestima ni juzgues el cuerpo.
-- No des diagnósticos médicos ni cifras exactas de peso o grasa (no se pueden saber por foto). Habla de cambios "aparentes" o "visibles".
-- Si las diferencias son sutiles o la iluminación/ángulo/ropa dificultan la comparación, dilo con honestidad y de forma amable, sin inventar cambios.
-- Termina con una recomendación breve y motivadora para seguir avanzando.
-- Escribe en español, en 4 a 6 oraciones, sin asteriscos ni markdown, sin títulos. Responde directamente el análisis.`,
+- Usa el nombre de "area" EXACTAMENTE de la lista permitida (abdomen, cintura, brazos, hombros, pecho, espalda, piernas, gluteos, postura, general).
+- Incluye solo zonas realmente visibles en las fotos. De 2 a 5 zonas.
+- Tono siempre respetuoso, positivo y de apoyo. Nunca hieras la autoestima ni juzgues el cuerpo.
+- No des diagnósticos médicos ni cifras exactas de peso o grasa (no se saben por foto). Habla de cambios "aparentes" o "visibles".
+- Si las diferencias son sutiles o la luz/ángulo/ropa dificultan comparar, dilo con honestidad y amabilidad, sin inventar cambios (usa trend "estable").
+- El "summary" termina con una recomendación breve y motivadora. Sin asteriscos ni markdown.
+- Responde SOLO el JSON, sin texto adicional.`,
   });
 
   const message = await client.messages.create({
     model: 'claude-haiku-4-5-20251001',
-    max_tokens: 600,
+    max_tokens: 800,
     messages: [{ role: 'user', content }],
   });
-  return message.content[0].text.trim();
+  const text = message.content[0].text.trim();
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) return { summary: text, zones: [] };
+  try {
+    const parsed = JSON.parse(jsonMatch[0]);
+    return { summary: parsed.summary || '', zones: Array.isArray(parsed.zones) ? parsed.zones : [] };
+  } catch {
+    return { summary: text, zones: [] };
+  }
 }
 
 async function suggestDayName(exerciseNames) {
