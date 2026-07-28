@@ -3,7 +3,7 @@ const router  = express.Router();
 const path    = require('path');
 const multer  = require('multer');
 const db      = require('../database/db');
-const { requireAuth, calcMacroTargets } = require('../middleware/auth');
+const { requireAuth } = require('../middleware/auth');
 
 router.use(requireAuth);
 
@@ -38,30 +38,18 @@ router.delete('/avatar', async (req, res) => {
 
 // PUT /profile
 router.put('/', async (req, res) => {
-  const { name, fitness_goal, calorie_target, protein_target_g, carbs_target_g, fat_target_g } = req.body;
+  const { name, fitness_goal } = req.body;
   const uid = req.user.id;
 
-  // If calorie_target or fitness_goal changed but macros not provided, recalculate
-  const newCalorie = calorie_target || req.user.calorie_target;
-  const newGoal    = fitness_goal   || req.user.fitness_goal;
-  const auto = (!protein_target_g) ? calcMacroTargets(newCalorie, newGoal) : {};
-
+  // La clienta solo puede cambiar su nombre y objetivo. La META CALÓRICA y los
+  // macros SOLO los define su entrenadora (vía /trainer/clients/:id/targets),
+  // por eso aquí no se tocan aunque vengan en el body.
   await db.query(
     `UPDATE users SET
-       name             = COALESCE(NULLIF(?, ''), name),
-       fitness_goal     = COALESCE(NULLIF(?, ''), fitness_goal),
-       calorie_target   = COALESCE(NULLIF(?, 0), calorie_target),
-       protein_target_g = COALESCE(?, protein_target_g),
-       carbs_target_g   = COALESCE(?, carbs_target_g),
-       fat_target_g     = COALESCE(?, fat_target_g)
+       name         = COALESCE(NULLIF(?, ''), name),
+       fitness_goal = COALESCE(NULLIF(?, ''), fitness_goal)
      WHERE id = ?`,
-    [
-      name ?? null, fitness_goal ?? null, calorie_target || null,
-      protein_target_g || auto.protein_target_g || null,
-      carbs_target_g   || auto.carbs_target_g   || null,
-      fat_target_g     || auto.fat_target_g     || null,
-      uid,
-    ]
+    [name ?? null, fitness_goal ?? null, uid]
   );
 
   const [[updated]] = await db.query(

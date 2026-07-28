@@ -55,9 +55,8 @@ export default function Profile() {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving]   = useState(false);
   const [form, setForm] = useState({
-    name:           user?.name || '',
-    fitness_goal:   user?.fitness_goal || 'maintenance',
-    calorie_target: user?.calorie_target || '',
+    name:         user?.name || '',
+    fitness_goal: user?.fitness_goal || 'maintenance',
   });
 
   function set(k, v) { setForm(f => ({ ...f, [k]: v })); }
@@ -176,8 +175,11 @@ export default function Profile() {
             ))}
           </div>
 
-          <label className="label">Meta calórica diaria (kcal)</label>
-          <input className="input" type="number" value={form.calorie_target} onChange={e => set('calorie_target', e.target.value)} placeholder="Ej: 1800" style={{ marginBottom: 16 }} />
+          <div style={{ background: 'var(--surface)', borderRadius: 10, padding: '10px 12px', marginBottom: 16 }}>
+            <p style={{ fontSize: 12, color: 'var(--muted)' }}>
+              🎯 Tu meta calórica ({user?.calorie_target ? `${user.calorie_target} kcal/día` : '—'}) la define tu entrenadora. Si quieres cambiarla, coméntaselo a Lorena.
+            </p>
+          </div>
 
           <div style={{ display: 'flex', gap: 10 }}>
             <button className="btn-primary" onClick={handleSave} disabled={saving} style={{ flex: 1, justifyContent: 'center' }}>
