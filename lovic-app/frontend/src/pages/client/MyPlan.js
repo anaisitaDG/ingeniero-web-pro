@@ -573,10 +573,11 @@ function ActivityBlock({ emoji, label, options, kcalTable, defaultDuration, choi
 
 // kcal from real logged sets: weight(kg) × reps × sets × 0.1 (aprox)
 function calcStrengthKcal(setWeights) {
-  return Math.round(setWeights.reduce((sum, s) => {
+  return Math.round((setWeights || []).reduce((sum, s) => {
     const w = parseFloat(s.weight_kg) || 0;
     const r = parseFloat(s.reps_done) || 0;
-    return sum + w * r * 0.1;
+    const d = parseFloat(s.duration_secs) || 0;   // isometría: ~1 rep ≈ 3 seg de sostén
+    return sum + w * r * 0.1 + w * (d / 3) * 0.1;
   }, 0));
 }
 
@@ -655,10 +656,11 @@ function DayCard({ day, onLogged, completedDate, onToggleComplete }) {
   }, [cardioChoice, cardioMins, cardioDone, activityLoaded, day.id]); // eslint-disable-line
   // kcal per exercise keyed by ex.id, updated by ExerciseCard
   const [exKcal, setExKcal] = useState({});
+  const [extraKcal, setExtraKcal] = useState(0); // kcal de ejercicios extra del día
 
   const warmupKcal = calcKcal(WARMUP_KCAL, warmupChoice, Number(warmupMins)) || 0;
   const cardioKcal = calcKcal(CARDIO_KCAL, cardioChoice, Number(cardioMins)) || 0;
-  const strengthKcal = Object.values(exKcal).reduce((a, b) => a + b, 0);
+  const strengthKcal = Object.values(exKcal).reduce((a, b) => a + b, 0) + extraKcal;
   const totalKcal = warmupKcal + strengthKcal + cardioKcal;
 
   // Last session date = most recent exercise log in this day
@@ -715,7 +717,7 @@ function DayCard({ day, onLogged, completedDate, onToggleComplete }) {
             <ExerciseCard key={ex.id} exercise={ex} onLogged={() => onLogged(false)}
               onKcalChange={kcal => setExKcal(prev => ({ ...prev, [ex.id]: kcal }))} />
           ))}
-          <ExtraExercises dayId={day.id} />
+          <ExtraExercises dayId={day.id} onKcalChange={setExtraKcal} />
           <ActivityBlock emoji="🏃" label="Cardio" options={CARDIO_OPTIONS} kcalTable={CARDIO_KCAL}
             defaultDuration={day.cardio_duration} choice={cardioChoice} setChoice={setCardioChoice}
             mins={cardioMins} setMins={setCardioMins} done={cardioDone} setDone={setCardioDone}
@@ -1018,7 +1020,7 @@ function setChipText(s, i) {
 }
 
 // Ejercicios que la clienta agrega al día de HOY (solo para esta sesión)
-function ExtraExercises({ dayId }) {
+function ExtraExercises({ dayId, onKcalChange }) {
   const today = new Date().toLocaleDateString('en-CA');
   const [list, setList]     = useState([]);
   const [adding, setAdding] = useState(false);
@@ -1029,6 +1031,12 @@ function ExtraExercises({ dayId }) {
   useEffect(() => {
     api.workout.getExtraExercises(dayId, today).then(r => setList(r.exercises || [])).catch(() => {});
   }, [dayId, today]);
+
+  // Reporta al día las kcal de los ejercicios extra guardados
+  useEffect(() => {
+    const k = (list || []).reduce((sum, item) => sum + calcStrengthKcal(item.sets), 0);
+    onKcalChange?.(k);
+  }, [list, onKcalChange]);
 
   function addRow()     { setSets(s => [...s, { weight_kg: '', reps_done: '', duration_secs: '' }]); }
   function rmRow(i)     { setSets(s => s.filter((_, j) => j !== i)); }
