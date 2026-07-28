@@ -1794,7 +1794,12 @@ function SessionCard({ session, prevSession, defaultOpen = false }) {
                   borderRadius: 10, background: isOpen ? `${color}12` : 'var(--bg)',
                   cursor: hasSets ? 'pointer' : 'default', transition: 'background 0.15s' }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 13, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ex.name}</p>
+                  <p style={{ fontSize: 13, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {ex.name}
+                    {ex.added_by_client && <span style={{ fontSize: 10, fontWeight: 800, color: '#7C3AED', background: '#7C3AED18', padding: '1px 6px', borderRadius: 6, marginLeft: 6 }}>agregado</span>}
+                    {ex.has_extra_sets && <span style={{ fontSize: 10, fontWeight: 800, color: '#FF6B4A', background: '#FF6B4A18', padding: '1px 6px', borderRadius: 6, marginLeft: 6 }}>+series</span>}
+                    {ex.has_isometry && <span style={{ fontSize: 10, fontWeight: 800, color: '#0891B2', background: '#0891B218', padding: '1px 6px', borderRadius: 6, marginLeft: 6 }}>⏱️</span>}
+                  </p>
                   {detail && <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 1 }}>{detail}</p>}
                 </div>
                 {badge && (
@@ -1810,7 +1815,9 @@ function SessionCard({ session, prevSession, defaultOpen = false }) {
                   {ex.sets.map((s, j) => (
                     <span key={j} style={{ fontSize: 12, background: `${color}18`, color: color,
                       padding: '3px 10px', borderRadius: 6, fontWeight: 700 }}>
-                      S{s.set ?? j+1}: {s.weight ?? s.weight_kg ?? '—'}kg × {s.reps ?? s.reps_done ?? '—'}
+                      {s.set_type === 'isometry'
+                        ? `⏱️ ${s.weight ?? s.weight_kg ?? '—'}kg × ${s.duration_secs ?? '—'}s`
+                        : `S${s.set ?? j+1}: ${s.weight ?? s.weight_kg ?? '—'}kg × ${s.reps ?? s.reps_done ?? '—'}`}
                     </span>
                   ))}
                 </div>

@@ -143,11 +143,20 @@ router.post('/log', async (req, res) => {
     // Validar TODOS los sets antes de tocar la base de datos (evita borrados a medias)
     const cleanSets = [];
     for (const s of sets) {
+      const isIso = s.set_type === 'isometry';
       const w = sanitizeNumber(s.weight_kg, { min: 0, max: 999.99, label: 'El peso (kg)' });
       if (w.error) return res.status(400).json({ error: w.error });
       const r = sanitizeNumber(s.reps_done, { min: 0, max: 9999, label: 'Las repeticiones', integer: true });
       if (r.error) return res.status(400).json({ error: r.error });
-      cleanSets.push({ set_number: s.set_number, weight_kg: w.value, reps_done: r.value });
+      const d = sanitizeNumber(s.duration_secs, { min: 0, max: 36000, label: 'El tiempo (seg)', integer: true });
+      if (d.error) return res.status(400).json({ error: d.error });
+      cleanSets.push({
+        set_number: s.set_number,
+        set_type: isIso ? 'isometry' : 'normal',
+        weight_kg: w.value,
+        reps_done: isIso ? null : r.value,
+        duration_secs: isIso ? d.value : null,
+      });
     }
 
     // Verify exercise belongs to this user's active plan
@@ -168,8 +177,8 @@ router.post('/log', async (req, res) => {
 
     for (const s of cleanSets) {
       await db.query(
-        'INSERT INTO workout_logs (id, exercise_id, user_id, logged_date, set_number, weight_kg, reps_done) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [uuidv4(), exercise_id, uid, date, s.set_number, s.weight_kg, s.reps_done]
+        'INSERT INTO workout_logs (id, exercise_id, user_id, logged_date, set_number, weight_kg, reps_done, set_type, duration_secs) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [uuidv4(), exercise_id, uid, date, s.set_number, s.weight_kg, s.reps_done, s.set_type, s.duration_secs]
       );
     }
     res.json({ message: 'Registrado' });
@@ -181,7 +190,7 @@ router.get('/history/:exerciseId', async (req, res) => {
   try {
     const uid = req.user.id;
     const [logs] = await db.query(
-      `SELECT logged_date, set_number, weight_kg, reps_done
+      `SELECT logged_date, set_number, weight_kg, reps_done, set_type, duration_secs
        FROM workout_logs WHERE exercise_id=? AND user_id=?
        ORDER BY logged_date DESC, set_number ASC
        LIMIT 50`,
@@ -194,7 +203,7 @@ router.get('/history/:exerciseId', async (req, res) => {
         ? row.logged_date.toISOString().slice(0, 10)
         : String(row.logged_date).slice(0, 10);
       if (!byDate[d]) { byDate[d] = []; grouped.push({ date: d, sets: byDate[d] }); }
-      byDate[d].push({ set_number: row.set_number, weight_kg: row.weight_kg, reps_done: row.reps_done });
+      byDate[d].push({ set_number: row.set_number, weight_kg: row.weight_kg, reps_done: row.reps_done, set_type: row.set_type, duration_secs: row.duration_secs });
     }
     res.json({ history: grouped });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -278,6 +287,59 @@ router.get('/free', async (req, res) => {
       [uid]
     );
     res.json({ sessions: rows });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Ejercicios extra agregados en el día (solo para esa sesión) ───────────────
+// POST /workout/extra-exercise — agrega un ejercicio nuevo al día de hoy
+router.post('/extra-exercise', async (req, res) => {
+  try {
+    const uid = req.user.id;
+    const { day_id, name, sets, date } = req.body;
+    if (!day_id || !name || !String(name).trim()) return res.status(400).json({ error: 'Nombre y día requeridos' });
+    const session_date = date || colombiaToday();
+
+    // Normaliza las series (normal: reps+peso · isometria: peso+tiempo)
+    const cleanSets = (Array.isArray(sets) ? sets : []).map((s, i) => {
+      const iso = s.set_type === 'isometry';
+      const num = (v, max) => (v == null || v === '' || !Number.isFinite(Number(v)) ? null : Math.min(Number(v), max));
+      return {
+        set_number: i + 1,
+        set_type: iso ? 'isometry' : 'normal',
+        weight_kg: num(s.weight_kg, 999.99),
+        reps_done: iso ? null : num(s.reps_done, 9999),
+        duration_secs: iso ? num(s.duration_secs, 36000) : null,
+      };
+    });
+
+    const id = uuidv4();
+    await db.query(
+      'INSERT INTO session_extra_exercises (id, user_id, day_id, session_date, name, sets) VALUES (?, ?, ?, ?, ?, ?)',
+      [id, uid, day_id, session_date, String(name).trim(), JSON.stringify(cleanSets)]
+    );
+    res.json({ ok: true, id });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /workout/extra-exercises/:dayId?date= — ejercicios extra de un día en una fecha
+router.get('/extra-exercises/:dayId', async (req, res) => {
+  try {
+    const uid = req.user.id;
+    const date = req.query.date || colombiaToday();
+    const [rows] = await db.query(
+      'SELECT * FROM session_extra_exercises WHERE user_id=? AND day_id=? AND session_date=? ORDER BY created_at ASC',
+      [uid, req.params.dayId, date]
+    );
+    const exercises = rows.map(r => ({ id: r.id, name: r.name, session_date: r.session_date, sets: (() => { try { return JSON.parse(r.sets) || []; } catch { return []; } })() }));
+    res.json({ exercises });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// DELETE /workout/extra-exercise/:id
+router.delete('/extra-exercise/:id', async (req, res) => {
+  try {
+    await db.query('DELETE FROM session_extra_exercises WHERE id=? AND user_id=?', [req.params.id, req.user.id]);
+    res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

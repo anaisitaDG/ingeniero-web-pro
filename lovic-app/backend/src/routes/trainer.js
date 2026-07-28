@@ -407,14 +407,19 @@ router.get('/clients/:id/workout-logs', async (req, res) => {
 
   // Logs de ejercicios
   const [logs] = await db.query(
-    `SELECT wl.logged_date, wl.set_number, wl.weight_kg, wl.reps_done,
-            we.name as exercise_name, wd.day_name
+    `SELECT wl.logged_date, wl.set_number, wl.weight_kg, wl.reps_done, wl.set_type, wl.duration_secs,
+            we.name as exercise_name, we.sets as planned_sets, wd.day_name
      FROM workout_logs wl
      JOIN workout_exercises we ON we.id = wl.exercise_id
      JOIN workout_days wd ON wd.id = we.day_id
      WHERE wl.user_id=?
      ORDER BY wl.logged_date DESC, wd.day_name, we.name, wl.set_number ASC
      LIMIT 500`, [uid]
+  );
+
+  // Ejercicios extra agregados por la clienta en el día
+  const [extraRows] = await db.query(
+    `SELECT * FROM session_extra_exercises WHERE user_id=? ORDER BY session_date DESC LIMIT 200`, [uid]
   );
 
   // Días completados (workout_done)
@@ -433,21 +438,40 @@ router.get('/clients/:id/workout-logs', async (req, res) => {
   const byDate = {};
   for (const row of logs) {
     const d = row.logged_date instanceof Date ? row.logged_date.toISOString().slice(0,10) : String(row.logged_date).slice(0,10);
-    if (!byDate[d]) byDate[d] = { date: d, day_name: row.day_name, exercises: {}, type: 'routine' };
+    if (!byDate[d]) byDate[d] = { date: d, day_name: row.day_name, exercises: {}, planned: {}, type: 'routine' };
     if (!byDate[d].exercises[row.exercise_name]) byDate[d].exercises[row.exercise_name] = [];
-    byDate[d].exercises[row.exercise_name].push({ set: row.set_number, weight: row.weight_kg, reps: row.reps_done });
+    byDate[d].planned[row.exercise_name] = row.planned_sets;
+    byDate[d].exercises[row.exercise_name].push({ set: row.set_number, weight: row.weight_kg, reps: row.reps_done, set_type: row.set_type, duration_secs: row.duration_secs });
+  }
+
+  // Ejercicios extra: se anexan a la sesión de su fecha (o crean una)
+  for (const ex of extraRows) {
+    const d = ex.session_date instanceof Date ? ex.session_date.toISOString().slice(0,10) : String(ex.session_date).slice(0,10);
+    if (!byDate[d]) byDate[d] = { date: d, day_name: 'Ejercicios extra', exercises: {}, planned: {}, type: 'routine' };
+    let parsed = []; try { parsed = JSON.parse(ex.sets) || []; } catch { parsed = []; }
+    byDate[d].exercises[ex.name] = parsed.map(s => ({ set: s.set_number, weight: s.weight_kg, reps: s.reps_done, set_type: s.set_type, duration_secs: s.duration_secs }));
+    byDate[d].planned[ex.name] = '__extra__';
   }
 
   const sessions = Object.values(byDate).map(s => ({
     date: s.date,
     day_name: s.day_name,
     type: 'routine',
-    exercises: Object.entries(s.exercises).map(([name, sets]) => ({
-      name,
-      max_weight: Math.max(...sets.map(x => parseFloat(x.weight) || 0)) || null,
-      reps: sets[0]?.reps || null,
-      sets,
-    })),
+    exercises: Object.entries(s.exercises).map(([name, sets]) => {
+      const isExtra = s.planned[name] === '__extra__';
+      const plannedN = Number(s.planned[name]) || 0;
+      const hasIso = sets.some(x => x.set_type === 'isometry');
+      const hasExtraSets = !isExtra && plannedN > 0 && sets.length > plannedN;
+      return {
+        name,
+        added_by_client: isExtra,          // ejercicio nuevo agregado por la clienta
+        has_extra_sets: hasExtraSets,      // series de más respecto al plan
+        has_isometry: hasIso,
+        max_weight: Math.max(...sets.map(x => parseFloat(x.weight) || 0)) || null,
+        reps: sets[0]?.reps || null,
+        sets,
+      };
+    }),
   }));
 
   // Agregar entrenamientos libres

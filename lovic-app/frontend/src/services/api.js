@@ -132,6 +132,9 @@ export const api = {
     getActivity:    (dayId) => request(`/workout/activity/${dayId}`),
     saveFree:       (exercises, note, date) => request('/workout/free', { method: 'POST', body: JSON.stringify({ exercises, note, date }) }),
     getFree:        () => request('/workout/free'),
+    addExtraExercise:  (day_id, name, sets, date) => request('/workout/extra-exercise', { method: 'POST', body: JSON.stringify({ day_id, name, sets, date: date || new Date().toLocaleDateString('en-CA') }) }),
+    getExtraExercises: (dayId, date) => request(`/workout/extra-exercises/${dayId}?date=${date || new Date().toLocaleDateString('en-CA')}`),
+    deleteExtraExercise: (id) => request(`/workout/extra-exercise/${id}`, { method: 'DELETE' }),
   },
   push: {
     vapidKey:      ()                       => request('/push/vapid-public-key'),

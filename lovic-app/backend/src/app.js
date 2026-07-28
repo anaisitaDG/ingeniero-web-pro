@@ -216,6 +216,22 @@ const db = require('./database/db');
     `);
     // Foto de perfil personalizada (si no hay, se usa el Gravatar del correo)
     await db.query(`ALTER TABLE users ADD COLUMN avatar_url VARCHAR(255) DEFAULT NULL`).catch(() => {});
+    // Series con tipo (normal | isometria) y tiempo para isometrías
+    await db.query(`ALTER TABLE workout_logs ADD COLUMN set_type VARCHAR(12) NOT NULL DEFAULT 'normal'`).catch(() => {});
+    await db.query(`ALTER TABLE workout_logs ADD COLUMN duration_secs INT DEFAULT NULL`).catch(() => {});
+    // Ejercicios agregados por la clienta en el día (solo para esa sesión, no cambian el plan)
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS session_extra_exercises (
+        id           VARCHAR(36) PRIMARY KEY,
+        user_id      VARCHAR(36) NOT NULL,
+        day_id       VARCHAR(36) NOT NULL,
+        session_date DATE NOT NULL,
+        name         VARCHAR(255) NOT NULL,
+        sets         TEXT,
+        created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_user_day_date (user_id, day_id, session_date)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `).catch(() => {});
     // Caché de análisis IA de comparación de fotos (evita repetir la llamada por el mismo par)
     await db.query(`
       CREATE TABLE IF NOT EXISTS photo_comparisons (
