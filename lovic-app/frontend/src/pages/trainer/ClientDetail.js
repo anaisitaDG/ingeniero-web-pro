@@ -1812,14 +1812,23 @@ function SessionCard({ session, prevSession, defaultOpen = false }) {
               </div>
               {isOpen && hasSets && (
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', padding: '6px 10px 4px' }}>
-                  {ex.sets.map((s, j) => (
-                    <span key={j} style={{ fontSize: 12, background: `${color}18`, color: color,
-                      padding: '3px 10px', borderRadius: 6, fontWeight: 700 }}>
-                      {s.set_type === 'isometry'
-                        ? `⏱️ ${s.weight ?? s.weight_kg ?? '—'}kg × ${s.duration_secs ?? '—'}s`
-                        : `S${s.set ?? j+1}: ${s.weight ?? s.weight_kg ?? '—'}kg × ${s.reps ?? s.reps_done ?? '—'}`}
-                    </span>
-                  ))}
+                  {ex.sets.map((s, j) => {
+                    const w = s.weight ?? s.weight_kg;
+                    const reps = s.reps ?? s.reps_done;
+                    const dur = s.duration_secs;
+                    const hasReps = reps != null && reps !== '';
+                    const hasDur = dur != null && dur !== '';
+                    const parts = [];
+                    if (hasReps) parts.push(`× ${reps}`);
+                    if (hasDur) parts.push(`${dur}s`);
+                    const prefix = hasDur && !hasReps ? '⏱️ ' : `S${s.set ?? j+1}: `;
+                    return (
+                      <span key={j} style={{ fontSize: 12, background: `${color}18`, color: color,
+                        padding: '3px 10px', borderRadius: 6, fontWeight: 700 }}>
+                        {prefix}{w != null && w !== '' ? `${w}kg` : '—kg'}{parts.length ? ' ' + parts.join(' · ') : ''}
+                      </span>
+                    );
+                  })}
                 </div>
               )}
             </div>

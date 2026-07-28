@@ -140,10 +140,10 @@ router.post('/log', async (req, res) => {
     const { exercise_id, logged_date, sets } = req.body;
     if (!exercise_id || !Array.isArray(sets)) return res.status(400).json({ error: 'Datos requeridos' });
 
-    // Validar TODOS los sets antes de tocar la base de datos (evita borrados a medias)
+    // Cada serie tiene 3 campos opcionales: peso, reps e isometría (seg).
+    // Se guarda lo que venga; set_type='isometry' si trae tiempo (para marcarlo).
     const cleanSets = [];
     for (const s of sets) {
-      const isIso = s.set_type === 'isometry';
       const w = sanitizeNumber(s.weight_kg, { min: 0, max: 999.99, label: 'El peso (kg)' });
       if (w.error) return res.status(400).json({ error: w.error });
       const r = sanitizeNumber(s.reps_done, { min: 0, max: 9999, label: 'Las repeticiones', integer: true });
@@ -152,10 +152,10 @@ router.post('/log', async (req, res) => {
       if (d.error) return res.status(400).json({ error: d.error });
       cleanSets.push({
         set_number: s.set_number,
-        set_type: isIso ? 'isometry' : 'normal',
+        set_type: d.value != null ? 'isometry' : 'normal',
         weight_kg: w.value,
-        reps_done: isIso ? null : r.value,
-        duration_secs: isIso ? d.value : null,
+        reps_done: r.value,
+        duration_secs: d.value,
       });
     }
 
@@ -300,15 +300,15 @@ router.post('/extra-exercise', async (req, res) => {
     const session_date = date || colombiaToday();
 
     // Normaliza las series (normal: reps+peso · isometria: peso+tiempo)
+    const num = (v, max) => (v == null || v === '' || !Number.isFinite(Number(v)) ? null : Math.min(Number(v), max));
     const cleanSets = (Array.isArray(sets) ? sets : []).map((s, i) => {
-      const iso = s.set_type === 'isometry';
-      const num = (v, max) => (v == null || v === '' || !Number.isFinite(Number(v)) ? null : Math.min(Number(v), max));
+      const dur = num(s.duration_secs, 36000);
       return {
         set_number: i + 1,
-        set_type: iso ? 'isometry' : 'normal',
+        set_type: dur != null ? 'isometry' : 'normal',
         weight_kg: num(s.weight_kg, 999.99),
-        reps_done: iso ? null : num(s.reps_done, 9999),
-        duration_secs: iso ? num(s.duration_secs, 36000) : null,
+        reps_done: num(s.reps_done, 9999),
+        duration_secs: dur,
       };
     });
 

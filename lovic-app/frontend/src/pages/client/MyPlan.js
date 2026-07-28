@@ -777,14 +777,13 @@ function ExerciseCard({ exercise: ex, onLogged, onKcalChange }) {
     const lastW = ex.last_session?.weights ? ex.last_session.weights.split(',') : [];
     const lastR = ex.last_session?.reps    ? ex.last_session.reps.split(',')    : [];
     return Array.from({ length: plannedSets }, (_, i) => ({
-      set_type: 'normal',
       weight_kg: lastW[i] || ex.weight_kg || '',
       reps_done: lastR[i] || ex.reps || '',
       duration_secs: '',
     }));
   });
-  function addSet(type) {
-    setSetWeights(w => [...w, { set_type: type, weight_kg: ex.weight_kg || '', reps_done: type === 'normal' ? (ex.reps || '') : '', duration_secs: '' }]);
+  function addSet() {
+    setSetWeights(w => [...w, { weight_kg: ex.weight_kg || '', reps_done: '', duration_secs: '' }]);
     setShowLog(true);
   }
   function removeSet(i) { setSetWeights(w => w.filter((_, j) => j !== i)); }
@@ -805,10 +804,9 @@ function ExerciseCard({ exercise: ex, onLogged, onKcalChange }) {
     try {
       const sets = setWeights.map((s, i) => ({
         set_number: i + 1,
-        set_type: s.set_type === 'isometry' ? 'isometry' : 'normal',
         weight_kg: s.weight_kg ? Number(s.weight_kg) : null,
-        reps_done: s.set_type === 'isometry' ? null : (s.reps_done ? Number(s.reps_done) : null),
-        duration_secs: s.set_type === 'isometry' ? (s.duration_secs ? Number(s.duration_secs) : null) : null,
+        reps_done: s.reps_done ? Number(s.reps_done) : null,
+        duration_secs: s.duration_secs ? Number(s.duration_secs) : null,
       }));
       await api.workout.log(ex.id, today, sets);
       setShowLog(false);
@@ -832,6 +830,22 @@ function ExerciseCard({ exercise: ex, onLogged, onKcalChange }) {
     (lastSession.logged_date instanceof Date
       ? lastSession.logged_date.toISOString().slice(0, 10)
       : String(lastSession.logged_date).slice(0, 10)) === today;
+
+  // Si ya registró hoy, recarga las series EXACTAS guardadas (incluidas extra e
+  // isometrías) para que al re-editar y guardar no se pierda nada.
+  useEffect(() => {
+    if (!isLoggedToday) return;
+    api.workout.history(ex.id).then(res => {
+      const todays = (res.history || []).find(h => h.date === today);
+      if (todays?.sets?.length) {
+        setSetWeights(todays.sets.map(s => ({
+          weight_kg: s.weight_kg ?? '',
+          reps_done: s.reps_done ?? '',
+          duration_secs: s.duration_secs ?? '',
+        })));
+      }
+    }).catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div style={{ background: 'var(--bg)', borderRadius: 14, padding: 14 }}>
@@ -900,65 +914,41 @@ function ExerciseCard({ exercise: ex, onLogged, onKcalChange }) {
 
       {showLog && (
         <div style={{ marginTop: 12, background: 'var(--card)', borderRadius: 12, padding: 12 }}>
-          <p style={{ fontWeight: 700, fontSize: 13, marginBottom: 10 }}>Registrar sesión de hoy</p>
+          <p style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>Registrar sesión de hoy</p>
+          <div style={{ display: 'flex', gap: 6, marginBottom: 4, paddingLeft: 42 }}>
+            <span style={{ flex: 1, fontSize: 10, color: 'var(--muted)', textAlign: 'center' }}>Peso (kg)</span>
+            <span style={{ flex: 1, fontSize: 10, color: 'var(--muted)', textAlign: 'center' }}>Reps</span>
+            <span style={{ flex: 1, fontSize: 10, color: 'var(--muted)', textAlign: 'center' }}>Iso (seg)</span>
+            <span style={{ width: 18, flexShrink: 0 }} />
+          </div>
           {setWeights.map((s, i) => {
-            const isIso = s.set_type === 'isometry';
             const isExtra = i >= plannedSets;
             return (
-            <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
-              <span style={{ fontSize: 12, fontWeight: 600, color: isExtra ? 'var(--coral)' : 'var(--muted)', width: 60, flexShrink: 0 }}>
-                {isIso ? '⏱️' : 'Serie'} {i + 1}{isExtra ? ' +' : ''}
+            <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 8, alignItems: 'center' }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: isExtra ? 'var(--coral)' : 'var(--muted)', width: 36, flexShrink: 0 }}>
+                {i + 1}{isExtra ? '+' : ''}
               </span>
-              <div style={{ flex: 1 }}>
-                <label style={{ fontSize: 11, color: 'var(--muted)', display: 'block', marginBottom: 2 }}>Peso (kg)</label>
-                <input
-                  className="input"
-                  type="number" step="0.5" min="0" max="999"
-                  placeholder={ex.weight_kg || '0'}
-                  value={s.weight_kg}
-                  onChange={e => setSetWeights(w => w.map((x, j) => j === i ? { ...x, weight_kg: e.target.value } : x))}
-                  style={{ padding: '8px', textAlign: 'center' }}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label style={{ fontSize: 11, color: 'var(--muted)', display: 'block', marginBottom: 2 }}>{isIso ? 'Tiempo (seg)' : 'Reps'}</label>
-                {isIso ? (
-                  <input
-                    className="input"
-                    type="number" min="0"
-                    placeholder="30"
-                    value={s.duration_secs}
-                    onChange={e => setSetWeights(w => w.map((x, j) => j === i ? { ...x, duration_secs: e.target.value } : x))}
-                    style={{ padding: '8px', textAlign: 'center' }}
-                  />
-                ) : (
-                  <input
-                    className="input"
-                    type="number" min="0"
-                    placeholder={ex.reps || '10'}
-                    value={s.reps_done}
-                    onChange={e => setSetWeights(w => w.map((x, j) => j === i ? { ...x, reps_done: e.target.value } : x))}
-                    style={{ padding: '8px', textAlign: 'center' }}
-                  />
-                )}
-              </div>
-              {isExtra && (
-                <button onClick={() => removeSet(i)} title="Quitar" style={{
-                  background: 'none', border: 'none', color: '#E05252', cursor: 'pointer', fontSize: 18, padding: '0 2px', flexShrink: 0,
-                }}>×</button>
-              )}
+              <input className="input" type="number" step="0.5" min="0" max="999"
+                placeholder={ex.weight_kg || '0'} value={s.weight_kg}
+                onChange={e => setSetWeights(w => w.map((x, j) => j === i ? { ...x, weight_kg: e.target.value } : x))}
+                style={{ flex: 1, padding: '8px 4px', textAlign: 'center', minWidth: 0 }} />
+              <input className="input" type="number" min="0"
+                placeholder={ex.reps || '10'} value={s.reps_done}
+                onChange={e => setSetWeights(w => w.map((x, j) => j === i ? { ...x, reps_done: e.target.value } : x))}
+                style={{ flex: 1, padding: '8px 4px', textAlign: 'center', minWidth: 0 }} />
+              <input className="input" type="number" min="0"
+                placeholder="–" value={s.duration_secs}
+                onChange={e => setSetWeights(w => w.map((x, j) => j === i ? { ...x, duration_secs: e.target.value } : x))}
+                style={{ flex: 1, padding: '8px 4px', textAlign: 'center', minWidth: 0 }} />
+              <button onClick={() => removeSet(i)} title="Quitar serie" style={{
+                width: 18, background: 'none', border: 'none', color: isExtra ? '#E05252' : 'var(--border)', cursor: 'pointer', fontSize: 16, padding: 0, flexShrink: 0,
+              }}>×</button>
             </div>
           )})}
-          <div style={{ display: 'flex', gap: 8, marginTop: 4, marginBottom: 10 }}>
-            <button onClick={() => addSet('normal')} style={{
-              flex: 1, padding: '7px', borderRadius: 8, border: '1px dashed var(--border)', cursor: 'pointer',
-              fontWeight: 700, fontSize: 12, background: 'var(--bg)', color: 'var(--muted)',
-            }}>➕ Serie</button>
-            <button onClick={() => addSet('isometry')} style={{
-              flex: 1, padding: '7px', borderRadius: 8, border: '1px dashed var(--border)', cursor: 'pointer',
-              fontWeight: 700, fontSize: 12, background: 'var(--bg)', color: 'var(--muted)',
-            }}>⏱️ Isometría</button>
-          </div>
+          <button onClick={addSet} style={{
+            width: '100%', padding: '7px', borderRadius: 8, border: '1px dashed var(--border)', cursor: 'pointer',
+            fontWeight: 700, fontSize: 12, background: 'var(--bg)', color: 'var(--muted)', marginTop: 4, marginBottom: 10,
+          }}>➕ Añadir serie</button>
           <button className="btn-primary" onClick={logSets} disabled={saving} style={{ width: '100%', justifyContent: 'center', marginTop: 4 }}>
             {saving ? <><span className="spinner" /> Guardando…</> : '✓ Guardar sesión'}
           </button>
@@ -996,11 +986,9 @@ function ExerciseCard({ exercise: ex, onLogged, onKcalChange }) {
                     {parseDate(session.date).toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' })}
                   </p>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    {session.sets.map(s => (
-                      <span key={s.set_number} style={{ fontSize: 12, background: 'var(--bg)', padding: '4px 10px', borderRadius: 6, fontWeight: 600 }}>
-                        {s.set_type === 'isometry'
-                          ? `⏱️ ${s.weight_kg ?? '—'}kg × ${s.duration_secs ?? '—'}s`
-                          : `S${s.set_number}: ${s.weight_kg ?? '—'}kg × ${s.reps_done ?? '—'}`}
+                    {session.sets.map((s, i) => (
+                      <span key={i} style={{ fontSize: 12, background: 'var(--bg)', padding: '4px 10px', borderRadius: 6, fontWeight: 600 }}>
+                        {setChipText(s, i)}
                       </span>
                     ))}
                   </div>
@@ -1014,22 +1002,37 @@ function ExerciseCard({ exercise: ex, onLogged, onKcalChange }) {
   );
 }
 
+// Texto de una serie: peso + reps y/o isometría, según lo que tenga
+function setChipText(s, i) {
+  const w    = s.weight_kg ?? s.weight;
+  const reps = s.reps_done ?? s.reps;
+  const dur  = s.duration_secs;
+  const hasReps = reps != null && reps !== '';
+  const hasDur  = dur  != null && dur  !== '';
+  const wtxt = (w != null && w !== '') ? `${w}kg` : '—kg';
+  const parts = [];
+  if (hasReps) parts.push(`× ${reps}`);
+  if (hasDur)  parts.push(`${dur}s`);
+  const prefix = hasDur && !hasReps ? '⏱️ ' : `S${i + 1}: `;
+  return `${prefix}${wtxt}${parts.length ? ' ' + parts.join(' · ') : ''}`;
+}
+
 // Ejercicios que la clienta agrega al día de HOY (solo para esta sesión)
 function ExtraExercises({ dayId }) {
   const today = new Date().toLocaleDateString('en-CA');
   const [list, setList]     = useState([]);
   const [adding, setAdding] = useState(false);
   const [name, setName]     = useState('');
-  const [sets, setSets]     = useState([{ set_type: 'normal', weight_kg: '', reps_done: '', duration_secs: '' }]);
+  const [sets, setSets]     = useState([{ weight_kg: '', reps_done: '', duration_secs: '' }]);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     api.workout.getExtraExercises(dayId, today).then(r => setList(r.exercises || [])).catch(() => {});
   }, [dayId, today]);
 
-  function addRow(type) { setSets(s => [...s, { set_type: type, weight_kg: '', reps_done: '', duration_secs: '' }]); }
-  function rmRow(i)      { setSets(s => s.filter((_, j) => j !== i)); }
-  function upd(i, k, v)  { setSets(s => s.map((x, j) => j === i ? { ...x, [k]: v } : x)); }
+  function addRow()     { setSets(s => [...s, { weight_kg: '', reps_done: '', duration_secs: '' }]); }
+  function rmRow(i)     { setSets(s => s.filter((_, j) => j !== i)); }
+  function upd(i, k, v) { setSets(s => s.map((x, j) => j === i ? { ...x, [k]: v } : x)); }
 
   async function save() {
     if (!name.trim()) return;
@@ -1038,7 +1041,7 @@ function ExtraExercises({ dayId }) {
       await api.workout.addExtraExercise(dayId, name.trim(), sets, today);
       const r = await api.workout.getExtraExercises(dayId, today);
       setList(r.exercises || []);
-      setName(''); setSets([{ set_type: 'normal', weight_kg: '', reps_done: '', duration_secs: '' }]); setAdding(false);
+      setName(''); setSets([{ weight_kg: '', reps_done: '', duration_secs: '' }]); setAdding(false);
     } catch (e) { alert(e.message); }
     finally { setSaving(false); }
   }
@@ -1050,9 +1053,7 @@ function ExtraExercises({ dayId }) {
 
   const chip = (s, i) => (
     <span key={i} style={{ fontSize: 12, background: 'var(--bg)', padding: '4px 10px', borderRadius: 6, fontWeight: 600 }}>
-      {s.set_type === 'isometry'
-        ? `⏱️ ${s.weight_kg ?? '—'}kg × ${s.duration_secs ?? '—'}s`
-        : `S${i + 1}: ${s.weight_kg ?? '—'}kg × ${s.reps_done ?? '—'}`}
+      {setChipText(s, i)}
     </span>
   );
 
@@ -1074,24 +1075,25 @@ function ExtraExercises({ dayId }) {
         <div style={{ background: 'var(--card)', borderRadius: 12, padding: 12, marginTop: list.length ? 4 : 0 }}>
           <input className="input" placeholder="Nombre del ejercicio (ej: Peso muerto)" value={name}
             onChange={e => setName(e.target.value)} style={{ marginBottom: 10 }} />
-          {sets.map((s, i) => {
-            const iso = s.set_type === 'isometry';
-            return (
-              <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', width: 54, flexShrink: 0 }}>{iso ? '⏱️' : 'Serie'} {i + 1}</span>
-                <input className="input" type="number" step="0.5" min="0" max="999" placeholder="Peso"
-                  value={s.weight_kg} onChange={e => upd(i, 'weight_kg', e.target.value)} style={{ flex: 1, padding: '8px', textAlign: 'center' }} />
-                <input className="input" type="number" min="0" placeholder={iso ? 'Seg' : 'Reps'}
-                  value={iso ? s.duration_secs : s.reps_done}
-                  onChange={e => upd(i, iso ? 'duration_secs' : 'reps_done', e.target.value)} style={{ flex: 1, padding: '8px', textAlign: 'center' }} />
-                {sets.length > 1 && <button onClick={() => rmRow(i)} style={{ background: 'none', border: 'none', color: '#E05252', cursor: 'pointer', fontSize: 18, flexShrink: 0 }}>×</button>}
-              </div>
-            );
-          })}
-          <div style={{ display: 'flex', gap: 8, marginTop: 4, marginBottom: 10 }}>
-            <button onClick={() => addRow('normal')} style={{ flex: 1, padding: '7px', borderRadius: 8, border: '1px dashed var(--border)', cursor: 'pointer', fontWeight: 700, fontSize: 12, background: 'var(--bg)', color: 'var(--muted)' }}>➕ Serie</button>
-            <button onClick={() => addRow('isometry')} style={{ flex: 1, padding: '7px', borderRadius: 8, border: '1px dashed var(--border)', cursor: 'pointer', fontWeight: 700, fontSize: 12, background: 'var(--bg)', color: 'var(--muted)' }}>⏱️ Isometría</button>
+          <div style={{ display: 'flex', gap: 6, marginBottom: 4, paddingLeft: 42 }}>
+            <span style={{ flex: 1, fontSize: 10, color: 'var(--muted)', textAlign: 'center' }}>Peso (kg)</span>
+            <span style={{ flex: 1, fontSize: 10, color: 'var(--muted)', textAlign: 'center' }}>Reps</span>
+            <span style={{ flex: 1, fontSize: 10, color: 'var(--muted)', textAlign: 'center' }}>Iso (seg)</span>
+            <span style={{ width: 18, flexShrink: 0 }} />
           </div>
+          {sets.map((s, i) => (
+            <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 8, alignItems: 'center' }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', width: 36, flexShrink: 0 }}>{i + 1}</span>
+              <input className="input" type="number" step="0.5" min="0" max="999" placeholder="0"
+                value={s.weight_kg} onChange={e => upd(i, 'weight_kg', e.target.value)} style={{ flex: 1, padding: '8px 4px', textAlign: 'center', minWidth: 0 }} />
+              <input className="input" type="number" min="0" placeholder="10"
+                value={s.reps_done} onChange={e => upd(i, 'reps_done', e.target.value)} style={{ flex: 1, padding: '8px 4px', textAlign: 'center', minWidth: 0 }} />
+              <input className="input" type="number" min="0" placeholder="–"
+                value={s.duration_secs} onChange={e => upd(i, 'duration_secs', e.target.value)} style={{ flex: 1, padding: '8px 4px', textAlign: 'center', minWidth: 0 }} />
+              <button onClick={() => rmRow(i)} style={{ width: 18, background: 'none', border: 'none', color: sets.length > 1 ? '#E05252' : 'var(--border)', cursor: 'pointer', fontSize: 16, flexShrink: 0, padding: 0 }}>×</button>
+            </div>
+          ))}
+          <button onClick={addRow} style={{ width: '100%', padding: '7px', borderRadius: 8, border: '1px dashed var(--border)', cursor: 'pointer', fontWeight: 700, fontSize: 12, background: 'var(--bg)', color: 'var(--muted)', marginTop: 4, marginBottom: 10 }}>➕ Añadir serie</button>
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={() => { setAdding(false); setName(''); }} style={{ flex: 1, padding: '9px', borderRadius: 10, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 13, background: 'var(--border)', color: 'var(--muted)' }}>Cancelar</button>
             <button className="btn-primary" onClick={save} disabled={saving || !name.trim()} style={{ flex: 2, justifyContent: 'center' }}>{saving ? 'Guardando…' : '✓ Guardar ejercicio'}</button>
