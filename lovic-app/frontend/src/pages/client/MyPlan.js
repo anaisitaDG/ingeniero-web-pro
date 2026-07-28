@@ -845,7 +845,7 @@ function ExerciseCard({ exercise: ex, onLogged, onKcalChange }) {
         })));
       }
     }).catch(() => {});
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); // eslint-disable-line
 
   return (
     <div style={{ background: 'var(--bg)', borderRadius: 14, padding: 14 }}>
