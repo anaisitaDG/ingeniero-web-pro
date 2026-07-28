@@ -276,6 +276,7 @@ const authLimiter = rateLimit({
 // Routes
 app.use('/auth/login',      authLimiter);
 app.use('/auth/magic-link', authLimiter);
+app.use('/auth/onboarding', authLimiter);   // evita creación masiva de cuentas por bots
 app.use('/auth',          require('./routes/auth'));
 app.use('/food',          require('./routes/food'));
 app.use('/dashboard',     require('./routes/dashboard'));

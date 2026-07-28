@@ -1,0 +1,4 @@
+# Lovic Athletica es una app privada (requiere iniciar sesión).
+# No queremos que buscadores la indexen.
+User-agent: *
+Disallow: /
