@@ -679,7 +679,6 @@ function WaterTracker({ tracking, bio, onSave }) {
   // Se marca por MEDIOS LITROS: cada medio litro = 2 vasos = 0,5 L
   const litros      = glasses * 0.25;          // 2 vasos = 0,5 L → 1 vaso = 0,25 L
   const goalLitros  = goal * 0.25;
-  const halfUnits   = goal / 2;                // cuántos medios litros son la meta
   const filledUnits = Math.floor(glasses / 2); // medios litros ya marcados
   const pct = Math.min(Math.round((glasses / goal) * 100), 100);
 
@@ -690,37 +689,46 @@ function WaterTracker({ tracking, bio, onSave }) {
 
   const setHalf = (units) => onSave({ water_glasses: Math.max(0, Math.min(goal, units * 2)) });
 
+  const bodyPath = 'M30,18 L30,30 Q30,42 21,50 L21,166 Q21,177 32,177 L48,177 Q59,177 59,166 L59,50 Q50,42 50,30 L50,18 Z';
+  const fillTop = 177 - (pct / 100) * 159;   // 177 = fondo, 18 = boca → 159 útil
+  const stepBtn = { width: 40, height: 40, borderRadius: 12, border: 'none', cursor: 'pointer', fontSize: 22, fontWeight: 800, flexShrink: 0, lineHeight: 1 };
+
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
         <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>
-          💧 Agua — {fmtLiters(litros)} / {fmtLiters(goalLitros)} L
-          <span style={{ fontSize: 10, color: '#4A90D9', marginLeft: 6 }}>= {glasses} vasos</span>
+          💧 Agua
           {tracking.workout_done && <span style={{ fontSize: 10, color: '#4A90D9', marginLeft: 6 }}>+0,5 L por entrenamiento</span>}
         </p>
         <span style={{ fontSize: 11, fontWeight: 600, color: pct >= 100 ? '#2D7A2D' : '#4A90D9' }}>{statusMsg}</span>
       </div>
-      <div style={{ height: 8, background: 'var(--border)', borderRadius: 8, overflow: 'hidden', marginBottom: 8 }}>
-        <div style={{ height: '100%', width: `${pct}%`, background: '#4A90D9', borderRadius: 8, transition: 'width 0.3s' }} />
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: bioMsg ? 10 : 0 }}>
-        <button onClick={() => setHalf(filledUnits - 1)}
-          style={{ width: 36, height: 36, borderRadius: 10, border: 'none', cursor: 'pointer', background: 'var(--border)', fontSize: 18, fontWeight: 800, flexShrink: 0 }}>−</button>
-        <div style={{ flex: 1, display: 'flex', gap: 5 }}>
-          {Array.from({ length: halfUnits }, (_, i) => (
-            <button key={i} onClick={() => setHalf(i + 1)} title="½ litro (2 vasos)" style={{
-              flex: 1, height: 32, borderRadius: 6, border: 'none', cursor: 'pointer',
-              background: i < filledUnits ? '#4A90D9' : 'var(--border)',
-              color: i < filledUnits ? '#fff' : 'var(--muted)',
-              fontSize: 10, fontWeight: 700,
-              transition: 'background 0.15s', minWidth: 0,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>½L</button>
-          ))}
+
+      {/* Botella que se llena */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 18, marginBottom: 4 }}>
+        <button onClick={() => setHalf(filledUnits - 1)} title="Quitar medio litro"
+          style={{ ...stepBtn, background: 'var(--border)', color: 'var(--muted)' }}>−</button>
+
+        <div style={{ textAlign: 'center' }}>
+          <svg viewBox="0 0 80 190" width="92" height="150" style={{ display: 'block', margin: '0 auto' }}>
+            <clipPath id="bottleClip"><path d={bodyPath} /></clipPath>
+            <rect x="0" y="0" width="80" height="190" fill="var(--border)" clipPath="url(#bottleClip)" />
+            <rect x="0" width="80" y={fillTop} height={190 - fillTop} fill="#4A90D9" clipPath="url(#bottleClip)"
+              style={{ transition: 'y 0.45s ease, height 0.45s ease' }} />
+            <path d={bodyPath} fill="none" stroke="#4A90D9" strokeWidth="2.5" />
+            <rect x="28" y="5" width="24" height="13" rx="3" fill="#4A90D9" />
+          </svg>
+          <p style={{ fontWeight: 900, fontSize: 20, marginTop: 2, color: 'var(--text)', lineHeight: 1.1 }}>
+            {fmtLiters(litros)} <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>/ {fmtLiters(goalLitros)} L</span>
+          </p>
+          <p style={{ fontSize: 11, color: '#4A90D9', fontWeight: 700, marginTop: 1 }}>= {glasses} vasos</p>
         </div>
-        <button onClick={() => setHalf(filledUnits + 1)}
-          style={{ width: 36, height: 36, borderRadius: 10, border: 'none', cursor: 'pointer', background: '#4A90D9', color: '#fff', fontSize: 18, fontWeight: 800, flexShrink: 0 }}>+</button>
+
+        <button onClick={() => setHalf(filledUnits + 1)} title="Añadir medio litro"
+          style={{ ...stepBtn, background: '#4A90D9', color: '#fff' }}>+</button>
       </div>
+      <p style={{ textAlign: 'center', fontSize: 11, color: 'var(--muted)', marginBottom: bioMsg ? 10 : 0 }}>
+        Cada + es medio litro (2 vasos) 💧
+      </p>
       {bioMsg && (
         <div style={{
           padding: '8px 12px', borderRadius: 10, fontSize: 12, fontWeight: 600,
