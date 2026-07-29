@@ -654,35 +654,49 @@ function MoodSelector({ value, onChange }) {
   );
 }
 
+// Formatea litros: entero sin decimales, si no un decimal, con coma (1,5)
+function fmtLiters(n) {
+  const r = Math.round(n * 10) / 10;
+  return (Number.isInteger(r) ? String(r) : r.toFixed(1)).replace('.', ',');
+}
+
 function WaterTracker({ tracking, bio, onSave }) {
   const glasses = tracking.water_glasses || 0;
 
-  // Meta dinámica: +2 si entrenó hoy, +2 si hidratación corporal baja
+  // Meta dinámica: +2 vasos (0,5 L) si entrenó hoy, +2 si hidratación corporal baja
   let goal = 8;
   let bioMsg = null;
   if (tracking.workout_done) goal = 10;
   if (bio?.body_water_pct != null) {
     if (bio.body_water_pct < 50) {
       goal = Math.max(goal, 10);
-      bioMsg = { type: 'warn', text: `Tu agua corporal fue ${bio.body_water_pct}% en tu última bio — apunta a ${goal} vasos hoy` };
+      bioMsg = { type: 'warn', text: `Tu agua corporal fue ${bio.body_water_pct}% en tu última bio — apunta a ${fmtLiters(goal * 0.25)} L hoy` };
     } else if (bio.body_water_pct >= 55) {
       bioMsg = { type: 'good', text: `Tu hidratación corporal está en ${bio.body_water_pct}% — ¡sigue así!` };
     }
   }
 
+  // Se marca por MEDIOS LITROS: cada medio litro = 2 vasos = 0,5 L
+  const litros      = glasses * 0.25;          // 2 vasos = 0,5 L → 1 vaso = 0,25 L
+  const goalLitros  = goal * 0.25;
+  const halfUnits   = goal / 2;                // cuántos medios litros son la meta
+  const filledUnits = Math.floor(glasses / 2); // medios litros ya marcados
   const pct = Math.min(Math.round((glasses / goal) * 100), 100);
+
   let statusMsg = '';
   if (glasses === 0) statusMsg = 'Empieza a hidratarte 💧';
-  else if (pct < 50) statusMsg = `Te faltan ${goal - glasses} vasos`;
-  else if (pct < 100) statusMsg = `¡Vas bien! ${goal - glasses} vasos más`;
+  else if (pct < 100) statusMsg = `Te falta ${fmtLiters(goalLitros - litros)} L`;
   else statusMsg = '¡Meta cumplida! 🎉';
+
+  const setHalf = (units) => onSave({ water_glasses: Math.max(0, Math.min(goal, units * 2)) });
 
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
         <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>
-          💧 Agua — {glasses}/{goal} vasos
-          {tracking.workout_done && <span style={{ fontSize: 10, color: '#4A90D9', marginLeft: 6 }}>+2 por entrenamiento</span>}
+          💧 Agua — {fmtLiters(litros)} / {fmtLiters(goalLitros)} L
+          <span style={{ fontSize: 10, color: '#4A90D9', marginLeft: 6 }}>= {glasses} vasos</span>
+          {tracking.workout_done && <span style={{ fontSize: 10, color: '#4A90D9', marginLeft: 6 }}>+0,5 L por entrenamiento</span>}
         </p>
         <span style={{ fontSize: 11, fontWeight: 600, color: pct >= 100 ? '#2D7A2D' : '#4A90D9' }}>{statusMsg}</span>
       </div>
@@ -690,18 +704,21 @@ function WaterTracker({ tracking, bio, onSave }) {
         <div style={{ height: '100%', width: `${pct}%`, background: '#4A90D9', borderRadius: 8, transition: 'width 0.3s' }} />
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: bioMsg ? 10 : 0 }}>
-        <button onClick={() => onSave({ water_glasses: Math.max(0, glasses - 1) })}
+        <button onClick={() => setHalf(filledUnits - 1)}
           style={{ width: 36, height: 36, borderRadius: 10, border: 'none', cursor: 'pointer', background: 'var(--border)', fontSize: 18, fontWeight: 800, flexShrink: 0 }}>−</button>
-        <div style={{ flex: 1, display: 'flex', gap: 4 }}>
-          {Array.from({ length: goal }, (_, i) => (
-            <button key={i} onClick={() => onSave({ water_glasses: i + 1 })} style={{
-              flex: 1, height: 28, borderRadius: 5, border: 'none', cursor: 'pointer',
-              background: i < glasses ? '#4A90D9' : 'var(--border)',
+        <div style={{ flex: 1, display: 'flex', gap: 5 }}>
+          {Array.from({ length: halfUnits }, (_, i) => (
+            <button key={i} onClick={() => setHalf(i + 1)} title="½ litro (2 vasos)" style={{
+              flex: 1, height: 32, borderRadius: 6, border: 'none', cursor: 'pointer',
+              background: i < filledUnits ? '#4A90D9' : 'var(--border)',
+              color: i < filledUnits ? '#fff' : 'var(--muted)',
+              fontSize: 10, fontWeight: 700,
               transition: 'background 0.15s', minWidth: 0,
-            }} />
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>½L</button>
           ))}
         </div>
-        <button onClick={() => onSave({ water_glasses: Math.min(goal, glasses + 1) })}
+        <button onClick={() => setHalf(filledUnits + 1)}
           style={{ width: 36, height: 36, borderRadius: 10, border: 'none', cursor: 'pointer', background: '#4A90D9', color: '#fff', fontSize: 18, fontWeight: 800, flexShrink: 0 }}>+</button>
       </div>
       {bioMsg && (
