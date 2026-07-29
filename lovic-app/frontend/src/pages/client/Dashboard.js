@@ -654,81 +654,56 @@ function MoodSelector({ value, onChange }) {
   );
 }
 
-// Formatea litros: entero sin decimales, si no un decimal, con coma (1,5)
-function fmtLiters(n) {
-  const r = Math.round(n * 10) / 10;
-  return (Number.isInteger(r) ? String(r) : r.toFixed(1)).replace('.', ',');
-}
-
 function WaterTracker({ tracking, bio, onSave }) {
   const glasses = tracking.water_glasses || 0;
 
-  // Meta dinámica: +2 vasos (0,5 L) si entrenó hoy, +2 si hidratación corporal baja
+  // Meta dinámica: +2 si entrenó hoy, +2 si hidratación corporal baja
   let goal = 8;
   let bioMsg = null;
   if (tracking.workout_done) goal = 10;
   if (bio?.body_water_pct != null) {
     if (bio.body_water_pct < 50) {
       goal = Math.max(goal, 10);
-      bioMsg = { type: 'warn', text: `Tu agua corporal fue ${bio.body_water_pct}% en tu última bio — apunta a ${fmtLiters(goal * 0.25)} L hoy` };
+      bioMsg = { type: 'warn', text: `Tu agua corporal fue ${bio.body_water_pct}% en tu última bio — apunta a ${goal} vasos hoy` };
     } else if (bio.body_water_pct >= 55) {
       bioMsg = { type: 'good', text: `Tu hidratación corporal está en ${bio.body_water_pct}% — ¡sigue así!` };
     }
   }
 
-  // Se marca por MEDIOS LITROS: cada medio litro = 2 vasos = 0,5 L
-  const litros      = glasses * 0.25;          // 2 vasos = 0,5 L → 1 vaso = 0,25 L
-  const goalLitros  = goal * 0.25;
-  const filledUnits = Math.floor(glasses / 2); // medios litros ya marcados
   const pct = Math.min(Math.round((glasses / goal) * 100), 100);
-
   let statusMsg = '';
   if (glasses === 0) statusMsg = 'Empieza a hidratarte 💧';
-  else if (pct < 100) statusMsg = `Te falta ${fmtLiters(goalLitros - litros)} L`;
+  else if (pct < 50) statusMsg = `Te faltan ${goal - glasses} vasos`;
+  else if (pct < 100) statusMsg = `¡Vas bien! ${goal - glasses} vasos más`;
   else statusMsg = '¡Meta cumplida! 🎉';
-
-  const setHalf = (units) => onSave({ water_glasses: Math.max(0, Math.min(goal, units * 2)) });
-
-  const bodyPath = 'M30,18 L30,30 Q30,42 21,50 L21,166 Q21,177 32,177 L48,177 Q59,177 59,166 L59,50 Q50,42 50,30 L50,18 Z';
-  const fillTop = 177 - (pct / 100) * 159;   // 177 = fondo, 18 = boca → 159 útil
-  const stepBtn = { width: 40, height: 40, borderRadius: 12, border: 'none', cursor: 'pointer', fontSize: 22, fontWeight: 800, flexShrink: 0, lineHeight: 1 };
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
         <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>
-          💧 Agua
-          {tracking.workout_done && <span style={{ fontSize: 10, color: '#4A90D9', marginLeft: 6 }}>+0,5 L por entrenamiento</span>}
+          💧 Agua — {glasses}/{goal} vasos
+          {tracking.workout_done && <span style={{ fontSize: 10, color: '#4A90D9', marginLeft: 6 }}>+2 por entrenamiento</span>}
         </p>
         <span style={{ fontSize: 11, fontWeight: 600, color: pct >= 100 ? '#2D7A2D' : '#4A90D9' }}>{statusMsg}</span>
       </div>
-
-      {/* Botella que se llena */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 18, marginBottom: 4 }}>
-        <button onClick={() => setHalf(filledUnits - 1)} title="Quitar medio litro"
-          style={{ ...stepBtn, background: 'var(--border)', color: 'var(--muted)' }}>−</button>
-
-        <div style={{ textAlign: 'center' }}>
-          <svg viewBox="0 0 80 190" width="92" height="150" style={{ display: 'block', margin: '0 auto' }}>
-            <clipPath id="bottleClip"><path d={bodyPath} /></clipPath>
-            <rect x="0" y="0" width="80" height="190" fill="var(--border)" clipPath="url(#bottleClip)" />
-            <rect x="0" width="80" y={fillTop} height={190 - fillTop} fill="#4A90D9" clipPath="url(#bottleClip)"
-              style={{ transition: 'y 0.45s ease, height 0.45s ease' }} />
-            <path d={bodyPath} fill="none" stroke="#4A90D9" strokeWidth="2.5" />
-            <rect x="28" y="5" width="24" height="13" rx="3" fill="#4A90D9" />
-          </svg>
-          <p style={{ fontWeight: 900, fontSize: 20, marginTop: 2, color: 'var(--text)', lineHeight: 1.1 }}>
-            {fmtLiters(litros)} <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>/ {fmtLiters(goalLitros)} L</span>
-          </p>
-          <p style={{ fontSize: 11, color: '#4A90D9', fontWeight: 700, marginTop: 1 }}>= {glasses} vasos</p>
-        </div>
-
-        <button onClick={() => setHalf(filledUnits + 1)} title="Añadir medio litro"
-          style={{ ...stepBtn, background: '#4A90D9', color: '#fff' }}>+</button>
+      <div style={{ height: 8, background: 'var(--border)', borderRadius: 8, overflow: 'hidden', marginBottom: 8 }}>
+        <div style={{ height: '100%', width: `${pct}%`, background: '#4A90D9', borderRadius: 8, transition: 'width 0.3s' }} />
       </div>
-      <p style={{ textAlign: 'center', fontSize: 11, color: 'var(--muted)', marginBottom: bioMsg ? 10 : 0 }}>
-        Cada + es medio litro (2 vasos) 💧
-      </p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: bioMsg ? 10 : 0 }}>
+        <button onClick={() => onSave({ water_glasses: Math.max(0, glasses - 1) })}
+          style={{ width: 36, height: 36, borderRadius: 10, border: 'none', cursor: 'pointer', background: 'var(--border)', fontSize: 18, fontWeight: 800, flexShrink: 0 }}>−</button>
+        <div style={{ flex: 1, display: 'flex', gap: 4 }}>
+          {Array.from({ length: goal }, (_, i) => (
+            <button key={i} onClick={() => onSave({ water_glasses: i + 1 })} style={{
+              flex: 1, height: 28, borderRadius: 5, border: 'none', cursor: 'pointer',
+              background: i < glasses ? '#4A90D9' : 'var(--border)',
+              transition: 'background 0.15s', minWidth: 0,
+            }} />
+          ))}
+        </div>
+        <button onClick={() => onSave({ water_glasses: Math.min(goal, glasses + 1) })}
+          style={{ width: 36, height: 36, borderRadius: 10, border: 'none', cursor: 'pointer', background: '#4A90D9', color: '#fff', fontSize: 18, fontWeight: 800, flexShrink: 0 }}>+</button>
+      </div>
       {bioMsg && (
         <div style={{
           padding: '8px 12px', borderRadius: 10, fontSize: 12, fontWeight: 600,
