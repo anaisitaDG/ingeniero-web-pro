@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { usePushNotifications } from '../../hooks/usePushNotifications';
 
 /* ── VIC MASCOT ──────────────────────────────────────────────────── */
@@ -484,19 +484,57 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Weight chart */}
-      {weightData.length > 0 && (
-        <div className="card" style={{ marginBottom: 16 }}>
-          <p className="label" style={{ marginBottom: 12 }}>Progreso de peso</p>
-          <ResponsiveContainer width="100%" height={140}>
-            <LineChart data={weightData}>
-              <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--muted)' }} axisLine={false} tickLine={false} />
-              <Tooltip formatter={v => [`${v} kg`, 'Peso']} contentStyle={{ borderRadius: 10, border: 'none', boxShadow: '0 2px 12px rgba(0,0,0,0.1)' }} />
-              <Line type="monotone" dataKey="peso" stroke="#FF6B6B" strokeWidth={2.5} dot={{ r: 3, fill: '#FF6B6B' }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      )}
+      {/* Weight progress */}
+      {weightData.length > 0 && (() => {
+        const first = weightData[0].peso;
+        const last  = weightData[weightData.length - 1].peso;
+        const delta = (first != null && last != null) ? +(last - first).toFixed(1) : null;
+        const goalMuscle = data?.user?.fitness_goal === 'muscle_gain';
+        const good = delta == null || delta === 0 ? null : (goalMuscle ? delta > 0 : delta < 0);
+        const deltaColor = good === null ? 'var(--muted)' : good ? '#2D9B5A' : '#E0A32E';
+        const arrow = delta == null || delta === 0 ? '' : delta < 0 ? '▼' : '▲';
+        return (
+          <div className="card" style={{ marginBottom: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <p className="label">Progreso de peso</p>
+              <Link to="/measurements" style={{ fontSize: 12, color: 'var(--coral)', fontWeight: 700, textDecoration: 'none' }}>Ver todo →</Link>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: weightData.length >= 2 ? 8 : 0, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 34, fontWeight: 900, lineHeight: 1 }}>{last} <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--muted)' }}>kg</span></span>
+              {delta != null && delta !== 0 && (
+                <span style={{ fontSize: 14, fontWeight: 800, color: deltaColor, background: `${deltaColor}18`, padding: '3px 10px', borderRadius: 20 }}>
+                  {arrow} {Math.abs(delta)} kg
+                </span>
+              )}
+            </div>
+            {weightData.length >= 2 ? (
+              <>
+                <p style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 10 }}>
+                  Desde tu primer registro ({first} kg) · {weightData.length} mediciones
+                </p>
+                <ResponsiveContainer width="100%" height={130}>
+                  <AreaChart data={weightData} margin={{ top: 6, right: 6, left: 6, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="wGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#FF6B6B" stopOpacity={0.35} />
+                        <stop offset="100%" stopColor="#FF6B6B" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--muted)' }} axisLine={false} tickLine={false} minTickGap={20} />
+                    <Tooltip formatter={v => [`${v} kg`, 'Peso']} contentStyle={{ borderRadius: 10, border: 'none', boxShadow: '0 2px 12px rgba(0,0,0,0.1)' }} />
+                    <Area type="monotone" dataKey="peso" stroke="#FF6B6B" strokeWidth={2.5} fill="url(#wGrad)"
+                      dot={{ r: 3, fill: '#FF6B6B' }} activeDot={{ r: 5 }} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </>
+            ) : (
+              <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>
+                Registra más medidas para ver tu tendencia 📈
+              </p>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Bio stats */}
       {bio && (
