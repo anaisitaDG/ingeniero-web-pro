@@ -468,7 +468,7 @@ export default function Dashboard() {
         </div>
         <SleepInput value={tracking.sleep_hours} onChange={v => saveTracking({ sleep_hours: v })} />
         <MoodSelector value={tracking.mood} onChange={v => saveTracking({ mood: v })} />
-        <WaterTracker tracking={tracking} bio={bio} onSave={saveTracking} />
+        <WaterTracker tracking={tracking} bio={bio} onSave={saveTracking} history={data?.water_history || []} streak={data?.water_streak || 0} />
       </div>
 
       {/* Routine preview */}
@@ -654,8 +654,9 @@ function MoodSelector({ value, onChange }) {
   );
 }
 
-function WaterTracker({ tracking, bio, onSave }) {
+function WaterTracker({ tracking, bio, onSave, history = [], streak = 0 }) {
   const glasses = tracking.water_glasses || 0;
+  const hitCount = history.filter(d => d.hit).length;
 
   // Meta dinámica: +2 si entrenó hoy, +2 si hidratación corporal baja
   let goal = 8;
@@ -704,6 +705,39 @@ function WaterTracker({ tracking, bio, onSave }) {
         <button onClick={() => onSave({ water_glasses: Math.min(goal, glasses + 1) })}
           style={{ width: 36, height: 36, borderRadius: 10, border: 'none', cursor: 'pointer', background: '#4A90D9', color: '#fff', fontSize: 18, fontWeight: 800, flexShrink: 0 }}>+</button>
       </div>
+
+      {/* Histórico de 7 días + racha de hidratación */}
+      {history.length > 0 && (
+        <div style={{ marginTop: 12, marginBottom: bioMsg ? 10 : 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <span style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600 }}>
+              💧 {hitCount} de 7 días cumpliste tu meta
+            </span>
+            {streak > 0 && (
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#4A90D9' }}>
+                🔥 {streak} {streak === 1 ? 'día' : 'días'} seguidos
+              </span>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: 5, alignItems: 'flex-end' }}>
+            {history.map((day, i) => {
+              const p = Math.min((day.glasses || 0) / (day.goal || 8), 1);
+              const isToday = i === history.length - 1;
+              const col = day.hit ? '#2D9B5A' : day.glasses > 0 ? '#4A90D9' : 'var(--border)';
+              const letter = ['D', 'L', 'M', 'M', 'J', 'V', 'S'][new Date(day.date + 'T12:00:00').getDay()];
+              return (
+                <div key={i} style={{ flex: 1, textAlign: 'center' }}>
+                  <div style={{ height: 30, background: 'var(--border)', borderRadius: 4, display: 'flex', alignItems: 'flex-end', overflow: 'hidden' }}
+                    title={`${day.glasses} vasos`}>
+                    <div style={{ width: '100%', height: `${day.glasses > 0 ? Math.max(p * 100, 14) : 0}%`, background: col, borderRadius: 4, transition: 'height 0.3s' }} />
+                  </div>
+                  <span style={{ fontSize: 9, color: isToday ? '#4A90D9' : 'var(--muted)', fontWeight: isToday ? 700 : 400 }}>{letter}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
       {bioMsg && (
         <div style={{
           padding: '8px 12px', borderRadius: 10, fontSize: 12, fontWeight: 600,

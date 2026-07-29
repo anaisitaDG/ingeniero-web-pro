@@ -111,6 +111,31 @@ router.get('/', async (req, res) => {
     if (week_streak > 520) break;
   }
 
+  // Historial de agua (últimos 7 días) + racha de hidratación
+  const [waterRows] = await db.query(
+    `SELECT DATE_FORMAT(tracked_date,'%Y-%m-%d') as d, water_glasses, workout_done
+     FROM daily_tracking WHERE user_id=? AND tracked_date <= ? ORDER BY d DESC LIMIT 60`,
+    [uid, today]);
+  const waterByDate = {};
+  for (const r of waterRows) waterByDate[r.d] = { glasses: r.water_glasses || 0, goal: 8 + (r.workout_done ? 2 : 0) };
+  const dayWater = (ds) => {
+    const rec = waterByDate[ds] || { glasses: 0, goal: 8 };
+    return { date: ds, glasses: rec.glasses, goal: rec.goal, hit: rec.glasses > 0 && rec.glasses >= rec.goal };
+  };
+  const water_history = [];
+  for (let i = 6; i >= 0; i--) {
+    const ds = new Date(new Date(today).getTime() - i * msPerDay).toISOString().slice(0, 10);
+    water_history.push(dayWater(ds));
+  }
+  let water_streak = 0;
+  for (let i = 0; i < 60; i++) {
+    const ds = new Date(new Date(today).getTime() - i * msPerDay).toISOString().slice(0, 10);
+    const info = dayWater(ds);
+    if (info.hit) water_streak++;
+    else if (i === 0) continue;   // hoy aún puede completarse sin romper la racha
+    else break;
+  }
+
   const latest = bioRows[0] || null;
   const target  = req.user.calorie_target || 2000;
   const consumed = caloriesRow.consumed;
@@ -134,6 +159,8 @@ router.get('/', async (req, res) => {
     streak,
     week_streak,
     week_goal: weekGoal,
+    water_history,
+    water_streak,
   });
 });
 
