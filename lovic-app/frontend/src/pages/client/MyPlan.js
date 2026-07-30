@@ -775,17 +775,15 @@ function ExerciseCard({ exercise: ex, onLogged, onKcalChange }) {
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory]     = useState(null);
   const plannedSets = ex.sets || 0;
-  const [setWeights, setSetWeights] = useState(() => {
-    const lastW = ex.last_session?.weights ? ex.last_session.weights.split(',') : [];
-    const lastR = ex.last_session?.reps    ? ex.last_session.reps.split(',')    : [];
-    return Array.from({ length: plannedSets }, (_, i) => ({
-      weight_kg: lastW[i] || ex.weight_kg || '',
-      reps_done: lastR[i] || ex.reps || '',
-      duration_secs: '',
-    }));
-  });
+  // Valores de la última vez: se muestran como PISTA (placeholder), no pre-llenados,
+  // para que la sesión arranque en blanco y las calorías no cuenten antes de registrar.
+  const lastW = ex.last_session?.weights ? ex.last_session.weights.split(',') : [];
+  const lastR = ex.last_session?.reps    ? ex.last_session.reps.split(',')    : [];
+  const [setWeights, setSetWeights] = useState(() =>
+    Array.from({ length: plannedSets }, () => ({ weight_kg: '', reps_done: '', duration_secs: '' }))
+  );
   function addSet() {
-    setSetWeights(w => [...w, { weight_kg: ex.weight_kg || '', reps_done: '', duration_secs: '' }]);
+    setSetWeights(w => [...w, { weight_kg: '', reps_done: '', duration_secs: '' }]);
     setShowLog(true);
   }
   function removeSet(i) { setSetWeights(w => w.filter((_, j) => j !== i)); }
@@ -931,11 +929,11 @@ function ExerciseCard({ exercise: ex, onLogged, onKcalChange }) {
                 {i + 1}{isExtra ? '+' : ''}
               </span>
               <input className="input" type="number" step="0.5" min="0" max="999"
-                placeholder={ex.weight_kg || '0'} value={s.weight_kg}
+                placeholder={lastW[i] || ex.weight_kg || '0'} value={s.weight_kg}
                 onChange={e => setSetWeights(w => w.map((x, j) => j === i ? { ...x, weight_kg: e.target.value } : x))}
                 style={{ flex: 1, padding: '8px 4px', textAlign: 'center', minWidth: 0 }} />
               <input className="input" type="number" min="0"
-                placeholder={ex.reps || '10'} value={s.reps_done}
+                placeholder={lastR[i] || ex.reps || '10'} value={s.reps_done}
                 onChange={e => setSetWeights(w => w.map((x, j) => j === i ? { ...x, reps_done: e.target.value } : x))}
                 style={{ flex: 1, padding: '8px 4px', textAlign: 'center', minWidth: 0 }} />
               <input className="input" type="number" min="0"
