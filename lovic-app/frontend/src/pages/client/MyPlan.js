@@ -139,15 +139,18 @@ export default function MyPlan() {
 }
 
 const WARMUP_OPTIONS = ['Movilidad articular', 'Trote suave', 'Saltos', 'Sentadillas sin peso', 'Jumping jacks', 'Estiramientos dinámicos', 'Remo', 'Otro'];
-const CARDIO_OPTIONS = ['Cuerda', 'Caminadora', 'Escaleras', 'Elíptica', 'Stepper', 'Bicicleta', 'Remo'];
+const CARDIO_OPTIONS = ['Cuerda', 'Caminadora', 'Escaleras', 'Elíptica', 'Stepper', 'Bicicleta', 'Remo', 'Baile / Rumba', 'Zumba', 'Aeróbicos', 'Natación', 'Spinning', 'Otro'];
 
-// kcal/min approx for 65kg person
+// kcal/min approx for 65kg person. Para actividades personalizadas ("Otro") se usa
+// una tasa por defecto para que igual cuente (no en cero).
+const CARDIO_DEFAULT_RATE = 8;
+const WARMUP_DEFAULT_RATE = 5;
 const WARMUP_KCAL = { 'Movilidad articular': 2.5, 'Trote suave': 7, 'Saltos': 6, 'Sentadillas sin peso': 4, 'Jumping jacks': 6, 'Estiramientos dinámicos': 2 };
-const CARDIO_KCAL = { 'Cuerda': 12, 'Caminadora': 6, 'Escaleras': 9, 'Elíptica': 8, 'Stepper': 7, 'Bicicleta': 7, 'Remo': 8 };
+const CARDIO_KCAL = { 'Cuerda': 12, 'Caminadora': 6, 'Escaleras': 9, 'Elíptica': 8, 'Stepper': 7, 'Bicicleta': 7, 'Remo': 8, 'Baile / Rumba': 8, 'Zumba': 9, 'Aeróbicos': 8, 'Natación': 10, 'Spinning': 9 };
 
-function calcKcal(table, type, mins) {
-  if (!type || !mins) return null;
-  const rate = table[type];
+function calcKcal(table, type, mins, defaultRate) {
+  if (!type || type === 'Otro' || !mins) return null;
+  const rate = table[type] || defaultRate;   // actividad personalizada → tasa por defecto
   return rate ? Math.round(rate * mins) : null;
 }
 
@@ -504,8 +507,8 @@ function PlanProgress({ startDate, durationDays }) {
   );
 }
 
-function ActivityBlock({ emoji, label, options, kcalTable, defaultDuration, choice, setChoice, mins, setMins, done, setDone, history = [] }) {
-  const kcal = calcKcal(kcalTable, choice, Number(mins));
+function ActivityBlock({ emoji, label, options, kcalTable, defaultRate, defaultDuration, choice, setChoice, mins, setMins, done, setDone, history = [] }) {
+  const kcal = calcKcal(kcalTable, choice, Number(mins), defaultRate);
   const [showHistory, setShowHistory] = useState(false);
   return (
     <div style={{ background: done ? '#d1fae5' : 'var(--bg)', borderRadius: 12, padding: '12px 14px', transition: 'background 0.3s' }}>
@@ -658,8 +661,8 @@ function DayCard({ day, onLogged, completedDate, onToggleComplete }) {
   const [exKcal, setExKcal] = useState({});
   const [extraKcal, setExtraKcal] = useState(0); // kcal de ejercicios extra del día
 
-  const warmupKcal = calcKcal(WARMUP_KCAL, warmupChoice, Number(warmupMins)) || 0;
-  const cardioKcal = calcKcal(CARDIO_KCAL, cardioChoice, Number(cardioMins)) || 0;
+  const warmupKcal = calcKcal(WARMUP_KCAL, warmupChoice, Number(warmupMins), WARMUP_DEFAULT_RATE) || 0;
+  const cardioKcal = calcKcal(CARDIO_KCAL, cardioChoice, Number(cardioMins), CARDIO_DEFAULT_RATE) || 0;
   const strengthKcal = Object.values(exKcal).reduce((a, b) => a + b, 0) + extraKcal;
   const totalKcal = warmupKcal + strengthKcal + cardioKcal;
 
@@ -709,7 +712,7 @@ function DayCard({ day, onLogged, completedDate, onToggleComplete }) {
       </button>
       {open && (
         <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <ActivityBlock emoji="🔥" label="Calentamiento" options={WARMUP_OPTIONS} kcalTable={WARMUP_KCAL}
+          <ActivityBlock emoji="🔥" label="Calentamiento" options={WARMUP_OPTIONS} kcalTable={WARMUP_KCAL} defaultRate={WARMUP_DEFAULT_RATE}
             defaultDuration={day.warmup_duration} choice={warmupChoice} setChoice={setWarmupChoice}
             mins={warmupMins} setMins={setWarmupMins} done={warmupDone} setDone={setWarmupDone}
             history={allActivities.filter(a => a.type === 'warmup')} />
@@ -718,7 +721,7 @@ function DayCard({ day, onLogged, completedDate, onToggleComplete }) {
               onKcalChange={kcal => setExKcal(prev => ({ ...prev, [ex.id]: kcal }))} />
           ))}
           <ExtraExercises dayId={day.id} onKcalChange={setExtraKcal} />
-          <ActivityBlock emoji="🏃" label="Cardio" options={CARDIO_OPTIONS} kcalTable={CARDIO_KCAL}
+          <ActivityBlock emoji="🏃" label="Cardio" options={CARDIO_OPTIONS} kcalTable={CARDIO_KCAL} defaultRate={CARDIO_DEFAULT_RATE}
             defaultDuration={day.cardio_duration} choice={cardioChoice} setChoice={setCardioChoice}
             mins={cardioMins} setMins={setCardioMins} done={cardioDone} setDone={setCardioDone}
             history={allActivities.filter(a => a.type === 'cardio')} />
