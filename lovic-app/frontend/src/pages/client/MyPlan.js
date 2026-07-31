@@ -139,8 +139,7 @@ export default function MyPlan() {
 }
 
 const WARMUP_OPTIONS = ['Movilidad articular', 'Estiramiento dinámico', 'Otro'];
-const CARDIO_OPTIONS = ['Cuerda', 'Caminadora', 'Escaleras', 'Elíptica', 'Stepper', 'Bicicleta', 'Remo', 'Baile / Rumba', 'Zumba', 'Aeróbicos', 'Natación', 'Spinning', 'Otro'];
-// Cardio breve después del calentamiento
+// Opciones de cardio (mismas para 'Cardio inicio' y 'Cardio final')
 const CARDIO_INICIO_OPTIONS = ['Caminata', 'Trote suave', 'Cuerda', 'Jumping jacks', 'Elíptica', 'Bicicleta', 'Aeróbicos', 'Rumba', 'Combat', 'Remo', 'Escaleras', 'Otro'];
 const CARDIO_INICIO_KCAL = { 'Caminata': 5, 'Trote suave': 7, 'Cuerda': 12, 'Jumping jacks': 8, 'Elíptica': 8, 'Bicicleta': 7, 'Aeróbicos': 8, 'Rumba': 8, 'Combat': 10, 'Remo': 8, 'Escaleras': 9 };
 
@@ -149,7 +148,6 @@ const CARDIO_INICIO_KCAL = { 'Caminata': 5, 'Trote suave': 7, 'Cuerda': 12, 'Jum
 const CARDIO_DEFAULT_RATE = 8;
 const WARMUP_DEFAULT_RATE = 5;
 const WARMUP_KCAL = { 'Movilidad articular': 2.5, 'Estiramiento dinámico': 2 };
-const CARDIO_KCAL = { 'Cuerda': 12, 'Caminadora': 6, 'Escaleras': 9, 'Elíptica': 8, 'Stepper': 7, 'Bicicleta': 7, 'Remo': 8, 'Baile / Rumba': 8, 'Zumba': 9, 'Aeróbicos': 8, 'Natación': 10, 'Spinning': 9 };
 
 // Soporta una actividad o varias combinadas ("A + B"): usa el promedio de sus tasas.
 // Actividades personalizadas o "Otro" con texto usan la tasa por defecto.
@@ -733,7 +731,7 @@ function DayCard({ day, onLogged, completedDate, onToggleComplete }) {
 
   const warmupKcal = calcKcal(WARMUP_KCAL, warmupChoice, Number(warmupMins), WARMUP_DEFAULT_RATE) || 0;
   const ciKcal     = calcKcal(CARDIO_INICIO_KCAL, ciChoice, Number(ciMins), CARDIO_DEFAULT_RATE) || 0;
-  const cardioKcal = calcKcal(CARDIO_KCAL, cardioChoice, Number(cardioMins), CARDIO_DEFAULT_RATE) || 0;
+  const cardioKcal = calcKcal(CARDIO_INICIO_KCAL, cardioChoice, Number(cardioMins), CARDIO_DEFAULT_RATE) || 0;
   const strengthKcal = Object.values(exKcal).reduce((a, b) => a + b, 0) + extraKcal;
   const totalKcal = warmupKcal + ciKcal + strengthKcal + cardioKcal;
 
@@ -796,7 +794,7 @@ function DayCard({ day, onLogged, completedDate, onToggleComplete }) {
               onKcalChange={kcal => setExKcal(prev => ({ ...prev, [ex.id]: kcal }))} />
           ))}
           <ExtraExercises dayId={day.id} onKcalChange={setExtraKcal} />
-          <ActivityBlock emoji="🏃" label="Cardio" options={CARDIO_OPTIONS} kcalTable={CARDIO_KCAL} defaultRate={CARDIO_DEFAULT_RATE}
+          <ActivityBlock emoji="🏃" label="Cardio final" options={CARDIO_INICIO_OPTIONS} kcalTable={CARDIO_INICIO_KCAL} defaultRate={CARDIO_DEFAULT_RATE}
             defaultDuration={day.cardio_duration} choice={cardioChoice} setChoice={setCardioChoice}
             mins={cardioMins} setMins={setCardioMins} done={cardioDone} setDone={setCardioDone}
             history={allActivities.filter(a => a.type === 'cardio')} />
