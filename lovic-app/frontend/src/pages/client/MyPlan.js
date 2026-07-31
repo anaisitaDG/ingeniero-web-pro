@@ -1338,6 +1338,24 @@ function splitDayName(fullName) {
   return { weekday: '', routine: raw };
 }
 
+// Mini Vic (llama con carita) en estado "celebrando" para la tarjeta de racha
+function MiniVic({ size = 28 }) {
+  const CX = 60, EY = 78, MY = 96, ELX = 42, ERX = 78;
+  const face = `<svg viewBox="0 0 120 130" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none">
+    <text x="4" y="18" font-size="13">⭐</text><text x="95" y="16" font-size="13">⭐</text>
+    <text x="${ELX}" y="${EY + 6}" text-anchor="middle" font-size="18">⭐</text>
+    <text x="${ERX}" y="${EY + 6}" text-anchor="middle" font-size="18">⭐</text>
+    <path d="M ${CX - 12} ${MY - 3} Q ${CX} ${MY + 14} ${CX + 12} ${MY - 3}" fill="#CC1800" stroke="#881000" stroke-width="1.5"/>
+    <ellipse cx="${CX}" cy="${MY - 1}" rx="9" ry="3.5" fill="rgba(255,255,255,.75)"/>
+  </svg>`;
+  return (
+    <span style={{ position: 'relative', display: 'inline-block', width: size, height: Math.round(size * 1.08), flexShrink: 0, verticalAlign: 'middle' }}>
+      <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: Math.round(size * 0.86), lineHeight: 1 }}>🔥</span>
+      <span dangerouslySetInnerHTML={{ __html: face }} />
+    </span>
+  );
+}
+
 function CelebrationModal({ dayName, kcal, streak, completedDate, completedDays, onClose }) {
   const shareRef = useRef(null);
   // Fecha de referencia = la del entrenamiento completado (no la de hoy). Así, si
@@ -1456,7 +1474,7 @@ function CelebrationModal({ dayName, kcal, streak, completedDate, completedDays,
             <p style={{ fontSize: 22, fontWeight: 900, color: '#ffffff', marginBottom: 16 }}>{bigTitle} 💪</p>
             <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
               <div style={{ background: 'rgba(255,255,255,0.15)', borderRadius: 12, padding: '10px 14px', flex: 1 }}>
-                <p style={{ fontSize: 24, fontWeight: 900, color: '#ffffff', lineHeight: 1 }}>🔥 {streak}</p>
+                <p style={{ fontSize: 24, fontWeight: 900, color: '#ffffff', lineHeight: 1, display: 'flex', alignItems: 'center', gap: 6 }}><MiniVic size={28} /> {streak}</p>
                 <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.75)', fontWeight: 600, marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>días de racha</p>
               </div>
               {kcal > 0 && (
