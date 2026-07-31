@@ -57,24 +57,32 @@ async function parseFoodImage(imagePath, fitnessGoal = 'maintenance') {
         { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
         {
           type: 'text',
-          text: `Eres un nutricionista experto. Mira esta foto de un plato de comida e identifica los alimentos y estima sus valores nutricionales. Devuelve SOLO un JSON válido sin explicaciones:
+          text: `Eres un nutricionista colombiano experto en estimar comida a partir de fotos. Analiza esta foto con MUCHO cuidado.
+
+Proceso mental (no lo escribas, solo úsalo):
+1. Identifica CADA alimento visible por separado. Mira bien: proteínas (carne, pollo, pescado, huevo), carbohidratos (arroz, arepa, papa, plátano, pasta, pan), verduras, salsas y bebidas.
+2. Estima el TAMAÑO de cada porción usando referencias visibles: el tamaño del plato (~26 cm), los cubiertos, un vaso. Una porción de arroz que cubre 1/4 del plato son ~150 g (~200 kcal).
+3. SUMA el aceite/grasa de cocción aunque NO se vea: casi toda comida salteada, frita o preparada lleva 1-2 cucharadas de aceite (~120-240 kcal). No lo ignores — es el error más común subestimar esto.
+4. Considera salsas, aderezos y azúcar visibles o probables.
+
+Referencias colombianas: arepa ~150 kcal c/u, patacón ~150 kcal c/u, arroz blanco porción ~200 kcal, frijoles porción ~250 kcal, huevo frito ~90 kcal, aguacate 1/2 ~160 kcal, mojarra frita ~250 kcal, bandeja paisa completa ~1200 kcal, chicharrón porción ~300 kcal.
+
+Devuelve SOLO un JSON válido, sin texto adicional:
 {
-  "items": [
-    { "name": "nombre del alimento", "quantity": "porción estimada", "calories": número }
-  ],
+  "items": [ { "name": "alimento", "quantity": "porción estimada (ej: 1 taza, 150 g, 2 unidades)", "calories": número } ],
   "total_calories": número,
   "protein_g": número,
   "carbs_g": número,
   "fat_g": número,
   "meal_type": "breakfast|lunch|dinner|snack",
-  "note": "aclaración breve si algo es difícil de estimar por la foto"
+  "note": "si algo está tapado o es difícil de estimar, acláralo aquí en 1 frase"
 }
+
 Reglas:
-- Estima las porciones de forma realista según lo que se ve en el plato.
-- Reconoce comida colombiana (patacón ~150 kcal c/u, arepa ~150 kcal, mojarra ~200 kcal porción, bandeja paisa, etc.).
-- Si un alimento tapa a otro o no se ve bien, estima con lo más probable y menciónalo en "note".
-- meal_type según lo que se ve (desayuno/almuerzo/cena/snack).
-- Solo el JSON, sin texto adicional.`,
+- Sé realista, no optimista: es mejor una estimación ligeramente alta que subestimar.
+- El total de calorías debe ser coherente con la suma de los items MÁS el aceite de cocción.
+- Si dudas entre dos alimentos, elige el más común en Colombia y menciónalo en "note".
+- meal_type según lo que se ve.`,
         },
       ],
     }],
