@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { api } from '../../services/api';
 
@@ -29,6 +29,62 @@ export default function FoodLogger() {
   const [history, setHistory]   = useState([]);
   const [histLoading, setHistLoading] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  const photoRef = useRef(null);
+  const [scanning, setScanning] = useState(false);
+  const [review, setReview] = useState(null); // { text, calories, protein_g, carbs_g, fat_g, meal_type, note }
+  const [savingReview, setSavingReview] = useState(false);
+
+  async function handleScan(e) {
+    const file = e.target.files?.[0];
+    if (photoRef.current) photoRef.current.value = '';
+    if (!file) return;
+    setScanning(true);
+    try {
+      const fd = new FormData();
+      fd.append('photo', file);
+      const res = await api.food.scan(fd);
+      if (res.error) throw new Error(res.error);
+      const p = res.parsed || {};
+      const text = (p.items || []).map(it => `${it.quantity ? it.quantity + ' ' : ''}${it.name}`).join(', ') || 'Plato escaneado';
+      setReview({
+        text,
+        calories: p.total_calories || 0,
+        protein_g: p.protein_g || 0,
+        carbs_g: p.carbs_g || 0,
+        fat_g: p.fat_g || 0,
+        meal_type: p.meal_type || mealType,
+        items: p.items || [],
+        note: p.note || '',
+      });
+    } catch (err) {
+      alert(err.message || 'No se pudo analizar la foto');
+    } finally {
+      setScanning(false);
+    }
+  }
+
+  async function saveReview() {
+    if (!review?.text.trim()) return;
+    setSavingReview(true);
+    try {
+      const res = await api.food.logParsed({
+        input_text: review.text.trim(),
+        items: review.items,
+        calories: review.calories,
+        protein_g: review.protein_g,
+        carbs_g: review.carbs_g,
+        fat_g: review.fat_g,
+        meal_type: review.meal_type,
+      });
+      setDaily(res.daily);
+      setReview(null);
+      await fetchToday();
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setSavingReview(false);
+    }
+  }
 
   useEffect(() => { fetchToday(); }, []);
 
@@ -155,7 +211,71 @@ export default function FoodLogger() {
               </button>
             </div>
             <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 6 }}>La IA calculará las calorías automáticamente</p>
+
+            {/* Escanear plato con la cámara */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '12px 0 2px' }}>
+              <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+              <span style={{ fontSize: 11, color: 'var(--muted)' }}>o</span>
+              <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+            </div>
+            <button type="button" onClick={() => photoRef.current?.click()} disabled={scanning}
+              style={{ width: '100%', justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 8,
+                padding: '11px', borderRadius: 12, border: '1.5px dashed var(--coral)', cursor: 'pointer',
+                background: 'var(--coral-light)', color: 'var(--coral)', fontWeight: 700, fontSize: 14 }}>
+              {scanning ? <><span className="spinner" /> Analizando el plato…</> : '📷 Escanear plato con la cámara'}
+            </button>
+            <input ref={photoRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handleScan} />
           </form>
+
+          {/* Revisión del escaneo antes de guardar */}
+          {review && (
+            <div className="card" style={{ marginBottom: 20, border: '2px solid var(--coral)' }}>
+              <p style={{ fontWeight: 800, marginBottom: 4 }}>📷 Revisa lo que detectó la IA</p>
+              <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12 }}>Ajusta lo que haga falta antes de guardar (es una estimación).</p>
+
+              <label className="label">Alimentos</label>
+              <textarea className="input" rows={2} value={review.text}
+                onChange={e => setReview(r => ({ ...r, text: e.target.value }))}
+                style={{ marginBottom: 12, resize: 'vertical', width: '100%' }} />
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+                {[
+                  { k: 'calories', l: 'Calorías', u: 'kcal' },
+                  { k: 'protein_g', l: 'Proteína', u: 'g' },
+                  { k: 'carbs_g', l: 'Carbohidratos', u: 'g' },
+                  { k: 'fat_g', l: 'Grasa', u: 'g' },
+                ].map(f => (
+                  <div key={f.k}>
+                    <label style={{ fontSize: 11, color: 'var(--muted)', display: 'block', marginBottom: 3 }}>{f.l} ({f.u})</label>
+                    <input className="input" type="number" min="0" value={review[f.k]}
+                      onChange={e => setReview(r => ({ ...r, [f.k]: e.target.value }))}
+                      style={{ padding: '8px', textAlign: 'center' }} />
+                  </div>
+                ))}
+              </div>
+
+              <label className="label">Tipo de comida</label>
+              <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap' }}>
+                {MEALS.map(m => (
+                  <button key={m.key} type="button" onClick={() => setReview(r => ({ ...r, meal_type: m.key }))} style={{
+                    flex: 1, minWidth: 70, padding: '7px 6px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                    fontWeight: 700, fontSize: 12,
+                    background: review.meal_type === m.key ? 'var(--coral)' : 'var(--card)',
+                    color: review.meal_type === m.key ? '#fff' : 'var(--muted)', boxShadow: 'var(--shadow)',
+                  }}>{m.icon}<br />{m.label}</button>
+                ))}
+              </div>
+
+              {review.note && <p style={{ fontSize: 12, color: 'var(--muted)', fontStyle: 'italic', marginBottom: 12 }}>💡 {review.note}</p>}
+
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button className="btn-ghost" onClick={() => setReview(null)} style={{ flex: 1, justifyContent: 'center' }}>Cancelar</button>
+                <button className="btn-primary" onClick={saveReview} disabled={savingReview} style={{ flex: 2, justifyContent: 'center' }}>
+                  {savingReview ? <span className="spinner" /> : '✓ Guardar comida'}
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Daily summary */}
           {daily && (

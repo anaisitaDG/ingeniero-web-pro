@@ -40,6 +40,52 @@ Reglas:
   return JSON.parse(jsonMatch[0]);
 }
 
+// Analiza una FOTO de un plato y estima alimentos + calorías + macros.
+async function parseFoodImage(imagePath, fitnessGoal = 'maintenance') {
+  const fs = require('fs');
+  const imageData = fs.readFileSync(imagePath);
+  const base64 = imageData.toString('base64');
+  const ext = imagePath.split('.').pop().toLowerCase();
+  const mediaType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+
+  const message = await client.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 1024,
+    messages: [{
+      role: 'user',
+      content: [
+        { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+        {
+          type: 'text',
+          text: `Eres un nutricionista experto. Mira esta foto de un plato de comida e identifica los alimentos y estima sus valores nutricionales. Devuelve SOLO un JSON válido sin explicaciones:
+{
+  "items": [
+    { "name": "nombre del alimento", "quantity": "porción estimada", "calories": número }
+  ],
+  "total_calories": número,
+  "protein_g": número,
+  "carbs_g": número,
+  "fat_g": número,
+  "meal_type": "breakfast|lunch|dinner|snack",
+  "note": "aclaración breve si algo es difícil de estimar por la foto"
+}
+Reglas:
+- Estima las porciones de forma realista según lo que se ve en el plato.
+- Reconoce comida colombiana (patacón ~150 kcal c/u, arepa ~150 kcal, mojarra ~200 kcal porción, bandeja paisa, etc.).
+- Si un alimento tapa a otro o no se ve bien, estima con lo más probable y menciónalo en "note".
+- meal_type según lo que se ve (desayuno/almuerzo/cena/snack).
+- Solo el JSON, sin texto adicional.`,
+        },
+      ],
+    }],
+  });
+
+  const text = message.content[0].text.trim();
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error('No se pudo analizar la foto');
+  return JSON.parse(jsonMatch[0]);
+}
+
 async function getFoodRecommendation(remainingCalories, fitnessGoal, consumedToday) {
   const message = await client.messages.create({
     model: 'claude-haiku-4-5-20251001',
@@ -266,4 +312,4 @@ Solo el nombre, sin puntuación ni explicación.`,
   return message.content[0].text.trim().replace(/[."]/g, '');
 }
 
-module.exports = { parseFood, getFoodRecommendation, generateRoutine, generateNutritionPlan, parseBioimpedance, generateBioSummary, comparePhotos, suggestDayName };
+module.exports = { parseFood, parseFoodImage, getFoodRecommendation, generateRoutine, generateNutritionPlan, parseBioimpedance, generateBioSummary, comparePhotos, suggestDayName };

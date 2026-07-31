@@ -1,8 +1,11 @@
 const express = require('express');
 const router  = express.Router();
 const { v4: uuidv4 } = require('uuid');
+const path    = require('path');
+const fs      = require('fs');
+const multer  = require('multer');
 const db      = require('../database/db');
-const { parseFood, getFoodRecommendation } = require('../services/ai');
+const { parseFood, parseFoodImage, getFoodRecommendation } = require('../services/ai');
 const { requireAuth } = require('../middleware/auth');
 
 router.use(requireAuth);
@@ -11,6 +14,59 @@ router.use(requireAuth);
 function colombiaToday() {
   return new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
+
+// Subida temporal para escanear el plato (la foto NO se conserva)
+const scanUpload = multer({
+  dest: process.env.UPLOAD_PATH || 'uploads/',
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => file.mimetype.startsWith('image/') ? cb(null, true) : cb(new Error('Solo imágenes')),
+});
+
+const num = (v, def = 0) => { const n = Number(v); return Number.isFinite(n) ? Math.max(0, Math.round(n)) : def; };
+
+// POST /food/scan — analiza una foto del plato y devuelve el estimado (NO guarda)
+router.post('/scan', scanUpload.single('photo'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'Foto requerida' });
+  try {
+    const parsed = await parseFoodImage(req.file.path, req.user.fitness_goal);
+    res.json({ parsed });
+  } catch (e) {
+    console.error('[food/scan]', e.message);
+    res.status(500).json({ error: 'No se pudo analizar la foto. Intenta con una más clara.' });
+  } finally {
+    fs.unlink(req.file.path, () => {}); // borra la foto temporal siempre
+  }
+});
+
+// POST /food/log-parsed — guarda un registro ya revisado por la clienta (sin re-analizar)
+router.post('/log-parsed', async (req, res) => {
+  try {
+    const { input_text, items, calories, protein_g, carbs_g, fat_g, meal_type } = req.body;
+    if (!input_text?.trim()) return res.status(400).json({ error: 'Descripción requerida' });
+    const VALID = ['breakfast', 'lunch', 'dinner', 'snack'];
+    const finalMealType = VALID.includes(meal_type) ? meal_type : 'snack';
+    const today = req.body.date || colombiaToday();
+
+    await db.query(
+      `INSERT INTO food_logs (id, user_id, input_text, parsed_items, calories, protein_g, carbs_g, fat_g, meal_type, logged_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        uuidv4(), req.user.id, input_text.trim(),
+        JSON.stringify(Array.isArray(items) ? items : []),
+        num(calories), num(protein_g), num(carbs_g), num(fat_g),
+        finalMealType, today,
+      ]
+    );
+
+    const [[{ total }]] = await db.query(
+      `SELECT COALESCE(SUM(calories), 0) AS total FROM food_logs WHERE user_id = ? AND logged_at = ?`,
+      [req.user.id, today]
+    );
+    res.json({
+      daily: { target: req.user.calorie_target || 2000, consumed: total, remaining: Math.max((req.user.calorie_target || 2000) - total, 0) },
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 
 // POST /food/log
 router.post('/log', async (req, res) => {
