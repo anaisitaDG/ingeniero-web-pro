@@ -138,20 +138,26 @@ export default function MyPlan() {
   );
 }
 
-const WARMUP_OPTIONS = ['Movilidad articular', 'Trote suave', 'Saltos', 'Sentadillas sin peso', 'Jumping jacks', 'Estiramientos dinámicos', 'Remo', 'Otro'];
+const WARMUP_OPTIONS = ['Movilidad articular', 'Estiramiento dinámico', 'Otro'];
 const CARDIO_OPTIONS = ['Cuerda', 'Caminadora', 'Escaleras', 'Elíptica', 'Stepper', 'Bicicleta', 'Remo', 'Baile / Rumba', 'Zumba', 'Aeróbicos', 'Natación', 'Spinning', 'Otro'];
 
 // kcal/min approx for 65kg person. Para actividades personalizadas ("Otro") se usa
 // una tasa por defecto para que igual cuente (no en cero).
 const CARDIO_DEFAULT_RATE = 8;
 const WARMUP_DEFAULT_RATE = 5;
-const WARMUP_KCAL = { 'Movilidad articular': 2.5, 'Trote suave': 7, 'Saltos': 6, 'Sentadillas sin peso': 4, 'Jumping jacks': 6, 'Estiramientos dinámicos': 2 };
+const WARMUP_KCAL = { 'Movilidad articular': 2.5, 'Estiramiento dinámico': 2 };
 const CARDIO_KCAL = { 'Cuerda': 12, 'Caminadora': 6, 'Escaleras': 9, 'Elíptica': 8, 'Stepper': 7, 'Bicicleta': 7, 'Remo': 8, 'Baile / Rumba': 8, 'Zumba': 9, 'Aeróbicos': 8, 'Natación': 10, 'Spinning': 9 };
 
+// Soporta una actividad o varias combinadas ("A + B"): usa el promedio de sus tasas.
+// Actividades personalizadas o "Otro" con texto usan la tasa por defecto.
 function calcKcal(table, type, mins, defaultRate) {
   if (!type || type === 'Otro' || !mins) return null;
-  const rate = table[type] || defaultRate;   // actividad personalizada → tasa por defecto
-  return rate ? Math.round(rate * mins) : null;
+  const parts = String(type).split(' + ').map(s => s.trim()).filter(p => p && p !== 'Otro');
+  if (parts.length === 0) return defaultRate ? Math.round(defaultRate * mins) : null;
+  const rates = parts.map(p => (table[p] != null ? table[p] : defaultRate)).filter(r => r != null);
+  if (!rates.length) return null;
+  const avg = rates.reduce((a, b) => a + b, 0) / rates.length;
+  return Math.round(avg * mins);
 }
 
 // ── Meal Plan View ────────────────────────────────────────────────────────────
@@ -507,9 +513,31 @@ function PlanProgress({ startDate, durationDays }) {
   );
 }
 
-function ActivityBlock({ emoji, label, options, kcalTable, defaultRate, defaultDuration, choice, setChoice, mins, setMins, done, setDone, history = [] }) {
+function ActivityBlock({ emoji, label, options, kcalTable, defaultRate, defaultDuration, choice, setChoice, mins, setMins, done, setDone, history = [], multi = false }) {
   const kcal = calcKcal(kcalTable, choice, Number(mins), defaultRate);
   const [showHistory, setShowHistory] = useState(false);
+
+  // Selección múltiple (calentamiento): choice guarda las opciones unidas por " + "
+  const parts = choice ? choice.split(' + ').map(s => s.trim()).filter(Boolean) : [];
+  const customText = parts.find(p => !options.includes(p)) || '';
+  const otroOn = parts.includes('Otro') || !!customText;
+  const rebuild = (arr) => { setChoice(arr.join(' + ')); setDone(false); };
+  const toggleOpt = (o) => {
+    if (o === 'Otro') {
+      if (otroOn) rebuild(parts.filter(p => options.includes(p) && p !== 'Otro'));
+      else rebuild([...parts.filter(p => options.includes(p)), 'Otro']);
+    } else if (parts.includes(o)) {
+      rebuild(parts.filter(p => p !== o));
+    } else {
+      rebuild([...parts, o]);
+    }
+  };
+  const setCustom = (txt) => {
+    const base = parts.filter(p => options.includes(p) && p !== 'Otro');
+    rebuild(txt.trim() ? [...base, txt] : [...base, 'Otro']);
+  };
+  const multiReady = parts.some(p => p !== 'Otro');
+  const ready = multi ? multiReady : (choice && choice !== 'Otro');
   return (
     <div style={{ background: done ? '#d1fae5' : 'var(--bg)', borderRadius: 12, padding: '12px 14px', transition: 'background 0.3s' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
@@ -537,16 +565,41 @@ function ActivityBlock({ emoji, label, options, kcalTable, defaultRate, defaultD
           })}
         </div>
       )}
-      <select className="input" value={choice === 'Otro' || (!options.includes(choice) && choice) ? 'Otro' : choice} onChange={e => { setChoice(e.target.value); setDone(false); }} style={{ fontSize: 13, padding: '8px 10px', marginBottom: 8 }}>
-        <option value="">Sin {label.toLowerCase()} hoy</option>
-        {options.map(o => <option key={o} value={o}>{o}</option>)}
-      </select>
-      {(choice === 'Otro' || (!options.includes(choice) && choice)) && (
-        <input className="input" placeholder="¿Qué hiciste?" value={choice === 'Otro' ? '' : choice}
-          onChange={e => setChoice(e.target.value !== '' ? e.target.value : 'Otro')}
-          style={{ fontSize: 13, padding: '8px 10px', marginBottom: 8 }} autoFocus />
+      {multi ? (
+        <>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: parts.length ? 8 : 0 }}>
+            {options.map(o => {
+              const active = o === 'Otro' ? otroOn : parts.includes(o);
+              return (
+                <button key={o} onClick={() => toggleOpt(o)} style={{
+                  padding: '7px 14px', borderRadius: 20, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700,
+                  background: active ? 'var(--coral)' : 'var(--card)', color: active ? '#fff' : 'var(--muted)',
+                  boxShadow: 'var(--shadow)',
+                }}>{active ? '✓ ' : ''}{o}</button>
+              );
+            })}
+          </div>
+          {!parts.length && <p style={{ fontSize: 11, color: 'var(--muted)', margin: 0 }}>Sin {label.toLowerCase()} hoy · toca para elegir (puedes marcar varias)</p>}
+          {otroOn && (
+            <input className="input" placeholder="¿Qué hiciste?" value={customText}
+              onChange={e => setCustom(e.target.value)}
+              style={{ fontSize: 13, padding: '8px 10px', marginTop: 8 }} autoFocus />
+          )}
+        </>
+      ) : (
+        <>
+          <select className="input" value={choice === 'Otro' || (!options.includes(choice) && choice) ? 'Otro' : choice} onChange={e => { setChoice(e.target.value); setDone(false); }} style={{ fontSize: 13, padding: '8px 10px', marginBottom: 8 }}>
+            <option value="">Sin {label.toLowerCase()} hoy</option>
+            {options.map(o => <option key={o} value={o}>{o}</option>)}
+          </select>
+          {(choice === 'Otro' || (!options.includes(choice) && choice)) && (
+            <input className="input" placeholder="¿Qué hiciste?" value={choice === 'Otro' ? '' : choice}
+              onChange={e => setChoice(e.target.value !== '' ? e.target.value : 'Otro')}
+              style={{ fontSize: 13, padding: '8px 10px', marginBottom: 8 }} autoFocus />
+          )}
+        </>
       )}
-      {choice && choice !== 'Otro' && (
+      {ready && (
         <>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
             <div style={{ flex: 1 }}>
@@ -712,7 +765,7 @@ function DayCard({ day, onLogged, completedDate, onToggleComplete }) {
       </button>
       {open && (
         <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <ActivityBlock emoji="🔥" label="Calentamiento" options={WARMUP_OPTIONS} kcalTable={WARMUP_KCAL} defaultRate={WARMUP_DEFAULT_RATE}
+          <ActivityBlock emoji="🔥" label="Calentamiento" options={WARMUP_OPTIONS} kcalTable={WARMUP_KCAL} defaultRate={WARMUP_DEFAULT_RATE} multi
             defaultDuration={day.warmup_duration} choice={warmupChoice} setChoice={setWarmupChoice}
             mins={warmupMins} setMins={setWarmupMins} done={warmupDone} setDone={setWarmupDone}
             history={allActivities.filter(a => a.type === 'warmup')} />
