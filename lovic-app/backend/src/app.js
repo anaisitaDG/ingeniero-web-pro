@@ -140,6 +140,8 @@ const db = require('./database/db');
         INDEX idx_user_day (user_id, day_id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
+    // Nuevo tipo 'cardio_inicio' (cardio breve después del calentamiento)
+    await db.query(`ALTER TABLE workout_activity_logs MODIFY COLUMN type ENUM('warmup','cardio','cardio_inicio') NOT NULL`).catch(() => {});
     await db.query(`
       CREATE TABLE IF NOT EXISTS exercise_library (
         id VARCHAR(36) PRIMARY KEY,
