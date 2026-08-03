@@ -9,6 +9,9 @@ export default function MyPlan() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [streak, setStreak]   = useState(0);
+  // Factor de peso corporal: las calorías se ajustan al peso ACTUAL de la persona
+  // (las tablas base están calibradas a 65 kg). Ej: 90 kg → factor 1.38.
+  const [weightFactor, setWeightFactor] = useState(1);
 
   const [completedDays, setCompletedDays] = useState({});
   const [celebration, setCelebration] = useState(null); // { dayName, kcal }
@@ -21,6 +24,8 @@ export default function MyPlan() {
       setPlan(wRes.plan);
       setNutrition(dRes.nutrition_plan);
       setStreak(dRes.streak || 0);
+      const bw = Number(dRes.weight_history?.[0]?.weight_kg) || Number(dRes.bio?.weight_kg) || Number(dRes.questionnaire?.weight_kg) || 65;
+      setWeightFactor(Math.max(0.6, Math.min(2.2, bw / 65)));
       const map = {};
       (cRes.completed || []).forEach(r => {
         if (typeof r === 'string') map[r] = true;
@@ -107,7 +112,7 @@ export default function MyPlan() {
             <div>
               {plan.duration_days && <PlanProgress startDate={plan.start_date || plan.created_at} durationDays={plan.duration_days} />}
               {plan.days.map(day => (
-                <DayCard key={day.id} day={day} onLogged={load}
+                <DayCard key={day.id} day={day} onLogged={load} weightFactor={weightFactor}
                   completedDate={completedDays[day.id]}
                   onToggleComplete={(kcal, date) => toggleDay(day.id, day.day_name, kcal, date)} />
               ))}
@@ -121,7 +126,7 @@ export default function MyPlan() {
           <div style={{ marginTop: 20, borderTop: '2px dashed var(--border)', paddingTop: 20 }}>
             <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>🆓 ¿Entrenaste algo diferente hoy?</p>
             <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 14 }}>Registra aquí cualquier actividad fuera de tu rutina asignada.</p>
-            <FreeWorkout onCompleted={(kcal, date) => {
+            <FreeWorkout weightFactor={weightFactor} onCompleted={(kcal, date) => {
               api.dashboard.get().then(d => {
                 setCelebration({ dayName: 'Entrenamiento libre', kcal, streak: d.streak || streak, date });
                 setStreak(d.streak || streak);
@@ -151,14 +156,14 @@ const WARMUP_KCAL = { 'Movilidad articular': 2.5, 'Estiramiento dinámico': 2 };
 
 // Soporta una actividad o varias combinadas ("A + B"): usa el promedio de sus tasas.
 // Actividades personalizadas o "Otro" con texto usan la tasa por defecto.
-function calcKcal(table, type, mins, defaultRate) {
+function calcKcal(table, type, mins, defaultRate, factor = 1) {
   if (!type || type === 'Otro' || !mins) return null;
   const parts = String(type).split(' + ').map(s => s.trim()).filter(p => p && p !== 'Otro');
-  if (parts.length === 0) return defaultRate ? Math.round(defaultRate * mins) : null;
+  if (parts.length === 0) return defaultRate ? Math.round(defaultRate * mins * factor) : null;
   const rates = parts.map(p => (table[p] != null ? table[p] : defaultRate)).filter(r => r != null);
   if (!rates.length) return null;
   const avg = rates.reduce((a, b) => a + b, 0) / rates.length;
-  return Math.round(avg * mins);
+  return Math.round(avg * mins * factor);
 }
 
 // ── Meal Plan View ────────────────────────────────────────────────────────────
@@ -514,8 +519,8 @@ function PlanProgress({ startDate, durationDays }) {
   );
 }
 
-function ActivityBlock({ emoji, label, options, kcalTable, defaultRate, defaultDuration, choice, setChoice, mins, setMins, done, setDone, history = [], multi = false }) {
-  const kcal = calcKcal(kcalTable, choice, Number(mins), defaultRate);
+function ActivityBlock({ emoji, label, options, kcalTable, defaultRate, defaultDuration, choice, setChoice, mins, setMins, done, setDone, history = [], multi = false, weightFactor = 1 }) {
+  const kcal = calcKcal(kcalTable, choice, Number(mins), defaultRate, weightFactor);
   const [showHistory, setShowHistory] = useState(false);
 
   // Selección múltiple (calentamiento): choice guarda las opciones unidas por " + "
@@ -629,13 +634,13 @@ function ActivityBlock({ emoji, label, options, kcalTable, defaultRate, defaultD
 }
 
 // kcal from real logged sets: weight(kg) × reps × sets × 0.1 (aprox)
-function calcStrengthKcal(setWeights) {
+function calcStrengthKcal(setWeights, factor = 1) {
   return Math.round((setWeights || []).reduce((sum, s) => {
     const w = parseFloat(s.weight_kg) || 0;
     const r = parseFloat(s.reps_done) || 0;
     const d = parseFloat(s.duration_secs) || 0;   // isometría: ~1 rep ≈ 3 seg de sostén
     return sum + w * r * 0.1 + w * (d / 3) * 0.1;
-  }, 0));
+  }, 0) * factor);
 }
 
 function parseDate(d) {
@@ -650,7 +655,7 @@ function formatDayDate(dateStr) {
 
 const DAYS_ES = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
 
-function DayCard({ day, onLogged, completedDate, onToggleComplete }) {
+function DayCard({ day, onLogged, completedDate, onToggleComplete, weightFactor = 1 }) {
   const todayDayEs = DAYS_ES[new Date().getDay()];
   const dayNameLc = day.day_name.toLowerCase();
   // Match if the day name contains the current weekday name (handles "Lunes — Pecho", "Día 1 Lunes", etc.)
@@ -729,9 +734,9 @@ function DayCard({ day, onLogged, completedDate, onToggleComplete }) {
   const [exKcal, setExKcal] = useState({});
   const [extraKcal, setExtraKcal] = useState(0); // kcal de ejercicios extra del día
 
-  const warmupKcal = calcKcal(WARMUP_KCAL, warmupChoice, Number(warmupMins), WARMUP_DEFAULT_RATE) || 0;
-  const ciKcal     = calcKcal(CARDIO_INICIO_KCAL, ciChoice, Number(ciMins), CARDIO_DEFAULT_RATE) || 0;
-  const cardioKcal = calcKcal(CARDIO_INICIO_KCAL, cardioChoice, Number(cardioMins), CARDIO_DEFAULT_RATE) || 0;
+  const warmupKcal = calcKcal(WARMUP_KCAL, warmupChoice, Number(warmupMins), WARMUP_DEFAULT_RATE, weightFactor) || 0;
+  const ciKcal     = calcKcal(CARDIO_INICIO_KCAL, ciChoice, Number(ciMins), CARDIO_DEFAULT_RATE, weightFactor) || 0;
+  const cardioKcal = calcKcal(CARDIO_INICIO_KCAL, cardioChoice, Number(cardioMins), CARDIO_DEFAULT_RATE, weightFactor) || 0;
   const strengthKcal = Object.values(exKcal).reduce((a, b) => a + b, 0) + extraKcal;
   const totalKcal = warmupKcal + ciKcal + strengthKcal + cardioKcal;
 
@@ -781,20 +786,20 @@ function DayCard({ day, onLogged, completedDate, onToggleComplete }) {
       </button>
       {open && (
         <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <ActivityBlock emoji="🔥" label="Calentamiento" options={WARMUP_OPTIONS} kcalTable={WARMUP_KCAL} defaultRate={WARMUP_DEFAULT_RATE} multi
+          <ActivityBlock emoji="🔥" label="Calentamiento" options={WARMUP_OPTIONS} kcalTable={WARMUP_KCAL} defaultRate={WARMUP_DEFAULT_RATE} multi weightFactor={weightFactor}
             defaultDuration={day.warmup_duration} choice={warmupChoice} setChoice={setWarmupChoice}
             mins={warmupMins} setMins={setWarmupMins} done={warmupDone} setDone={setWarmupDone}
             history={allActivities.filter(a => a.type === 'warmup')} />
-          <ActivityBlock emoji="🏃‍♀️" label="Cardio inicio" options={CARDIO_INICIO_OPTIONS} kcalTable={CARDIO_INICIO_KCAL} defaultRate={CARDIO_DEFAULT_RATE}
+          <ActivityBlock emoji="🏃‍♀️" label="Cardio inicio" options={CARDIO_INICIO_OPTIONS} kcalTable={CARDIO_INICIO_KCAL} defaultRate={CARDIO_DEFAULT_RATE} weightFactor={weightFactor}
             choice={ciChoice} setChoice={setCiChoice}
             mins={ciMins} setMins={setCiMins} done={ciDone} setDone={setCiDone}
             history={allActivities.filter(a => a.type === 'cardio_inicio')} />
           {day.exercises.map(ex => (
-            <ExerciseCard key={ex.id} exercise={ex} onLogged={() => onLogged(false)}
+            <ExerciseCard key={ex.id} exercise={ex} onLogged={() => onLogged(false)} weightFactor={weightFactor}
               onKcalChange={kcal => setExKcal(prev => ({ ...prev, [ex.id]: kcal }))} />
           ))}
-          <ExtraExercises dayId={day.id} onKcalChange={setExtraKcal} />
-          <ActivityBlock emoji="🏃" label="Cardio final" options={CARDIO_INICIO_OPTIONS} kcalTable={CARDIO_INICIO_KCAL} defaultRate={CARDIO_DEFAULT_RATE}
+          <ExtraExercises dayId={day.id} onKcalChange={setExtraKcal} weightFactor={weightFactor} />
+          <ActivityBlock emoji="🏃" label="Cardio final" options={CARDIO_INICIO_OPTIONS} kcalTable={CARDIO_INICIO_KCAL} defaultRate={CARDIO_DEFAULT_RATE} weightFactor={weightFactor}
             defaultDuration={day.cardio_duration} choice={cardioChoice} setChoice={setCardioChoice}
             mins={cardioMins} setMins={setCardioMins} done={cardioDone} setDone={setCardioDone}
             history={allActivities.filter(a => a.type === 'cardio')} />
@@ -846,7 +851,7 @@ function DayCard({ day, onLogged, completedDate, onToggleComplete }) {
   );
 }
 
-function ExerciseCard({ exercise: ex, onLogged, onKcalChange }) {
+function ExerciseCard({ exercise: ex, onLogged, onKcalChange, weightFactor = 1 }) {
   const [showLog, setShowLog]     = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory]     = useState(null);
@@ -868,8 +873,8 @@ function ExerciseCard({ exercise: ex, onLogged, onKcalChange }) {
 
   // Report kcal to parent whenever weights change
   useEffect(() => {
-    onKcalChange?.(calcStrengthKcal(setWeights));
-  }, [setWeights, onKcalChange]); // eslint-disable-line
+    onKcalChange?.(calcStrengthKcal(setWeights, weightFactor));
+  }, [setWeights, onKcalChange, weightFactor]); // eslint-disable-line
 
   const today = new Date().toLocaleDateString('en-CA');
   const lastSession = ex.last_session;
@@ -1094,7 +1099,7 @@ function setChipText(s, i) {
 }
 
 // Ejercicios que la clienta agrega al día de HOY (solo para esta sesión)
-function ExtraExercises({ dayId, onKcalChange }) {
+function ExtraExercises({ dayId, onKcalChange, weightFactor = 1 }) {
   const today = new Date().toLocaleDateString('en-CA');
   const [list, setList]     = useState([]);
   const [adding, setAdding] = useState(false);
@@ -1108,9 +1113,9 @@ function ExtraExercises({ dayId, onKcalChange }) {
 
   // Reporta al día las kcal de los ejercicios extra guardados
   useEffect(() => {
-    const k = (list || []).reduce((sum, item) => sum + calcStrengthKcal(item.sets), 0);
+    const k = (list || []).reduce((sum, item) => sum + calcStrengthKcal(item.sets, weightFactor), 0);
     onKcalChange?.(k);
-  }, [list, onKcalChange]);
+  }, [list, onKcalChange, weightFactor]);
 
   function addRow()     { setSets(s => [...s, { weight_kg: '', reps_done: '', duration_secs: '' }]); }
   function rmRow(i)     { setSets(s => s.filter((_, j) => j !== i)); }
@@ -1201,7 +1206,7 @@ function emptyExercise() {
   return { name: '', type: 'strength', sets: '', reps: '', weight_kg: '', duration_secs: '', duration_mins: '' };
 }
 
-function FreeWorkout({ onCompleted }) {
+function FreeWorkout({ onCompleted, weightFactor = 1 }) {
   const [open, setOpen] = useState(false);
   const [exercises, setExercises] = useState([emptyExercise()]);
   const [note, setNote] = useState('');
@@ -1236,12 +1241,12 @@ function FreeWorkout({ onCompleted }) {
       await api.workout.saveFree(payload, note || null, date);
       // refresh history
       const r = await api.workout.getFree(); setSessions(r.sessions || []);
-      // calc kcal approx
+      // calc kcal approx (ajustado al peso corporal)
       const kcal = payload.reduce((sum, e) => {
         if (e.type === 'cardio') return sum + (e.duration_mins || 0) * 7;
         if (e.type === 'time')   return sum + ((e.sets || 1) * (e.duration_secs || 0) / 60) * 4;
         return sum + ((e.sets || 3) * (e.reps || 10) * (e.weight_kg || 0) * 0.1);
-      }, 0);
+      }, 0) * weightFactor;
       setExercises([emptyExercise()]); setNote(''); setOpen(false);
       onCompleted(Math.round(kcal), date);
     } catch (e) { alert(e.message); }
