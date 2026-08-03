@@ -495,10 +495,13 @@ router.get('/clients/:id/workout-logs', async (req, res) => {
   const today = new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const msPerDay = 86400000;
   let expected = new Date(today).getTime();
+  let firstDay = true;
   while (true) {
     const ds = new Date(expected).toISOString().slice(0,10);
     if (trainedDates.has(ds)) { streak++; restRun = 0; }
+    else if (firstDay) { /* hoy aún puede completarse */ }
     else { restRun++; if (restRun > 3) break; }
+    firstDay = false;
     expected -= msPerDay;
   }
 

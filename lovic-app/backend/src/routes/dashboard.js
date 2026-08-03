@@ -71,15 +71,19 @@ router.get('/', async (req, res) => {
   let restDaysSinceLastWorkout = 0;
   const msPerDay = 86400000;
   let expected = new Date(today).getTime();
+  let firstDay = true;
   while (true) {
     const dateStr = new Date(expected).toISOString().slice(0, 10);
     if (activeDates.has(dateStr)) {
       streak++;
       restDaysSinceLastWorkout = 0;
+    } else if (firstDay) {
+      // HOY aún puede completarse: no cuenta como día de descanso ni rompe la racha
     } else {
       restDaysSinceLastWorkout++;
       if (restDaysSinceLastWorkout > maxRestDays) break;
     }
+    firstDay = false;
     expected -= msPerDay;
   }
 
