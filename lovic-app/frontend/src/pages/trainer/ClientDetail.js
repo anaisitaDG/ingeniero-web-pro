@@ -47,6 +47,7 @@ export default function ClientDetail() {
   const [startDate, setStartDate]           = useState(new Date().toISOString().slice(0, 10));
   const [activePlanId, setActivePlanId]     = useState(null);
   const [planName, setPlanName]             = useState('');   // etiqueta de la rutina (ej. "Agosto")
+  const [creatingNew, setCreatingNew]       = useState(false); // armando una rutina nueva (editor en blanco)
   const [workoutPlans, setWorkoutPlans]     = useState([]);   // rutinas activa + archivadas
   const [viewingSummary, setViewingSummary] = useState(null); // resumen del mes de una rutina
   const [summaryLoading, setSummaryLoading] = useState(false);
@@ -215,11 +216,31 @@ export default function ClientDetail() {
     finally { setSavingWorkout(false); }
   }
 
-  // Archiva la rutina actual (queda en el historial) y crea una nueva del mes
+  // Paso 1: limpia el editor para armar la rutina nueva desde cero (la actual sigue activa)
+  function startNewRoutine() {
+    const ok = window.confirm('Se limpiará el editor para que armes la rutina nueva desde cero.\n\nLa rutina actual sigue activa hasta que guardes la nueva. ¿Empezar?');
+    if (!ok) return;
+    setCreatingNew(true);
+    setWorkoutDays([EMPTY_DAY()]);
+    setOriginalDayCount(0);
+    setDurationDays('');
+    const month = new Date().toLocaleDateString('es', { month: 'long', year: 'numeric' });
+    setPlanName(month.charAt(0).toUpperCase() + month.slice(1));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setSaveMsg('📝 Editor en blanco: arma la rutina y dale "Crear y activar" abajo.');
+    setTimeout(() => setSaveMsg(''), 5000);
+  }
+
+  function cancelNewRoutine() {
+    setCreatingNew(false);
+    loadWorkout(); // recarga la rutina actual
+  }
+
+  // Paso 2: archiva la rutina actual y activa la nueva (lo que está en el editor)
   async function newMonthlyWorkout() {
     const days = buildDays();
     if (days.length === 0) { setSaveMsg('❌ Arma primero la rutina nueva (al menos un día con ejercicios)'); setTimeout(() => setSaveMsg(''), 3500); return; }
-    const ok = window.confirm('Se archivará la rutina actual (queda guardada en el historial, no se borra) y esta pasará a ser la rutina activa de la clienta.\n\n¿Crear la nueva rutina?');
+    const ok = window.confirm('Se archivará la rutina actual (queda en el historial, no se borra) y esta pasará a ser la rutina activa de la clienta.\n\n¿Crear la nueva rutina?');
     if (!ok) return;
     setSavingWorkout(true);
     try {
@@ -228,6 +249,7 @@ export default function ClientDetail() {
       await api.trainer.newWorkout(id, days, durationDays ? Number(durationDays) : null, startDate || null, finalName);
       setSaveMsg('✅ Nueva rutina activa. La anterior quedó archivada.');
       setTimeout(() => setSaveMsg(''), 4000);
+      setCreatingNew(false);
       await load();
       loadWorkoutPlans();
     } catch (e) { setSaveMsg('❌ ' + e.message); setTimeout(() => setSaveMsg(''), 4000); }
@@ -841,18 +863,39 @@ export default function ClientDetail() {
 
             {/* Barra de acciones fija: siempre visible mientras editas, sin scrollear */}
             <div style={{
-              position: 'sticky', bottom: 0, zIndex: 20, display: 'flex', gap: 10,
+              position: 'sticky', bottom: 0, zIndex: 20,
               background: 'var(--card)', padding: '12px 0', marginTop: 16,
               borderTop: '1px solid var(--border)', boxShadow: '0 -6px 16px rgba(0,0,0,0.08)',
             }}>
-              <button className="btn-primary" onClick={saveWorkout} disabled={savingWorkout} style={{ flex: 1, justifyContent: 'center', padding: '13px', fontSize: 13.5 }}>
-                {savingWorkout ? <span className="spinner" /> : '💾 Guardar cambios'}
-              </button>
-              <button onClick={newMonthlyWorkout} disabled={savingWorkout} style={{
-                flex: 1, justifyContent: 'center', padding: '13px',
-                borderRadius: 12, border: '2px solid var(--coral)', background: 'var(--coral-light)',
-                color: 'var(--coral)', fontWeight: 800, fontSize: 13.5, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
-              }}>🗓️ Nueva rutina del mes</button>
+              {creatingNew && (
+                <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--coral)', marginBottom: 8, textAlign: 'center' }}>
+                  📝 Estás armando una rutina NUEVA (la actual sigue activa hasta que la crees)
+                </p>
+              )}
+              <div style={{ display: 'flex', gap: 10 }}>
+                {creatingNew ? (
+                  <>
+                    <button onClick={cancelNewRoutine} disabled={savingWorkout} style={{ flex: 1, justifyContent: 'center', padding: '13px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--muted)', fontWeight: 700, fontSize: 13.5, cursor: 'pointer' }}>
+                      Cancelar
+                    </button>
+                    <button onClick={newMonthlyWorkout} disabled={savingWorkout} style={{
+                      flex: 2, justifyContent: 'center', padding: '13px', borderRadius: 12, border: 'none',
+                      background: 'var(--coral)', color: '#fff', fontWeight: 800, fontSize: 13.5, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
+                    }}>{savingWorkout ? <span className="spinner" /> : '✓ Crear y activar rutina'}</button>
+                  </>
+                ) : (
+                  <>
+                    <button className="btn-primary" onClick={saveWorkout} disabled={savingWorkout} style={{ flex: 1, justifyContent: 'center', padding: '13px', fontSize: 13.5 }}>
+                      {savingWorkout ? <span className="spinner" /> : '💾 Guardar cambios'}
+                    </button>
+                    <button onClick={startNewRoutine} disabled={savingWorkout} style={{
+                      flex: 1, justifyContent: 'center', padding: '13px',
+                      borderRadius: 12, border: '2px solid var(--coral)', background: 'var(--coral-light)',
+                      color: 'var(--coral)', fontWeight: 800, fontSize: 13.5, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
+                    }}>🗓️ Empezar rutina nueva</button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         )
