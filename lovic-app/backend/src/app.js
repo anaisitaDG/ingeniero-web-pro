@@ -168,6 +168,7 @@ const db = require('./database/db');
     await db.query(`ALTER TABLE workout_exercises ADD COLUMN IF NOT EXISTS library_exercise_id VARCHAR(36) DEFAULT NULL`).catch(() => {});
     await db.query(`ALTER TABLE workout_plans ADD COLUMN IF NOT EXISTS duration_days INT DEFAULT NULL`).catch(() => {});
     await db.query(`ALTER TABLE workout_plans ADD COLUMN IF NOT EXISTS name VARCHAR(120) DEFAULT NULL`).catch(() => {});
+    await db.query(`ALTER TABLE workout_plans ADD COLUMN IF NOT EXISTS stats_email_sent BOOLEAN DEFAULT 0`).catch(() => {});
     await db.query(`
       CREATE TABLE IF NOT EXISTS free_workout_logs (
         id VARCHAR(36) PRIMARY KEY,
@@ -343,6 +344,57 @@ async function sendRenewalRemindersJob() {
   } catch (e) { console.error('[renewal] Error:', e.message); }
 }
 
+// ── Reporte de estadísticas 2 semanas después de cargar una rutina ────────────
+async function sendClientStatsJob() {
+  try {
+    const { sendClientStats } = require('./services/email');
+    const [[trainer]] = await db.query(`SELECT * FROM users WHERE role='trainer' LIMIT 1`);
+    if (!trainer) return;
+
+    // Rutinas activas cargadas hace 14+ días a las que aún no se les envió el reporte
+    const [plans] = await db.query(
+      `SELECT wp.id, wp.name, wp.created_at, u.id AS user_id, u.name AS client_name
+       FROM workout_plans wp JOIN users u ON u.id = wp.user_id
+       WHERE wp.is_active = TRUE AND wp.stats_email_sent = 0
+         AND wp.created_at <= DATE_SUB(NOW(), INTERVAL 14 DAY)`
+    );
+
+    for (const p of plans) {
+      const uid = p.user_id;
+      const sinceStr = new Date(p.created_at).toISOString().slice(0, 10);
+      const [[trained]] = await db.query(
+        `SELECT COUNT(*) AS n FROM daily_tracking WHERE user_id=? AND workout_done=1 AND tracked_date >= ?`, [uid, sinceStr]);
+      const [[sets]] = await db.query(
+        `SELECT COUNT(*) AS n FROM workout_logs WHERE user_id=? AND logged_date >= ?`, [uid, sinceStr]);
+      const [[water]] = await db.query(
+        `SELECT ROUND(AVG(NULLIF(water_glasses,0)),1) AS avg FROM daily_tracking WHERE user_id=? AND tracked_date >= ? AND water_glasses > 0`, [uid, sinceStr]);
+      const [[cals]] = await db.query(
+        `SELECT ROUND(AVG(day_total)) AS avg FROM (
+           SELECT logged_at, SUM(calories) AS day_total FROM food_logs WHERE user_id=? AND logged_at >= ? GROUP BY logged_at
+         ) t`, [uid, sinceStr]);
+      const [wRows] = await db.query(
+        `SELECT weight_kg FROM measurements WHERE user_id=? ORDER BY logged_at ASC`, [uid]);
+      const [wStartRows] = await db.query(
+        `SELECT weight_kg FROM measurements WHERE user_id=? AND logged_at <= ? ORDER BY logged_at DESC LIMIT 1`, [uid, sinceStr]);
+      const weightNow = wRows.length ? Number(wRows[wRows.length - 1].weight_kg) : null;
+      const weightStart = wStartRows.length ? Number(wStartRows[0].weight_kg) : (wRows.length ? Number(wRows[0].weight_kg) : null);
+      const weightDelta = (weightNow != null && weightStart != null) ? +(weightNow - weightStart).toFixed(1) : null;
+
+      await sendClientStats(trainer.email, trainer.name, p.client_name, uid, {
+        planName: p.name,
+        daysTrained: trained.n || 0,
+        totalSets: sets.n || 0,
+        avgWater: water.avg != null ? Number(water.avg) : null,
+        avgCalories: cals.avg != null ? Number(cals.avg) : null,
+        weightNow, weightDelta,
+      }).catch(e => console.error('[client-stats send]', e.message));
+
+      await db.query('UPDATE workout_plans SET stats_email_sent=1 WHERE id=?', [p.id]);
+    }
+    if (plans.length) console.log(`[client-stats] Enviados ${plans.length} reportes de 2 semanas`);
+  } catch (e) { console.error('[client-stats] Error:', e.message); }
+}
+
 (function scheduleRenewalReminders() {
   function msUntilTomorrow9am() {
     const now  = new Date();
@@ -351,10 +403,14 @@ async function sendRenewalRemindersJob() {
     next.setHours(9, 0, 0, 0);
     return next.getTime() - now.getTime();
   }
+  async function runDaily() {
+    await sendRenewalRemindersJob();
+    await sendClientStatsJob();
+  }
   function schedule() {
     setTimeout(async () => {
-      await sendRenewalRemindersJob();
-      setInterval(sendRenewalRemindersJob, 24 * 60 * 60 * 1000);
+      await runDaily();
+      setInterval(runDaily, 24 * 60 * 60 * 1000);
     }, msUntilTomorrow9am());
   }
   schedule();

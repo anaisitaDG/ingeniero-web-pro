@@ -259,6 +259,19 @@ router.post('/clients/:id/workout/new', async (req, res) => {
     }
     await conn.commit();
     res.json({ message: 'Nueva rutina creada', planId });
+
+    // Vic avisa a la clienta que tiene una rutina nueva (en segundo plano)
+    (async () => {
+      try {
+        const { sendToUser } = require('../notifications');
+        await sendToUser(uid, {
+          title: '🎉 ¡Nueva rutina lista!',
+          body: name ? `Lorena te cargó "${name}". Ábrela y empecemos. 💪` : 'Lorena te cargó una rutina nueva. Ábrela y empecemos. 💪',
+          url: '/plan',
+        });
+      } catch (e) { console.error('[new-routine push]', e.message); }
+    })();
+    return;
   } catch (e) {
     await conn.rollback();
     console.error('[POST /workout/new]', e.message);

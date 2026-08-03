@@ -110,6 +110,12 @@ export default function MyPlan() {
         <>
           {plan ? (
             <div>
+              {plan.name && (
+                <div style={{ marginBottom: 14 }}>
+                  <p style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase' }}>Tu rutina actual</p>
+                  <p style={{ fontSize: 20, fontWeight: 900 }}>{plan.name}</p>
+                </div>
+              )}
               {plan.duration_days && <PlanProgress startDate={plan.start_date || plan.created_at} durationDays={plan.duration_days} />}
               {plan.days.map(day => (
                 <DayCard key={day.id} day={day} onLogged={load} weightFactor={weightFactor}

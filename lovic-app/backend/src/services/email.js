@@ -394,4 +394,55 @@ async function sendProgressPhotoUpdate(trainerEmail, trainerName, clientName, cl
   });
 }
 
-module.exports = { sendMagicLink, sendWelcome, sendWelcomeWithInstructions, notifyTrainerOnboarding, sendWeeklySummary, sendRenewalReminder, sendMeasurementUpdate, sendProgressPhotoUpdate };
+// ── Estadísticas a la entrenadora (2 semanas después de cargar la rutina) ──────
+async function sendClientStats(trainerEmail, trainerName, clientName, clientId, s) {
+  const appUrl = process.env.APP_URL || 'https://app.lovicgym.com';
+  const link = `${appUrl}/trainer/clients/${clientId}`;
+  const initial = (clientName || '?').charAt(0).toUpperCase();
+  const stat = (label, value, sub) => `
+    <div style="flex:1;min-width:130px;background:#FFF8F5;border:1px solid #FDE6DC;border-radius:12px;padding:12px 14px">
+      <p style="margin:0;font-size:11px;color:#8A8F98;font-weight:700;text-transform:uppercase;letter-spacing:.04em">${label}</p>
+      <p style="margin:4px 0 0;font-size:20px;font-weight:900;color:#1A1A1A">${value}</p>
+      ${sub ? `<p style="margin:2px 0 0;font-size:11px;color:#8A8F98">${sub}</p>` : ''}
+    </div>`;
+
+  const weightLine = (s.weightNow != null)
+    ? stat('Peso actual', `${s.weightNow} kg`, s.weightDelta != null ? `${s.weightDelta > 0 ? '+' : ''}${s.weightDelta} kg desde el inicio` : '')
+    : stat('Peso', 'Sin registro', '');
+
+  await resend.emails.send({
+    from: FROM,
+    to: trainerEmail,
+    subject: `📊 ${clientName}: 2 semanas de "${s.planName || 'su rutina'}" — ¿ajustar?`,
+    html: `
+    <div style="font-family:-apple-system,Helvetica,Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)">
+      <div style="background:linear-gradient(135deg,#FF6B6B,#FF8E53);padding:28px;text-align:center">
+        <h1 style="color:#fff;margin:0;font-size:20px;letter-spacing:.06em;font-weight:800">LOVIC</h1>
+        <p style="color:rgba(255,255,255,.9);margin:4px 0 0;font-size:12px;letter-spacing:.12em">REPORTE DE PROGRESO · 2 SEMANAS</p>
+      </div>
+      <div style="padding:26px 28px 30px">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+          <div style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#FF6B6B,#FF8E53);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px">${initial}</div>
+          <div>
+            <div style="font-weight:800;font-size:17px;color:#1A1A1A">${clientName}</div>
+            <div style="color:#8A8F98;font-size:13px">Rutina "${s.planName || '—'}" · últimas 2 semanas</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px">
+          ${stat('Entrenamientos', `${s.daysTrained}`, 'días activos')}
+          ${stat('Series registradas', `${s.totalSets}`, 'total de series')}
+          ${weightLine}
+          ${stat('Agua', s.avgWater != null ? `${s.avgWater} vasos` : '—', 'promedio por día')}
+          ${stat('Comidas', s.avgCalories != null ? `${s.avgCalories} kcal` : '—', 'consumo promedio/día')}
+        </div>
+        <p style="font-size:14px;color:#3a3a3a;line-height:1.6;margin:0 0 20px">
+          Ya lleva 2 semanas con esta rutina. Revisa su progreso y <b>decide si conviene ajustarla</b> (subir cargas, cambiar ejercicios) o mantenerla.
+        </p>
+        <a href="${link}" style="display:block;text-align:center;text-decoration:none;background:linear-gradient(135deg,#FF6B6B,#FF8E53);color:#fff;font-weight:800;padding:14px;border-radius:12px;font-size:15px">Ver perfil y ajustar rutina →</a>
+        <p style="text-align:center;color:#bbb;font-size:11px;margin-top:16px">Este reporte se envía automáticamente 2 semanas después de cargar una rutina nueva.</p>
+      </div>
+    </div>`,
+  });
+}
+
+module.exports = { sendMagicLink, sendWelcome, sendWelcomeWithInstructions, notifyTrainerOnboarding, sendWeeklySummary, sendRenewalReminder, sendMeasurementUpdate, sendProgressPhotoUpdate, sendClientStats };
