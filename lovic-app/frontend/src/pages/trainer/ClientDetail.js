@@ -843,31 +843,26 @@ export default function ClientDetail() {
                     try { const r = await api.trainer.getWorkoutPlanSummary(id, p.id); r.name = title; setViewingSummary(r); }
                     catch (e) { alert(e.message); } finally { setSummaryLoading(false); }
                   };
-                  return groups.map(g => (
-                    <div key={g.key} style={{ borderTop: '1px solid var(--border)', paddingTop: 10, marginTop: 4 }}>
-                      <p style={{ fontSize: 13.5, fontWeight: 800 }}>{g.label}</p>
-                      {g.plans.length > 1 && (
-                        <p style={{ fontSize: 10.5, color: 'var(--muted)', marginBottom: 2 }}>{g.plans.length} versiones guardadas este mes</p>
-                      )}
-                      {g.plans.map(p => {
-                        const title = p.name || g.label;
-                        return (
-                        <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 0 7px 10px' }}>
-                          <div>
-                            {p.name && <p style={{ fontSize: 12.5, fontWeight: 600 }}>{p.name}</p>}
-                            <p style={{ fontSize: 11, color: 'var(--muted)' }}>
-                              {new Date(p.start_date || p.created_at).toLocaleDateString('es', { day: 'numeric', month: 'short' })}
-                              {' · '}{p.day_count} día{p.day_count !== 1 ? 's' : ''} de rutina
-                            </p>
-                          </div>
-                          <button onClick={() => openSummary(p, title)}
-                            style={{ fontSize: 12, fontWeight: 700, color: '#fff', background: 'var(--coral)', border: 'none', borderRadius: 8, padding: '7px 14px', cursor: 'pointer', flexShrink: 0 }}>
-                            📊 Ver resumen
-                          </button>
-                        </div>
-                      );})}
+                  // Una sola línea por mes: la última versión archivada de ese mes
+                  return groups.map(g => {
+                    const p = g.plans[0]; // ya vienen ordenadas más reciente primero
+                    const title = p.name || g.label;
+                    return (
+                    <div key={g.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '11px 0', borderTop: '1px solid var(--border)' }}>
+                      <div>
+                        <p style={{ fontSize: 13.5, fontWeight: 800 }}>{p.name ? `${g.label} · ${p.name}` : g.label}</p>
+                        <p style={{ fontSize: 11, color: 'var(--muted)' }}>
+                          {new Date(p.start_date || p.created_at).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          {' · '}{p.day_count} día{p.day_count !== 1 ? 's' : ''} de rutina
+                          {g.plans.length > 1 ? ` · ${g.plans.length} versiones` : ''}
+                        </p>
+                      </div>
+                      <button onClick={() => openSummary(p, title)}
+                        style={{ fontSize: 12, fontWeight: 700, color: '#fff', background: 'var(--coral)', border: 'none', borderRadius: 8, padding: '7px 14px', cursor: 'pointer', flexShrink: 0 }}>
+                        📊 Ver resumen
+                      </button>
                     </div>
-                  ));
+                  );});
                 })()}
               </div>
             )}
