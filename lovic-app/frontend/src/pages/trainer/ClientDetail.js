@@ -825,28 +825,50 @@ export default function ClientDetail() {
               <div className="card" style={{ marginTop: 16 }}>
                 <p style={{ fontWeight: 700, marginBottom: 4 }}>🗂️ Rutinas anteriores</p>
                 <p style={{ fontSize: 11.5, color: 'var(--muted)', marginBottom: 10 }}>Solo tú las ves. La clienta conserva su historial de entrenamientos.</p>
-                {workoutPlans.filter(p => !p.is_active).map(p => {
-                  const monthName = new Date(p.start_date || p.created_at).toLocaleDateString('es', { month: 'long', year: 'numeric' });
-                  const title = p.name || (monthName.charAt(0).toUpperCase() + monthName.slice(1));
-                  return (
-                  <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderTop: '1px solid var(--border)' }}>
-                    <div>
-                      <p style={{ fontSize: 13.5, fontWeight: 700 }}>{title}</p>
-                      <p style={{ fontSize: 11, color: 'var(--muted)' }}>
-                        {p.start_date ? new Date(p.start_date).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' }) : new Date(p.created_at).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' })}
-                        {' · '}{p.day_count} día{p.day_count !== 1 ? 's' : ''} de rutina
-                      </p>
+                {(() => {
+                  // Agrupar las rutinas archivadas por mes/año
+                  const archived = workoutPlans.filter(p => !p.is_active)
+                    .sort((a, b) => new Date(b.start_date || b.created_at) - new Date(a.start_date || a.created_at));
+                  const groups = [];
+                  archived.forEach(p => {
+                    const d = new Date(p.start_date || p.created_at);
+                    const monthKey = `${d.getFullYear()}-${d.getMonth()}`;
+                    const monthName = d.toLocaleDateString('es', { month: 'long', year: 'numeric' });
+                    let g = groups.find(x => x.key === monthKey);
+                    if (!g) { g = { key: monthKey, label: monthName.charAt(0).toUpperCase() + monthName.slice(1), plans: [] }; groups.push(g); }
+                    g.plans.push(p);
+                  });
+                  const openSummary = async (p, title) => {
+                    setSummaryLoading(true); setViewingPlan(null);
+                    try { const r = await api.trainer.getWorkoutPlanSummary(id, p.id); r.name = title; setViewingSummary(r); }
+                    catch (e) { alert(e.message); } finally { setSummaryLoading(false); }
+                  };
+                  return groups.map(g => (
+                    <div key={g.key} style={{ borderTop: '1px solid var(--border)', paddingTop: 10, marginTop: 4 }}>
+                      <p style={{ fontSize: 13.5, fontWeight: 800 }}>{g.label}</p>
+                      {g.plans.length > 1 && (
+                        <p style={{ fontSize: 10.5, color: 'var(--muted)', marginBottom: 2 }}>{g.plans.length} versiones guardadas este mes</p>
+                      )}
+                      {g.plans.map(p => {
+                        const title = p.name || g.label;
+                        return (
+                        <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 0 7px 10px' }}>
+                          <div>
+                            {p.name && <p style={{ fontSize: 12.5, fontWeight: 600 }}>{p.name}</p>}
+                            <p style={{ fontSize: 11, color: 'var(--muted)' }}>
+                              {new Date(p.start_date || p.created_at).toLocaleDateString('es', { day: 'numeric', month: 'short' })}
+                              {' · '}{p.day_count} día{p.day_count !== 1 ? 's' : ''} de rutina
+                            </p>
+                          </div>
+                          <button onClick={() => openSummary(p, title)}
+                            style={{ fontSize: 12, fontWeight: 700, color: '#fff', background: 'var(--coral)', border: 'none', borderRadius: 8, padding: '7px 14px', cursor: 'pointer', flexShrink: 0 }}>
+                            📊 Ver resumen
+                          </button>
+                        </div>
+                      );})}
                     </div>
-                    <button onClick={async () => {
-                      setSummaryLoading(true); setViewingPlan(null);
-                      try { const r = await api.trainer.getWorkoutPlanSummary(id, p.id); r.name = title; setViewingSummary(r); }
-                      catch (e) { alert(e.message); } finally { setSummaryLoading(false); }
-                    }}
-                      style={{ fontSize: 12, fontWeight: 700, color: '#fff', background: 'var(--coral)', border: 'none', borderRadius: 8, padding: '7px 14px', cursor: 'pointer' }}>
-                      📊 Ver resumen
-                    </button>
-                  </div>
-                );})}
+                  ));
+                })()}
               </div>
             )}
 
