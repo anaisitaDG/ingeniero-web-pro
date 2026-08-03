@@ -791,19 +791,9 @@ export default function ClientDetail() {
               background: 'none', cursor: 'pointer', color: 'var(--coral)', fontWeight: 700, fontSize: 14, marginBottom: 16,
             }}>+ Agregar día</button>
 
-            <button className="btn-primary" onClick={saveWorkout} disabled={savingWorkout} style={{ width: '100%', justifyContent: 'center', padding: '14px' }}>
-              {savingWorkout ? <><span className="spinner" /> Guardando…</> : '💾 Guardar cambios de la rutina actual'}
-            </button>
-
-            {/* Nueva rutina del mes (archiva la anterior) */}
-            <button onClick={newMonthlyWorkout} disabled={savingWorkout} style={{
-              width: '100%', justifyContent: 'center', padding: '13px', marginTop: 10,
-              borderRadius: 12, border: '2px solid var(--coral)', background: 'var(--coral-light)',
-              color: 'var(--coral)', fontWeight: 800, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
-            }}>🗓️ Crear nueva rutina del mes (archiva la anterior)</button>
-            <p style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 6, lineHeight: 1.4 }}>
-              <b>Guardar cambios</b> = ajusta la rutina actual (para correcciones pequeñas).<br />
-              <b>Nueva rutina del mes</b> = archiva la actual (queda en el historial) y activa esta como la nueva.
+            <p style={{ fontSize: 11.5, color: 'var(--muted)', marginBottom: 6, lineHeight: 1.4 }}>
+              <b>Guardar cambios</b> = ajusta la rutina actual (correcciones pequeñas).
+              <b> Nueva rutina del mes</b> = archiva la actual (queda en el historial) y activa esta.
             </p>
 
             {/* Rutinas anteriores (solo Lorena) */}
@@ -839,6 +829,22 @@ export default function ClientDetail() {
               <button className="btn-primary" onClick={genRoutine} disabled={genRoutineLoading} style={{ width: '100%', justifyContent: 'center', background: 'var(--gold)' }}>
                 {genRoutineLoading ? <><span className="spinner" /> Generando…</> : '✨ Generar rutina con IA'}
               </button>
+            </div>
+
+            {/* Barra de acciones fija: siempre visible mientras editas, sin scrollear */}
+            <div style={{
+              position: 'sticky', bottom: 0, zIndex: 20, display: 'flex', gap: 10,
+              background: 'var(--card)', padding: '12px 0', marginTop: 16,
+              borderTop: '1px solid var(--border)', boxShadow: '0 -6px 16px rgba(0,0,0,0.08)',
+            }}>
+              <button className="btn-primary" onClick={saveWorkout} disabled={savingWorkout} style={{ flex: 1, justifyContent: 'center', padding: '13px', fontSize: 13.5 }}>
+                {savingWorkout ? <span className="spinner" /> : '💾 Guardar cambios'}
+              </button>
+              <button onClick={newMonthlyWorkout} disabled={savingWorkout} style={{
+                flex: 1, justifyContent: 'center', padding: '13px',
+                borderRadius: 12, border: '2px solid var(--coral)', background: 'var(--coral-light)',
+                color: 'var(--coral)', fontWeight: 800, fontSize: 13.5, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
+              }}>🗓️ Nueva rutina del mes</button>
             </div>
           </div>
         )
