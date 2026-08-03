@@ -125,7 +125,7 @@ router.get('/clients/:id/workout', async (req, res) => {
 // PUT /trainer/clients/:id/workout — guarda plan estructurado completo
 router.put('/clients/:id/workout', async (req, res) => {
   const uid = req.params.id;
-  const { days, duration_days, start_date } = req.body;
+  const { days, duration_days, start_date, name } = req.body;
   if (!Array.isArray(days)) return res.status(400).json({ error: 'days requerido' });
   const conn = await db.getConnection();
   try {
@@ -138,8 +138,8 @@ router.put('/clients/:id/workout', async (req, res) => {
 
     if (plan_id) {
       await conn.query(
-        'UPDATE workout_plans SET duration_days=?, start_date=? WHERE id=? AND user_id=?',
-        [duration_days || null, start_date || null, plan_id, uid]
+        'UPDATE workout_plans SET duration_days=?, start_date=?, name=? WHERE id=? AND user_id=?',
+        [duration_days || null, start_date || null, name || null, plan_id, uid]
       );
       const [existingDaysFull] = await conn.query(
         'SELECT id FROM workout_days WHERE plan_id=? ORDER BY day_order', [plan_id]
@@ -195,8 +195,8 @@ router.put('/clients/:id/workout', async (req, res) => {
     await conn.query('UPDATE workout_plans SET is_active=FALSE WHERE user_id=?', [uid]);
     const planId = uuidv4();
     await conn.query(
-      'INSERT INTO workout_plans (id, user_id, is_active, duration_days, start_date) VALUES (?, ?, TRUE, ?, ?)',
-      [planId, uid, duration_days || null, start_date || null]
+      'INSERT INTO workout_plans (id, user_id, is_active, duration_days, start_date, name) VALUES (?, ?, TRUE, ?, ?, ?)',
+      [planId, uid, duration_days || null, start_date || null, name || null]
     );
     for (let di = 0; di < days.length; di++) {
       const day = days[di];
@@ -229,7 +229,7 @@ router.put('/clients/:id/workout', async (req, res) => {
 // (rutina del mes). No borra nada: la anterior queda inactiva y con su historial.
 router.post('/clients/:id/workout/new', async (req, res) => {
   const uid = req.params.id;
-  const { days, duration_days, start_date } = req.body;
+  const { days, duration_days, start_date, name } = req.body;
   if (!Array.isArray(days) || days.length === 0) return res.status(400).json({ error: 'days requerido' });
   const conn = await db.getConnection();
   try {
@@ -239,8 +239,8 @@ router.post('/clients/:id/workout/new', async (req, res) => {
     const planId = uuidv4();
     const startDate = start_date || new Date(Date.now() - 5 * 3600 * 1000).toISOString().slice(0, 10);
     await conn.query(
-      'INSERT INTO workout_plans (id, user_id, is_active, duration_days, start_date) VALUES (?, ?, TRUE, ?, ?)',
-      [planId, uid, duration_days || null, startDate]
+      'INSERT INTO workout_plans (id, user_id, is_active, duration_days, start_date, name) VALUES (?, ?, TRUE, ?, ?, ?)',
+      [planId, uid, duration_days || null, startDate, name || null]
     );
     for (let di = 0; di < days.length; di++) {
       const day = days[di];
@@ -272,7 +272,7 @@ router.post('/clients/:id/workout/new', async (req, res) => {
 router.get('/clients/:id/workout/plans', async (req, res) => {
   try {
     const [plans] = await db.query(
-      `SELECT wp.id, wp.is_active, wp.start_date, wp.duration_days, wp.created_at,
+      `SELECT wp.id, wp.is_active, wp.name, wp.start_date, wp.duration_days, wp.created_at,
               (SELECT COUNT(*) FROM workout_days wd WHERE wd.plan_id = wp.id) AS day_count
        FROM workout_plans wp WHERE wp.user_id = ? ORDER BY wp.is_active DESC, wp.created_at DESC`,
       [req.params.id]

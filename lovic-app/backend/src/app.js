@@ -167,6 +167,7 @@ const db = require('./database/db');
     `);
     await db.query(`ALTER TABLE workout_exercises ADD COLUMN IF NOT EXISTS library_exercise_id VARCHAR(36) DEFAULT NULL`).catch(() => {});
     await db.query(`ALTER TABLE workout_plans ADD COLUMN IF NOT EXISTS duration_days INT DEFAULT NULL`).catch(() => {});
+    await db.query(`ALTER TABLE workout_plans ADD COLUMN IF NOT EXISTS name VARCHAR(120) DEFAULT NULL`).catch(() => {});
     await db.query(`
       CREATE TABLE IF NOT EXISTS free_workout_logs (
         id VARCHAR(36) PRIMARY KEY,

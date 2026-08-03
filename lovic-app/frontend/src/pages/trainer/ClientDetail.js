@@ -46,6 +46,7 @@ export default function ClientDetail() {
   const [durationDays, setDurationDays]     = useState('');
   const [startDate, setStartDate]           = useState(new Date().toISOString().slice(0, 10));
   const [activePlanId, setActivePlanId]     = useState(null);
+  const [planName, setPlanName]             = useState('');   // etiqueta de la rutina (ej. "Agosto")
   const [workoutPlans, setWorkoutPlans]     = useState([]);   // rutinas activa + archivadas
   const [viewingPlan, setViewingPlan]       = useState(null); // rutina archivada abierta (solo lectura)
 
@@ -113,6 +114,7 @@ export default function ClientDetail() {
       const res = await api.trainer.getWorkout(id);
       if (res.plan) {
         setActivePlanId(res.plan.id || null);
+        setPlanName(res.plan.name || '');
         setDurationDays(res.plan.duration_days || '');
         setStartDate(res.plan.start_date ? res.plan.start_date.slice(0, 10) : new Date().toISOString().slice(0, 10));
       }
@@ -206,7 +208,7 @@ export default function ClientDetail() {
       if (!ok) return;
     }
     setSavingWorkout(true);
-    try { await api.trainer.saveWorkout(id, days, durationDays ? Number(durationDays) : null, startDate || null, activePlanId); setSaveMsg('✅ Plan guardado'); setTimeout(() => setSaveMsg(''), 3000); }
+    try { await api.trainer.saveWorkout(id, days, durationDays ? Number(durationDays) : null, startDate || null, activePlanId, planName.trim() || null); setSaveMsg('✅ Plan guardado'); setTimeout(() => setSaveMsg(''), 3000); }
     catch (e) { setSaveMsg('❌ ' + e.message); setTimeout(() => setSaveMsg(''), 4000); }
     finally { setSavingWorkout(false); }
   }
@@ -219,7 +221,9 @@ export default function ClientDetail() {
     if (!ok) return;
     setSavingWorkout(true);
     try {
-      await api.trainer.newWorkout(id, days, durationDays ? Number(durationDays) : null, startDate || null);
+      const monthGuess = new Date(startDate || Date.now()).toLocaleDateString('es', { month: 'long', year: 'numeric' });
+      const finalName = planName.trim() || monthGuess.charAt(0).toUpperCase() + monthGuess.slice(1);
+      await api.trainer.newWorkout(id, days, durationDays ? Number(durationDays) : null, startDate || null, finalName);
       setSaveMsg('✅ Nueva rutina activa. La anterior quedó archivada.');
       setTimeout(() => setSaveMsg(''), 4000);
       await load();
@@ -639,6 +643,14 @@ export default function ClientDetail() {
           <div style={{ textAlign: 'center', padding: 40 }}><div className="spinner" style={{ borderTopColor: 'var(--coral)', borderColor: 'var(--border)', width: 28, height: 28 }} /></div>
         ) : (
           <div>
+            {/* Nombre / etiqueta de la rutina */}
+            <div className="card" style={{ marginBottom: 16, padding: '14px 16px' }}>
+              <p style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>🏷️ Nombre de la rutina</p>
+              <input className="input" placeholder="Ej: Agosto — Definición" value={planName}
+                onChange={e => setPlanName(e.target.value)} />
+              <p style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 6 }}>Sirve para identificarla en el historial. Si lo dejas vacío al crear una nueva, se nombra con el mes automáticamente.</p>
+            </div>
+
             {/* Duración del plan */}
             <div className="card" style={{ marginBottom: 16, padding: '14px 16px' }}>
               <p style={{ fontWeight: 700, fontSize: 14, marginBottom: 10 }}>⏱ Duración del plan</p>
@@ -802,10 +814,12 @@ export default function ClientDetail() {
                 {workoutPlans.filter(p => !p.is_active).map(p => (
                   <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--border)' }}>
                     <div>
-                      <p style={{ fontSize: 13, fontWeight: 600 }}>
-                        {p.start_date ? new Date(p.start_date).toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' }) : new Date(p.created_at).toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      <p style={{ fontSize: 13, fontWeight: 700 }}>
+                        {p.name || (p.start_date ? new Date(p.start_date).toLocaleDateString('es', { month: 'long', year: 'numeric' }) : new Date(p.created_at).toLocaleDateString('es', { month: 'long', year: 'numeric' }))}
                       </p>
-                      <p style={{ fontSize: 11, color: 'var(--muted)' }}>{p.day_count} día{p.day_count !== 1 ? 's' : ''}{p.duration_days ? ` · ${p.duration_days} días de duración` : ''}</p>
+                      <p style={{ fontSize: 11, color: 'var(--muted)' }}>
+                        {p.start_date ? `Desde ${new Date(p.start_date).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' })} · ` : ''}{p.day_count} día{p.day_count !== 1 ? 's' : ''}
+                      </p>
                     </div>
                     <button onClick={async () => { try { const r = await api.trainer.getWorkoutPlan(id, p.id); setViewingPlan(r.plan); } catch (e) { alert(e.message); } }}
                       style={{ fontSize: 12, fontWeight: 700, color: 'var(--coral)', background: 'none', border: '1px solid var(--coral)', borderRadius: 8, padding: '5px 12px', cursor: 'pointer' }}>
@@ -1049,7 +1063,7 @@ export default function ClientDetail() {
         <div onClick={() => setViewingPlan(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 16, overflowY: 'auto' }}>
           <div onClick={e => e.stopPropagation()} className="card" style={{ maxWidth: 480, width: '100%', marginTop: 24 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <p style={{ fontWeight: 800 }}>🗂️ Rutina archivada</p>
+              <p style={{ fontWeight: 800 }}>🗂️ {viewingPlan.name || 'Rutina archivada'}</p>
               <button onClick={() => setViewingPlan(null)} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: 'var(--muted)' }}>✕</button>
             </div>
             <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 14 }}>
