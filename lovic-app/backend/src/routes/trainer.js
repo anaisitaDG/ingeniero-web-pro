@@ -309,6 +309,7 @@ router.get('/clients/:id/workout/plans/:planId/summary', async (req, res) => {
     const toDate = (d) => (d instanceof Date ? d : new Date(d)).toISOString().slice(0, 10);
     const start = plan.start_date ? toDate(plan.start_date) : toDate(plan.created_at);
     const end   = next ? toDate(next.created_at) : new Date(Date.now() - 5 * 3600 * 1000).toISOString().slice(0, 10);
+    const endTs = end + ' 23:59:59'; // columnas datetime: incluir todo el último día
     const periodDays = Math.max(1, Math.round((new Date(end) - new Date(start)) / 86400000));
 
     const [[planDayCount]] = await db.query('SELECT COUNT(*) AS n FROM workout_days WHERE plan_id=?', [plan.id]);
@@ -326,13 +327,20 @@ router.get('/clients/:id/workout/plans/:planId/summary', async (req, res) => {
     const [[water]] = await db.query('SELECT ROUND(AVG(water_glasses),1) AS avg FROM daily_tracking WHERE user_id=? AND water_glasses>0 AND tracked_date BETWEEN ? AND ?', [uid, start, end]);
     const [[cals]] = await db.query(
       `SELECT ROUND(AVG(t.total)) AS avg FROM (SELECT SUM(calories) total FROM food_logs WHERE user_id=? AND logged_at BETWEEN ? AND ? GROUP BY logged_at) t`,
-      [uid, start, end]);
+      [uid, start, endTs]);
 
-    // Peso: mediciones dentro (y la anterior al inicio como punto de partida)
+    // Peso: mediciones dentro de la ventana
     const [wRows] = await db.query(
       `SELECT DATE_FORMAT(logged_at,'%Y-%m-%d') d, weight_kg FROM measurements WHERE user_id=? AND weight_kg IS NOT NULL AND logged_at BETWEEN ? AND ? ORDER BY logged_at ASC`,
-      [uid, start, end]);
+      [uid, start, endTs]);
     const weightSeries = wRows.map(r => ({ date: r.d, weight: Number(r.weight_kg) }));
+    // Punto de partida: la última medición ANTES del inicio, para tener referencia si hay pocas dentro
+    const [[prevW]] = await db.query(
+      `SELECT DATE_FORMAT(logged_at,'%Y-%m-%d') d, weight_kg FROM measurements WHERE user_id=? AND weight_kg IS NOT NULL AND logged_at < ? ORDER BY logged_at DESC LIMIT 1`,
+      [uid, start]);
+    if (prevW && (weightSeries.length === 0 || weightSeries[0].date !== prevW.d)) {
+      weightSeries.unshift({ date: prevW.d, weight: Number(prevW.weight_kg), anchor: true });
+    }
 
     // Progresión de cargas por ejercicio de esta rutina
     const [logRows] = await db.query(
