@@ -4,8 +4,12 @@ const path    = require('path');
 const multer  = require('multer');
 const db      = require('../database/db');
 const { requireAuth } = require('../middleware/auth');
+const { VAPID_PUBLIC } = require('../config/vapid');
 
 router.use(requireAuth);
+
+// GET /profile/vapid-key — llave pública ACTUAL (por ruta proxeada, a diferencia de /push)
+router.get('/vapid-key', (req, res) => res.json({ publicKey: VAPID_PUBLIC }));
 
 // ── Foto de perfil ────────────────────────────────────────────────────────────
 const avatarStorage = multer.diskStorage({

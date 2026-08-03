@@ -142,7 +142,7 @@ export const api = {
     deleteExtraExercise: (id) => request(`/workout/extra-exercise/${id}`, { method: 'DELETE' }),
   },
   push: {
-    vapidKey:      ()                       => request('/push/vapid-public-key'),
+    vapidKey:      ()                       => request('/profile/vapid-key'),
     subscribe:     (s)                      => request('/profile/push-subscribe',  { method: 'POST',   body: JSON.stringify({ subscription: s }) }),
     unsubscribe:   (e)                      => request('/profile/push-subscribe',  { method: 'DELETE', body: JSON.stringify({ endpoint: e }) }),
     test:          ()                       => request('/profile/push-test', { method: 'POST' }),
