@@ -301,16 +301,15 @@ router.get('/clients/:id/workout/plans/:planId/summary', async (req, res) => {
     const [[plan]] = await db.query('SELECT * FROM workout_plans WHERE id=? AND user_id=?', [req.params.planId, uid]);
     if (!plan) return res.status(404).json({ error: 'Rutina no encontrada' });
 
-    // Ventana activa: desde que se creó esta rutina hasta que la reemplazó la siguiente (o hoy)
-    const [[next]] = await db.query(
-      'SELECT created_at FROM workout_plans WHERE user_id=? AND created_at > ? ORDER BY created_at ASC LIMIT 1',
-      [uid, plan.created_at]
-    );
-    const toDate = (d) => (d instanceof Date ? d : new Date(d)).toISOString().slice(0, 10);
-    const start = plan.start_date ? toDate(plan.start_date) : toDate(plan.created_at);
-    const end   = next ? toDate(next.created_at) : new Date(Date.now() - 5 * 3600 * 1000).toISOString().slice(0, 10);
+    // Ventana = mes completo del calendario (del 1 al último día del mes de la rutina)
+    const ref = plan.start_date ? new Date(plan.start_date) : new Date(plan.created_at);
+    const y = ref.getUTCFullYear(), m = ref.getUTCMonth();
+    const pad = n => String(n).padStart(2, '0');
+    const lastDay = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+    const start = `${y}-${pad(m + 1)}-01`;
+    const end   = `${y}-${pad(m + 1)}-${pad(lastDay)}`;
     const endTs = end + ' 23:59:59'; // columnas datetime: incluir todo el último día
-    const periodDays = Math.max(1, Math.round((new Date(end) - new Date(start)) / 86400000));
+    const periodDays = lastDay;
 
     const [[planDayCount]] = await db.query('SELECT COUNT(*) AS n FROM workout_days WHERE plan_id=?', [plan.id]);
     const expectedDays = Math.max(1, Math.ceil(periodDays / 7) * (planDayCount.n || 0));
