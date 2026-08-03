@@ -48,7 +48,9 @@ export default function ClientDetail() {
   const [activePlanId, setActivePlanId]     = useState(null);
   const [planName, setPlanName]             = useState('');   // etiqueta de la rutina (ej. "Agosto")
   const [workoutPlans, setWorkoutPlans]     = useState([]);   // rutinas activa + archivadas
-  const [viewingPlan, setViewingPlan]       = useState(null); // rutina archivada abierta (solo lectura)
+  const [viewingSummary, setViewingSummary] = useState(null); // resumen del mes de una rutina
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [viewingPlan, setViewingPlan]       = useState(null); // detalle de ejercicios (dentro del resumen)
 
   // Library picker
   const [library, setLibrary]           = useState(null);
@@ -801,22 +803,28 @@ export default function ClientDetail() {
               <div className="card" style={{ marginTop: 16 }}>
                 <p style={{ fontWeight: 700, marginBottom: 4 }}>🗂️ Rutinas anteriores</p>
                 <p style={{ fontSize: 11.5, color: 'var(--muted)', marginBottom: 10 }}>Solo tú las ves. La clienta conserva su historial de entrenamientos.</p>
-                {workoutPlans.filter(p => !p.is_active).map(p => (
-                  <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--border)' }}>
+                {workoutPlans.filter(p => !p.is_active).map(p => {
+                  const monthName = new Date(p.start_date || p.created_at).toLocaleDateString('es', { month: 'long', year: 'numeric' });
+                  const title = p.name || (monthName.charAt(0).toUpperCase() + monthName.slice(1));
+                  return (
+                  <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderTop: '1px solid var(--border)' }}>
                     <div>
-                      <p style={{ fontSize: 13, fontWeight: 700 }}>
-                        {p.name || (p.start_date ? new Date(p.start_date).toLocaleDateString('es', { month: 'long', year: 'numeric' }) : new Date(p.created_at).toLocaleDateString('es', { month: 'long', year: 'numeric' }))}
-                      </p>
+                      <p style={{ fontSize: 13.5, fontWeight: 700 }}>{title}</p>
                       <p style={{ fontSize: 11, color: 'var(--muted)' }}>
-                        {p.start_date ? `Desde ${new Date(p.start_date).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' })} · ` : ''}{p.day_count} día{p.day_count !== 1 ? 's' : ''}
+                        {p.start_date ? new Date(p.start_date).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' }) : new Date(p.created_at).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        {' · '}{p.day_count} día{p.day_count !== 1 ? 's' : ''} de rutina
                       </p>
                     </div>
-                    <button onClick={async () => { try { const r = await api.trainer.getWorkoutPlan(id, p.id); setViewingPlan(r.plan); } catch (e) { alert(e.message); } }}
-                      style={{ fontSize: 12, fontWeight: 700, color: 'var(--coral)', background: 'none', border: '1px solid var(--coral)', borderRadius: 8, padding: '5px 12px', cursor: 'pointer' }}>
-                      Ver
+                    <button onClick={async () => {
+                      setSummaryLoading(true); setViewingPlan(null);
+                      try { const r = await api.trainer.getWorkoutPlanSummary(id, p.id); r.name = title; setViewingSummary(r); }
+                      catch (e) { alert(e.message); } finally { setSummaryLoading(false); }
+                    }}
+                      style={{ fontSize: 12, fontWeight: 700, color: '#fff', background: 'var(--coral)', border: 'none', borderRadius: 8, padding: '7px 14px', cursor: 'pointer' }}>
+                      📊 Ver resumen
                     </button>
                   </div>
-                ))}
+                );})}
               </div>
             )}
 
@@ -1065,32 +1073,110 @@ export default function ClientDetail() {
       )}
 
       {/* Ver rutina archivada (solo lectura) */}
-      {viewingPlan && (
-        <div onClick={() => setViewingPlan(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 16, overflowY: 'auto' }}>
-          <div onClick={e => e.stopPropagation()} className="card" style={{ maxWidth: 480, width: '100%', marginTop: 24 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <p style={{ fontWeight: 800 }}>🗂️ {viewingPlan.name || 'Rutina archivada'}</p>
-              <button onClick={() => setViewingPlan(null)} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: 'var(--muted)' }}>✕</button>
-            </div>
-            <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 14 }}>
-              {viewingPlan.start_date ? `Desde ${new Date(viewingPlan.start_date).toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' })}` : ''}
-              {viewingPlan.duration_days ? ` · ${viewingPlan.duration_days} días` : ''} · solo lectura
-            </p>
-            {(viewingPlan.days || []).map(day => (
-              <div key={day.id} style={{ marginBottom: 14, background: 'var(--bg)', borderRadius: 12, padding: 12 }}>
-                <p style={{ fontWeight: 700, marginBottom: 6 }}>{day.day_name}</p>
-                {(day.exercises || []).length === 0 ? (
-                  <p style={{ fontSize: 12, color: 'var(--muted)' }}>Sin ejercicios</p>
-                ) : (day.exercises).map(ex => (
-                  <p key={ex.id} style={{ fontSize: 13, padding: '3px 0' }}>
-                    • {ex.name} <span style={{ color: 'var(--muted)' }}>— {ex.sets}×{ex.reps}{ex.weight_kg ? ` · ${ex.weight_kg} kg` : ''}</span>
-                  </p>
+      {(viewingSummary || summaryLoading) && (() => {
+        const closeAll = () => { setViewingSummary(null); setViewingPlan(null); };
+        const s = viewingSummary;
+        const fmt = (d) => d ? new Date(`${d}T00:00:00`).toLocaleDateString('es', { day: 'numeric', month: 'short' }) : '';
+        const adhPct = s && s.expectedDays ? Math.min(Math.round((s.daysTrained / s.expectedDays) * 100), 100) : 0;
+        const Stat = ({ label, value, sub, color }) => (
+          <div style={{ flex: 1, minWidth: 110, background: 'var(--bg)', borderRadius: 12, padding: '10px 12px' }}>
+            <p style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase' }}>{label}</p>
+            <p style={{ fontSize: 20, fontWeight: 900, color: color || 'var(--text)' }}>{value}</p>
+            {sub && <p style={{ fontSize: 10, color: 'var(--muted)' }}>{sub}</p>}
+          </div>
+        );
+        return (
+        <div onClick={closeAll} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 16, overflowY: 'auto' }}>
+          <div onClick={e => e.stopPropagation()} className="card" style={{ maxWidth: 520, width: '100%', marginTop: 24, marginBottom: 24 }}>
+            {summaryLoading && !s ? (
+              <div style={{ textAlign: 'center', padding: 40 }}><div className="spinner" style={{ borderTopColor: 'var(--coral)', borderColor: 'var(--border)', width: 28, height: 28 }} /></div>
+            ) : (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
+                  <div>
+                    <p style={{ fontWeight: 900, fontSize: 18 }}>📊 {s.name}</p>
+                    <p style={{ fontSize: 12, color: 'var(--muted)' }}>{fmt(s.period.start)} – {fmt(s.period.end)} · {s.period.days} días</p>
+                  </div>
+                  <button onClick={closeAll} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: 'var(--muted)' }}>✕</button>
+                </div>
+
+                {/* Adherencia */}
+                <div style={{ margin: '16px 0' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>🔥 Adherencia</span>
+                    <span style={{ fontSize: 12, fontWeight: 800, color: adhPct >= 70 ? '#2D9B5A' : adhPct >= 40 ? '#E0A32E' : '#E05252' }}>
+                      {s.daysTrained} de {s.expectedDays} días · {adhPct}%
+                    </span>
+                  </div>
+                  <div style={{ height: 10, background: 'var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${adhPct}%`, background: adhPct >= 70 ? '#2D9B5A' : adhPct >= 40 ? '#E0A32E' : '#E05252', borderRadius: 8 }} />
+                  </div>
+                </div>
+
+                {/* Stats rápidas */}
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+                  <Stat label="Series" value={s.totalSets} sub="registradas" />
+                  <Stat label="Agua" value={s.avgWater != null ? `${s.avgWater}` : '—'} sub="vasos/día prom." />
+                  <Stat label="Comidas" value={s.avgCalories != null ? `${s.avgCalories}` : '—'} sub="kcal/día prom." />
+                </div>
+
+                {/* Peso */}
+                <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', marginBottom: 6 }}>📉 Peso en el periodo</p>
+                {s.weightSeries.length >= 2 ? (
+                  <>
+                    <p style={{ fontSize: 13, marginBottom: 8 }}>
+                      {s.weightSeries[0].weight} kg → <b>{s.weightSeries[s.weightSeries.length - 1].weight} kg</b>
+                      {(() => { const d = +(s.weightSeries[s.weightSeries.length - 1].weight - s.weightSeries[0].weight).toFixed(1); return <span style={{ color: d < 0 ? '#2D9B5A' : d > 0 ? '#E0A32E' : 'var(--muted)', fontWeight: 800 }}> ({d > 0 ? '+' : ''}{d} kg)</span>; })()}
+                    </p>
+                    <ResponsiveContainer width="100%" height={120}>
+                      <LineChart data={s.weightSeries.map(w => ({ d: fmt(w.date), peso: w.weight }))}>
+                        <XAxis dataKey="d" tick={{ fontSize: 10, fill: 'var(--muted)' }} axisLine={false} tickLine={false} />
+                        <Tooltip formatter={v => [`${v} kg`, 'Peso']} contentStyle={{ borderRadius: 8, border: 'none', fontSize: 12 }} />
+                        <Line type="monotone" dataKey="peso" stroke="#FF6B6B" strokeWidth={2.5} dot={{ r: 3 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </>
+                ) : (
+                  <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12 }}>Pocas mediciones de peso en el periodo.</p>
+                )}
+
+                {/* Progresión de cargas */}
+                {s.loadProgress.length > 0 && (
+                  <div style={{ marginTop: 16 }}>
+                    <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', marginBottom: 8 }}>📈 Progresión de cargas</p>
+                    {s.loadProgress.slice(0, 8).map((e, i) => (
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0', borderTop: i ? '1px solid var(--border)' : 'none' }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.name}</span>
+                        <span style={{ fontSize: 12, color: 'var(--muted)', marginRight: 8 }}>{e.from} → {e.to} kg</span>
+                        <span style={{ fontSize: 12, fontWeight: 800, color: e.delta > 0 ? '#2D9B5A' : e.delta < 0 ? '#E05252' : 'var(--muted)' }}>
+                          {e.delta > 0 ? `↑ +${e.delta}` : e.delta < 0 ? `↓ ${e.delta}` : '='}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Ver ejercicios de la rutina */}
+                <button onClick={async () => {
+                  if (viewingPlan) { setViewingPlan(null); return; }
+                  try { const r = await api.trainer.getWorkoutPlan(id, s.plan.id); setViewingPlan(r.plan); } catch (e) { alert(e.message); }
+                }} style={{ marginTop: 18, width: '100%', padding: '10px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg)', cursor: 'pointer', fontWeight: 700, fontSize: 13, color: 'var(--muted)' }}>
+                  {viewingPlan ? '▲ Ocultar ejercicios' : '▼ Ver ejercicios de esta rutina'}
+                </button>
+                {viewingPlan && (viewingPlan.days || []).map(day => (
+                  <div key={day.id} style={{ marginTop: 10, background: 'var(--bg)', borderRadius: 12, padding: 12 }}>
+                    <p style={{ fontWeight: 700, marginBottom: 6 }}>{day.day_name}</p>
+                    {(day.exercises || []).map(ex => (
+                      <p key={ex.id} style={{ fontSize: 13, padding: '3px 0' }}>• {ex.name} <span style={{ color: 'var(--muted)' }}>— {ex.sets}×{ex.reps}{ex.weight_kg ? ` · ${ex.weight_kg} kg` : ''}</span></p>
+                    ))}
+                  </div>
                 ))}
-              </div>
-            ))}
+              </>
+            )}
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Comparación de fotos (overlay) */}
       {photoComparing && photoSelected.length === 2 && progress && (() => {

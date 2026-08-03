@@ -165,6 +165,7 @@ export const api = {
     newWorkout:      (id, days, duration_days, start_date, name) => request(`/trainer/clients/${id}/workout/new`, { method: 'POST', body: JSON.stringify({ days, duration_days, start_date, name }) }),
     getWorkoutPlans: (id)          => request(`/trainer/clients/${id}/workout/plans`),
     getWorkoutPlan:  (id, planId)  => request(`/trainer/clients/${id}/workout/plans/${planId}`),
+    getWorkoutPlanSummary: (id, planId) => request(`/trainer/clients/${id}/workout/plans/${planId}/summary`),
     getBilling:      ()           => request('/trainer/billing'),
     saveBilling:     (clientId, body) => request(`/trainer/billing/${clientId}`, { method: 'PUT', body: JSON.stringify(body) }),
     suggestDayName:  (exercises) => request('/trainer/suggest-day-name', { method: 'POST', body: JSON.stringify({ exercises }) }),

@@ -294,6 +294,79 @@ router.get('/clients/:id/workout/plans', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// GET /trainer/clients/:id/workout/plans/:planId/summary — resultados del mes de esa rutina
+router.get('/clients/:id/workout/plans/:planId/summary', async (req, res) => {
+  try {
+    const uid = req.params.id;
+    const [[plan]] = await db.query('SELECT * FROM workout_plans WHERE id=? AND user_id=?', [req.params.planId, uid]);
+    if (!plan) return res.status(404).json({ error: 'Rutina no encontrada' });
+
+    // Ventana activa: desde que se creó esta rutina hasta que la reemplazó la siguiente (o hoy)
+    const [[next]] = await db.query(
+      'SELECT created_at FROM workout_plans WHERE user_id=? AND created_at > ? ORDER BY created_at ASC LIMIT 1',
+      [uid, plan.created_at]
+    );
+    const toDate = (d) => (d instanceof Date ? d : new Date(d)).toISOString().slice(0, 10);
+    const start = plan.start_date ? toDate(plan.start_date) : toDate(plan.created_at);
+    const end   = next ? toDate(next.created_at) : new Date(Date.now() - 5 * 3600 * 1000).toISOString().slice(0, 10);
+    const periodDays = Math.max(1, Math.round((new Date(end) - new Date(start)) / 86400000));
+
+    const [[planDayCount]] = await db.query('SELECT COUNT(*) AS n FROM workout_days WHERE plan_id=?', [plan.id]);
+    const expectedDays = Math.max(1, Math.ceil(periodDays / 7) * (planDayCount.n || 0));
+
+    // Días entrenados (daily_tracking o logs de ejercicio)
+    const [trainRows] = await db.query(
+      `SELECT DISTINCT d FROM (
+         SELECT DATE_FORMAT(tracked_date,'%Y-%m-%d') d FROM daily_tracking WHERE user_id=? AND workout_done=1 AND tracked_date BETWEEN ? AND ?
+         UNION SELECT DATE_FORMAT(logged_date,'%Y-%m-%d') d FROM workout_logs WHERE user_id=? AND logged_date BETWEEN ? AND ?
+       ) t`, [uid, start, end, uid, start, end]);
+    const daysTrained = trainRows.length;
+
+    const [[sets]] = await db.query('SELECT COUNT(*) AS n FROM workout_logs WHERE user_id=? AND logged_date BETWEEN ? AND ?', [uid, start, end]);
+    const [[water]] = await db.query('SELECT ROUND(AVG(water_glasses),1) AS avg FROM daily_tracking WHERE user_id=? AND water_glasses>0 AND tracked_date BETWEEN ? AND ?', [uid, start, end]);
+    const [[cals]] = await db.query(
+      `SELECT ROUND(AVG(t.total)) AS avg FROM (SELECT SUM(calories) total FROM food_logs WHERE user_id=? AND logged_at BETWEEN ? AND ? GROUP BY logged_at) t`,
+      [uid, start, end]);
+
+    // Peso: mediciones dentro (y la anterior al inicio como punto de partida)
+    const [wRows] = await db.query(
+      `SELECT DATE_FORMAT(logged_at,'%Y-%m-%d') d, weight_kg FROM measurements WHERE user_id=? AND weight_kg IS NOT NULL AND logged_at BETWEEN ? AND ? ORDER BY logged_at ASC`,
+      [uid, start, end]);
+    const weightSeries = wRows.map(r => ({ date: r.d, weight: Number(r.weight_kg) }));
+
+    // Progresión de cargas por ejercicio de esta rutina
+    const [logRows] = await db.query(
+      `SELECT we.name, DATE_FORMAT(wl.logged_date,'%Y-%m-%d') d, MAX(wl.weight_kg) maxw
+       FROM workout_logs wl
+       JOIN workout_exercises we ON we.id = wl.exercise_id
+       JOIN workout_days wd ON wd.id = we.day_id
+       WHERE wd.plan_id=? AND wl.user_id=? AND wl.logged_date BETWEEN ? AND ? AND wl.weight_kg IS NOT NULL
+       GROUP BY we.id, wl.logged_date ORDER BY we.name, wl.logged_date`,
+      [plan.id, uid, start, end]);
+    const byEx = {};
+    for (const r of logRows) {
+      if (!byEx[r.name]) byEx[r.name] = [];
+      byEx[r.name].push(Number(r.maxw));
+    }
+    const loadProgress = Object.entries(byEx)
+      .map(([name, arr]) => ({ name, from: arr[0], to: arr[arr.length - 1], delta: +(arr[arr.length - 1] - arr[0]).toFixed(1) }))
+      .filter(x => x.from != null && x.to != null)
+      .sort((a, b) => b.delta - a.delta);
+
+    res.json({
+      plan: { id: plan.id, name: plan.name, start_date: plan.start_date, duration_days: plan.duration_days },
+      period: { start, end, days: periodDays },
+      daysTrained, expectedDays,
+      sessions: daysTrained,
+      totalSets: sets.n || 0,
+      avgWater: water.avg != null ? Number(water.avg) : null,
+      avgCalories: cals.avg != null ? Number(cals.avg) : null,
+      weightSeries,
+      loadProgress,
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // GET /trainer/clients/:id/workout/plans/:planId — detalle de una rutina (para verla)
 router.get('/clients/:id/workout/plans/:planId', async (req, res) => {
   try {
