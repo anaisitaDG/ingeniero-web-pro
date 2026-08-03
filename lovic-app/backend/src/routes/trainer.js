@@ -225,6 +225,76 @@ router.put('/clients/:id/workout', async (req, res) => {
   }
 });
 
+// POST /trainer/clients/:id/workout/new — ARCHIVA la rutina actual y crea una nueva
+// (rutina del mes). No borra nada: la anterior queda inactiva y con su historial.
+router.post('/clients/:id/workout/new', async (req, res) => {
+  const uid = req.params.id;
+  const { days, duration_days, start_date } = req.body;
+  if (!Array.isArray(days) || days.length === 0) return res.status(400).json({ error: 'days requerido' });
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+    // Archiva TODAS las rutinas activas de la clienta (no las borra)
+    await conn.query('UPDATE workout_plans SET is_active=FALSE WHERE user_id=?', [uid]);
+    const planId = uuidv4();
+    const startDate = start_date || new Date(Date.now() - 5 * 3600 * 1000).toISOString().slice(0, 10);
+    await conn.query(
+      'INSERT INTO workout_plans (id, user_id, is_active, duration_days, start_date) VALUES (?, ?, TRUE, ?, ?)',
+      [planId, uid, duration_days || null, startDate]
+    );
+    for (let di = 0; di < days.length; di++) {
+      const day = days[di];
+      const dayId = uuidv4();
+      await conn.query(
+        'INSERT INTO workout_days (id, plan_id, day_name, day_order, warmup_type, warmup_duration, cardio_type, cardio_duration) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [dayId, planId, day.day_name, di, day.warmup_type || null, day.warmup_duration || null, day.cardio_type || null, day.cardio_duration || null]
+      );
+      for (let ei = 0; ei < (day.exercises || []).length; ei++) {
+        const ex = day.exercises[ei];
+        await conn.query(
+          'INSERT INTO workout_exercises (id, day_id, name, youtube_url, sets, reps, weight_kg, exercise_order, library_exercise_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [uuidv4(), dayId, ex.name, ex.youtube_url || null, ex.sets || 3, ex.reps || '10', ex.weight_kg || null, ei, ex.library_exercise_id || null]
+        );
+      }
+    }
+    await conn.commit();
+    res.json({ message: 'Nueva rutina creada', planId });
+  } catch (e) {
+    await conn.rollback();
+    console.error('[POST /workout/new]', e.message);
+    res.status(500).json({ error: e.message });
+  } finally {
+    conn.release();
+  }
+});
+
+// GET /trainer/clients/:id/workout/plans — lista de rutinas (activa + archivadas)
+router.get('/clients/:id/workout/plans', async (req, res) => {
+  try {
+    const [plans] = await db.query(
+      `SELECT wp.id, wp.is_active, wp.start_date, wp.duration_days, wp.created_at,
+              (SELECT COUNT(*) FROM workout_days wd WHERE wd.plan_id = wp.id) AS day_count
+       FROM workout_plans wp WHERE wp.user_id = ? ORDER BY wp.is_active DESC, wp.created_at DESC`,
+      [req.params.id]
+    );
+    res.json({ plans });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /trainer/clients/:id/workout/plans/:planId — detalle de una rutina (para verla)
+router.get('/clients/:id/workout/plans/:planId', async (req, res) => {
+  try {
+    const [[plan]] = await db.query('SELECT * FROM workout_plans WHERE id=? AND user_id=?', [req.params.planId, req.params.id]);
+    if (!plan) return res.status(404).json({ error: 'Rutina no encontrada' });
+    const [days] = await db.query('SELECT * FROM workout_days WHERE plan_id=? ORDER BY day_order', [plan.id]);
+    for (const day of days) {
+      const [exercises] = await db.query('SELECT * FROM workout_exercises WHERE day_id=? ORDER BY exercise_order', [day.id]);
+      day.exercises = exercises;
+    }
+    res.json({ plan: { ...plan, days } });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // PUT /trainer/clients/:id/routine — guarda rutina manual
 router.put('/clients/:id/routine', async (req, res) => {
   try {

@@ -46,6 +46,8 @@ export default function ClientDetail() {
   const [durationDays, setDurationDays]     = useState('');
   const [startDate, setStartDate]           = useState(new Date().toISOString().slice(0, 10));
   const [activePlanId, setActivePlanId]     = useState(null);
+  const [workoutPlans, setWorkoutPlans]     = useState([]);   // rutinas activa + archivadas
+  const [viewingPlan, setViewingPlan]       = useState(null); // rutina archivada abierta (solo lectura)
 
   // Library picker
   const [library, setLibrary]           = useState(null);
@@ -142,7 +144,7 @@ export default function ClientDetail() {
   }, [id]);
 
   useEffect(() => { load(); }, [load]);
-  useEffect(() => { if (tab === 'routine') loadWorkout(); }, [tab, loadWorkout]);
+  useEffect(() => { if (tab === 'routine') { loadWorkout(); loadWorkoutPlans(); } }, [tab, loadWorkout]); // eslint-disable-line
   useEffect(() => {
     if (tab === 'progreso') api.trainer.getProgress(id).then(setProgress).catch(console.error);
     if (tab === 'adherencia') api.trainer.getAdherence(id).then(d => setAdherence(d.days)).catch(console.error);
@@ -172,8 +174,8 @@ export default function ClientDetail() {
     finally { setSavingTargets(false); }
   }
 
-  async function saveWorkout() {
-    const days = workoutDays
+  function buildDays() {
+    return workoutDays
       .filter(d => d.day_name.trim())
       .map(d => ({
         day_id: d.id || null,
@@ -194,6 +196,10 @@ export default function ClientDetail() {
             library_exercise_id: e.library_exercise_id || null,
           })),
       }));
+  }
+
+  async function saveWorkout() {
+    const days = buildDays();
     if (days.length === 0) { setSaveMsg('❌ Agrega al menos un día con ejercicios'); setTimeout(() => setSaveMsg(''), 3000); return; }
     if (originalDayCount > 0 && days.length < originalDayCount) {
       const ok = window.confirm(`⚠️ El plan actual tiene ${originalDayCount} días pero vas a guardar solo ${days.length}. Los días sin nombre se eliminarán. ¿Continuar?`);
@@ -203,6 +209,27 @@ export default function ClientDetail() {
     try { await api.trainer.saveWorkout(id, days, durationDays ? Number(durationDays) : null, startDate || null, activePlanId); setSaveMsg('✅ Plan guardado'); setTimeout(() => setSaveMsg(''), 3000); }
     catch (e) { setSaveMsg('❌ ' + e.message); setTimeout(() => setSaveMsg(''), 4000); }
     finally { setSavingWorkout(false); }
+  }
+
+  // Archiva la rutina actual (queda en el historial) y crea una nueva del mes
+  async function newMonthlyWorkout() {
+    const days = buildDays();
+    if (days.length === 0) { setSaveMsg('❌ Arma primero la rutina nueva (al menos un día con ejercicios)'); setTimeout(() => setSaveMsg(''), 3500); return; }
+    const ok = window.confirm('Se archivará la rutina actual (queda guardada en el historial, no se borra) y esta pasará a ser la rutina activa de la clienta.\n\n¿Crear la nueva rutina?');
+    if (!ok) return;
+    setSavingWorkout(true);
+    try {
+      await api.trainer.newWorkout(id, days, durationDays ? Number(durationDays) : null, startDate || null);
+      setSaveMsg('✅ Nueva rutina activa. La anterior quedó archivada.');
+      setTimeout(() => setSaveMsg(''), 4000);
+      await load();
+      loadWorkoutPlans();
+    } catch (e) { setSaveMsg('❌ ' + e.message); setTimeout(() => setSaveMsg(''), 4000); }
+    finally { setSavingWorkout(false); }
+  }
+
+  async function loadWorkoutPlans() {
+    try { const r = await api.trainer.getWorkoutPlans(id); setWorkoutPlans(r.plans || []); } catch { /* ignore */ }
   }
 
   async function saveNutrition() {
@@ -753,8 +780,41 @@ export default function ClientDetail() {
             }}>+ Agregar día</button>
 
             <button className="btn-primary" onClick={saveWorkout} disabled={savingWorkout} style={{ width: '100%', justifyContent: 'center', padding: '14px' }}>
-              {savingWorkout ? <><span className="spinner" /> Guardando…</> : '💾 Guardar plan de entrenamiento'}
+              {savingWorkout ? <><span className="spinner" /> Guardando…</> : '💾 Guardar cambios de la rutina actual'}
             </button>
+
+            {/* Nueva rutina del mes (archiva la anterior) */}
+            <button onClick={newMonthlyWorkout} disabled={savingWorkout} style={{
+              width: '100%', justifyContent: 'center', padding: '13px', marginTop: 10,
+              borderRadius: 12, border: '2px solid var(--coral)', background: 'var(--coral-light)',
+              color: 'var(--coral)', fontWeight: 800, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+            }}>🗓️ Crear nueva rutina del mes (archiva la anterior)</button>
+            <p style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 6, lineHeight: 1.4 }}>
+              <b>Guardar cambios</b> = ajusta la rutina actual (para correcciones pequeñas).<br />
+              <b>Nueva rutina del mes</b> = archiva la actual (queda en el historial) y activa esta como la nueva.
+            </p>
+
+            {/* Rutinas anteriores (solo Lorena) */}
+            {workoutPlans.filter(p => !p.is_active).length > 0 && (
+              <div className="card" style={{ marginTop: 16 }}>
+                <p style={{ fontWeight: 700, marginBottom: 4 }}>🗂️ Rutinas anteriores</p>
+                <p style={{ fontSize: 11.5, color: 'var(--muted)', marginBottom: 10 }}>Solo tú las ves. La clienta conserva su historial de entrenamientos.</p>
+                {workoutPlans.filter(p => !p.is_active).map(p => (
+                  <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--border)' }}>
+                    <div>
+                      <p style={{ fontSize: 13, fontWeight: 600 }}>
+                        {p.start_date ? new Date(p.start_date).toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' }) : new Date(p.created_at).toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      </p>
+                      <p style={{ fontSize: 11, color: 'var(--muted)' }}>{p.day_count} día{p.day_count !== 1 ? 's' : ''}{p.duration_days ? ` · ${p.duration_days} días de duración` : ''}</p>
+                    </div>
+                    <button onClick={async () => { try { const r = await api.trainer.getWorkoutPlan(id, p.id); setViewingPlan(r.plan); } catch (e) { alert(e.message); } }}
+                      style={{ fontSize: 12, fontWeight: 700, color: 'var(--coral)', background: 'none', border: '1px solid var(--coral)', borderRadius: 8, padding: '5px 12px', cursor: 'pointer' }}>
+                      Ver
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Generar rutina con IA */}
             <div className="card" style={{ marginTop: 16, background: 'var(--gold-light)', border: '1.5px solid var(--gold)' }}>
@@ -981,6 +1041,34 @@ export default function ClientDetail() {
               </div>
             </>
           )}
+        </div>
+      )}
+
+      {/* Ver rutina archivada (solo lectura) */}
+      {viewingPlan && (
+        <div onClick={() => setViewingPlan(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 16, overflowY: 'auto' }}>
+          <div onClick={e => e.stopPropagation()} className="card" style={{ maxWidth: 480, width: '100%', marginTop: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <p style={{ fontWeight: 800 }}>🗂️ Rutina archivada</p>
+              <button onClick={() => setViewingPlan(null)} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: 'var(--muted)' }}>✕</button>
+            </div>
+            <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 14 }}>
+              {viewingPlan.start_date ? `Desde ${new Date(viewingPlan.start_date).toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' })}` : ''}
+              {viewingPlan.duration_days ? ` · ${viewingPlan.duration_days} días` : ''} · solo lectura
+            </p>
+            {(viewingPlan.days || []).map(day => (
+              <div key={day.id} style={{ marginBottom: 14, background: 'var(--bg)', borderRadius: 12, padding: 12 }}>
+                <p style={{ fontWeight: 700, marginBottom: 6 }}>{day.day_name}</p>
+                {(day.exercises || []).length === 0 ? (
+                  <p style={{ fontSize: 12, color: 'var(--muted)' }}>Sin ejercicios</p>
+                ) : (day.exercises).map(ex => (
+                  <p key={ex.id} style={{ fontSize: 13, padding: '3px 0' }}>
+                    • {ex.name} <span style={{ color: 'var(--muted)' }}>— {ex.sets}×{ex.reps}{ex.weight_kg ? ` · ${ex.weight_kg} kg` : ''}</span>
+                  </p>
+                ))}
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
