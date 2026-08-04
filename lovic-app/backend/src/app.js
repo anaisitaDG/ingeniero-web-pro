@@ -248,6 +248,51 @@ const db = require('./database/db');
         UNIQUE KEY uniq_pair (user_id, pair_key)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
+
+    // ===== Nutrición por tipo de entrenamiento (superior / inferior / descanso) =====
+    // Zona muscular de cada ejercicio de la biblioteca: sirve para auto-sugerir el tipo del día
+    await db.query(`ALTER TABLE exercise_library ADD COLUMN IF NOT EXISTS body_zone VARCHAR(12) DEFAULT NULL`).catch(() => {});
+    // Tipo de cada día de la rutina: define qué comida se muestra (superior | inferior | descanso)
+    await db.query(`ALTER TABLE workout_days ADD COLUMN IF NOT EXISTS day_type VARCHAR(12) DEFAULT NULL`).catch(() => {});
+    // Modo de nutrición por clienta: 'simple' (fijo, se repite las 4 semanas) o 'rotativo' (4 semanas distintas)
+    await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS nutrition_mode VARCHAR(12) NOT NULL DEFAULT 'simple'`).catch(() => {});
+    // Biblioteca de comidas de la entrenadora (reutilizable)
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS meal_library (
+        id          VARCHAR(36) PRIMARY KEY,
+        trainer_id  VARCHAR(36) NOT NULL,
+        name        VARCHAR(200) NOT NULL,
+        description TEXT,
+        meal_type   VARCHAR(20) NOT NULL,           -- desayuno | almuerzo | merienda | cena
+        body_zone   VARCHAR(12) DEFAULT NULL,       -- superior | inferior | NULL (cualquiera)
+        calories    INT DEFAULT NULL,
+        protein_g   INT DEFAULT NULL,
+        carbs_g     INT DEFAULT NULL,
+        fat_g       INT DEFAULT NULL,
+        created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_trainer (trainer_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+    // Comidas asignadas a una clienta por (semana × zona × momento). Se guarda copia de los datos
+    // para que editar/borrar la biblioteca no dañe planes ya asignados.
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS client_meal_slots (
+        id          VARCHAR(36) PRIMARY KEY,
+        client_id   VARCHAR(36) NOT NULL,
+        week_no     TINYINT NOT NULL DEFAULT 1,     -- 1..4 (en modo simple siempre 1)
+        body_zone   VARCHAR(12) NOT NULL,           -- superior | inferior
+        meal_type   VARCHAR(20) NOT NULL,           -- desayuno | almuerzo | merienda | cena
+        library_id  VARCHAR(36) DEFAULT NULL,       -- referencia opcional a meal_library
+        name        VARCHAR(200) NOT NULL,
+        description TEXT,
+        calories    INT DEFAULT NULL,
+        protein_g   INT DEFAULT NULL,
+        carbs_g     INT DEFAULT NULL,
+        fat_g       INT DEFAULT NULL,
+        sort_order  TINYINT DEFAULT 0,              -- permite varias meriendas / varios items por momento
+        INDEX idx_client (client_id, week_no, body_zone)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
   } catch (e) {
     console.error('Migration error:', e.message);
   }

@@ -7,7 +7,8 @@ const MUSCLE_GROUPS = [
   'Cuerpo completo', 'Cardio', 'Otro',
 ];
 
-const EMPTY_FORM = { name: '', muscle_group: '', youtube_url: '', notes: '' };
+const EMPTY_FORM = { name: '', muscle_group: '', youtube_url: '', notes: '', body_zone: '' };
+const ZONE_LABEL = { superior: '💪 Tren superior', inferior: '🦵 Tren inferior' };
 const EMPTY_VAR  = { name: '', youtube_url: '' };
 
 export default function ExerciseLibrary() {
@@ -92,7 +93,7 @@ export default function ExerciseLibrary() {
 
   function openEdit(ex) {
     setEditing(ex);
-    setForm({ name: ex.name, muscle_group: ex.muscle_group || '', youtube_url: ex.youtube_url || '', notes: ex.notes || '' });
+    setForm({ name: ex.name, muscle_group: ex.muscle_group || '', youtube_url: ex.youtube_url || '', notes: ex.notes || '', body_zone: ex.body_zone || '' });
     setShowForm(true);
   }
 
@@ -148,6 +149,17 @@ export default function ExerciseLibrary() {
               <option value="">Sin grupo</option>
               {MUSCLE_GROUPS.map(g => <option key={g} value={g}>{g}</option>)}
             </select>
+            <label className="label">Zona (para la nutrición por tipo de día)</label>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+              {[['', 'Ninguna'], ['superior', '💪 Superior'], ['inferior', '🦵 Inferior']].map(([val, lbl]) => (
+                <button key={val} type="button" onClick={() => setForm(f => ({ ...f, body_zone: val }))} style={{
+                  flex: 1, padding: '9px 6px', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                  border: form.body_zone === val ? '2px solid var(--coral)' : '1px solid var(--border)',
+                  background: form.body_zone === val ? 'var(--coral-light)' : 'var(--card)',
+                  color: form.body_zone === val ? 'var(--coral)' : 'var(--muted)',
+                }}>{lbl}</button>
+              ))}
+            </div>
             <label className="label">Link de YouTube</label>
             <input className="input" placeholder="https://youtube.com/..."
               value={form.youtube_url} onChange={e => setForm(f => ({ ...f, youtube_url: e.target.value }))}
@@ -217,7 +229,10 @@ function ExerciseCard({ ex, expanded, onToggle, onEdit, onDelete, addingVar, var
     <div className="card" style={{ marginBottom: 10, padding: '14px 16px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <div style={{ flex: 1, cursor: 'pointer' }} onClick={onToggle}>
-          <p style={{ fontWeight: 700, fontSize: 15 }}>{ex.name}</p>
+          <p style={{ fontWeight: 700, fontSize: 15 }}>
+            {ex.name}
+            {ex.body_zone && <span style={{ fontSize: 11, fontWeight: 700, marginLeft: 8, padding: '2px 8px', borderRadius: 6, background: 'var(--coral-light)', color: 'var(--coral)' }}>{ZONE_LABEL[ex.body_zone]}</span>}
+          </p>
           {ex.notes && <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>{ex.notes}</p>}
           <div style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
             {ex.youtube_url && (

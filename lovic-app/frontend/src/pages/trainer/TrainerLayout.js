@@ -52,7 +52,8 @@ export default function TrainerLayout() {
           </div>
           <nav style={{ display: 'flex', gap: 4, marginLeft: 8 }}>
             <NavLink to="/trainer" end style={navLinkStyle}>👥 Clientes</NavLink>
-            <NavLink to="/trainer/library" style={navLinkStyle}>📚 Biblioteca</NavLink>
+            <NavLink to="/trainer/library" style={navLinkStyle}>📚 Ejercicios</NavLink>
+            <NavLink to="/trainer/meal-library" style={navLinkStyle}>🍽️ Comidas</NavLink>
             <NavLink to="/trainer/billing" style={navLinkStyle}>💰 Ingresos</NavLink>
           </nav>
         </div>

@@ -842,14 +842,15 @@ router.get('/library', async (req, res) => {
 router.post('/library', async (req, res) => {
   try {
     const trainerId = req.user.id;
-    const { name, muscle_group, youtube_url, notes } = req.body;
+    const { name, muscle_group, youtube_url, notes, body_zone } = req.body;
     if (!name?.trim()) return res.status(400).json({ error: 'name requerido' });
     const id = uuidv4();
+    const zone = ['superior', 'inferior'].includes(body_zone) ? body_zone : null;
     await db.query(
-      'INSERT INTO exercise_library (id, trainer_id, name, muscle_group, youtube_url, notes) VALUES (?, ?, ?, ?, ?, ?)',
-      [id, trainerId, name.trim(), muscle_group || null, youtube_url || null, notes || null]
+      'INSERT INTO exercise_library (id, trainer_id, name, muscle_group, youtube_url, notes, body_zone) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [id, trainerId, name.trim(), muscle_group || null, youtube_url || null, notes || null, zone]
     );
-    res.json({ id, name, muscle_group, youtube_url, notes, variations: [] });
+    res.json({ id, name, muscle_group, youtube_url, notes, body_zone: zone, variations: [] });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -857,10 +858,11 @@ router.post('/library', async (req, res) => {
 router.put('/library/:id', async (req, res) => {
   try {
     const trainerId = req.user.id;
-    const { name, muscle_group, youtube_url, notes } = req.body;
+    const { name, muscle_group, youtube_url, notes, body_zone } = req.body;
+    const zone = ['superior', 'inferior'].includes(body_zone) ? body_zone : null;
     const [result] = await db.query(
-      'UPDATE exercise_library SET name=?, muscle_group=?, youtube_url=?, notes=? WHERE id=? AND trainer_id=?',
-      [name?.trim() || '', muscle_group || null, youtube_url || null, notes || null, req.params.id, trainerId]
+      'UPDATE exercise_library SET name=?, muscle_group=?, youtube_url=?, notes=?, body_zone=? WHERE id=? AND trainer_id=?',
+      [name?.trim() || '', muscle_group || null, youtube_url || null, notes || null, zone, req.params.id, trainerId]
     );
     if (result.affectedRows === 0) return res.status(404).json({ error: 'Ejercicio no encontrado' });
     res.json({ ok: true });
@@ -915,6 +917,63 @@ router.delete('/library/:id', async (req, res) => {
   } finally {
     conn.release();
   }
+});
+
+// ===== Biblioteca de comidas =====
+const MEAL_TYPES = ['desayuno', 'almuerzo', 'merienda', 'cena'];
+const numOrNull = v => (v === '' || v == null || isNaN(Number(v)) ? null : Math.round(Number(v)));
+
+// GET /trainer/meal-library
+router.get('/meal-library', async (req, res) => {
+  try {
+    const [meals] = await db.query(
+      'SELECT * FROM meal_library WHERE trainer_id=? ORDER BY meal_type, name', [req.user.id]
+    );
+    res.json({ meals });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /trainer/meal-library
+router.post('/meal-library', async (req, res) => {
+  try {
+    const { name, description, meal_type, body_zone, calories, protein_g, carbs_g, fat_g } = req.body;
+    if (!name?.trim()) return res.status(400).json({ error: 'name requerido' });
+    if (!MEAL_TYPES.includes(meal_type)) return res.status(400).json({ error: 'meal_type inválido' });
+    const zone = ['superior', 'inferior'].includes(body_zone) ? body_zone : null;
+    const id = uuidv4();
+    await db.query(
+      `INSERT INTO meal_library (id, trainer_id, name, description, meal_type, body_zone, calories, protein_g, carbs_g, fat_g)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, req.user.id, name.trim(), description || null, meal_type, zone,
+       numOrNull(calories), numOrNull(protein_g), numOrNull(carbs_g), numOrNull(fat_g)]
+    );
+    res.json({ id });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// PUT /trainer/meal-library/:id
+router.put('/meal-library/:id', async (req, res) => {
+  try {
+    const { name, description, meal_type, body_zone, calories, protein_g, carbs_g, fat_g } = req.body;
+    if (!MEAL_TYPES.includes(meal_type)) return res.status(400).json({ error: 'meal_type inválido' });
+    const zone = ['superior', 'inferior'].includes(body_zone) ? body_zone : null;
+    const [r] = await db.query(
+      `UPDATE meal_library SET name=?, description=?, meal_type=?, body_zone=?, calories=?, protein_g=?, carbs_g=?, fat_g=?
+       WHERE id=? AND trainer_id=?`,
+      [name?.trim() || '', description || null, meal_type, zone,
+       numOrNull(calories), numOrNull(protein_g), numOrNull(carbs_g), numOrNull(fat_g), req.params.id, req.user.id]
+    );
+    if (r.affectedRows === 0) return res.status(404).json({ error: 'Comida no encontrada' });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// DELETE /trainer/meal-library/:id
+router.delete('/meal-library/:id', async (req, res) => {
+  try {
+    await db.query('DELETE FROM meal_library WHERE id=? AND trainer_id=?', [req.params.id, req.user.id]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // GET /trainer/billing — panel de ingresos

@@ -15,6 +15,7 @@ import TrainerLayout from './pages/trainer/TrainerLayout';
 import ClientList from './pages/trainer/ClientList';
 import ClientDetail from './pages/trainer/ClientDetail';
 import ExerciseLibrary from './pages/trainer/ExerciseLibrary';
+import MealLibrary from './pages/trainer/MealLibrary';
 import BillingPanel from './pages/trainer/BillingPanel';
 
 function ProtectedRoute({ children, trainerOnly = false, skipOnboarding = false }) {
@@ -55,6 +56,7 @@ export default function App() {
             <Route index element={<ClientList />} />
             <Route path="clients/:id" element={<ClientDetail />} />
             <Route path="library" element={<ExerciseLibrary />} />
+            <Route path="meal-library" element={<MealLibrary />} />
             <Route path="billing" element={<BillingPanel />} />
           </Route>
 

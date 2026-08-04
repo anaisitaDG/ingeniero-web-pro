@@ -187,5 +187,10 @@ export const api = {
     deleteLibrary: (id)         => request(`/trainer/library/${id}`, { method: 'DELETE' }),
     addVariation:  (exId, body) => request(`/trainer/library/${exId}/variations`, { method: 'POST', body: JSON.stringify(body) }),
     deleteVariation:(varId)     => request(`/trainer/library/variations/${varId}`, { method: 'DELETE' }),
+    // Biblioteca de comidas
+    getMealLibrary:    ()         => request('/trainer/meal-library'),
+    addMealLibrary:    (body)     => request('/trainer/meal-library', { method: 'POST', body: JSON.stringify(body) }),
+    updateMealLibrary: (id, body) => request(`/trainer/meal-library/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+    deleteMealLibrary: (id)       => request(`/trainer/meal-library/${id}`, { method: 'DELETE' }),
   },
 };
