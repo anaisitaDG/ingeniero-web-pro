@@ -30,7 +30,8 @@ router.post('/upload', upload.array('image', 4), async (req, res) => {
   if (!req.files?.length) return res.status(400).json({ error: 'Imagen requerida' });
 
   let targetUserId = req.user.id;
-  if (req.body.user_id) {
+  // Solo se exige rol entrenadora cuando el destino es OTRA persona (no uno mismo)
+  if (req.body.user_id && req.body.user_id !== req.user.id) {
     if (req.user.role !== 'trainer') return res.status(403).json({ error: 'Sin permiso' });
     const [[target]] = await db.query('SELECT id FROM users WHERE id=? AND role="client"', [req.body.user_id]);
     if (!target) return res.status(403).json({ error: 'Usuario destino no válido' });
