@@ -48,6 +48,7 @@ export default function ClientDetail() {
   const [activePlanId, setActivePlanId]     = useState(null);
   const [planName, setPlanName]             = useState('');   // etiqueta de la rutina (ej. "Agosto")
   const [creatingNew, setCreatingNew]       = useState(false); // armando una rutina nueva (editor en blanco)
+  const [collapsedDays, setCollapsedDays]   = useState({});   // acordeón: { [day._key]: true } = plegado
   const [workoutPlans, setWorkoutPlans]     = useState([]);   // rutinas activa + archivadas
   const [viewingSummary, setViewingSummary] = useState(null); // resumen del mes de una rutina
   const [summaryLoading, setSummaryLoading] = useState(false);
@@ -123,7 +124,7 @@ export default function ClientDetail() {
       }
       if (res.plan?.days?.length > 0) {
         setOriginalDayCount(res.plan.days.length);
-        setWorkoutDays(res.plan.days.map(d => ({
+        const loaded = res.plan.days.map(d => ({
           _key: Math.random(),
           id: d.id || null,
           day_name: d.day_name,
@@ -141,7 +142,11 @@ export default function ClientDetail() {
             weight_kg: e.weight_kg || '',
             library_exercise_id: e.library_exercise_id || null,
           })),
-        })));
+        }));
+        setWorkoutDays(loaded);
+        // Arrancan plegados para ver todos los días de un vistazo
+        const collapsed = {}; loaded.forEach(d => { collapsed[d._key] = true; });
+        setCollapsedDays(collapsed);
       }
     } catch (e) {
       console.error('loadWorkout error:', e.message);
@@ -367,7 +372,12 @@ export default function ClientDetail() {
   }
 
   // Day helpers
-  function addDay() { setWorkoutDays(d => [...d, EMPTY_DAY()]); }
+  function toggleDay(key) { setCollapsedDays(c => ({ ...c, [key]: !c[key] })); }
+  function addDay() {
+    const nd = EMPTY_DAY();
+    setWorkoutDays(d => [...d, nd]);
+    setCollapsedDays(c => ({ ...c, [nd._key]: false })); // día nuevo abierto para editarlo
+  }
   function removeDay(idx) { setWorkoutDays(d => d.filter((_, i) => i !== idx)); }
   function updateDay(idx, field, val) {
     setWorkoutDays(d => d.map((day, i) => i === idx ? { ...day, [field]: val } : day));
@@ -703,26 +713,47 @@ export default function ClientDetail() {
               </div>
             </div>
 
-            {workoutDays.map((day, di) => (
+            {workoutDays.map((day, di) => {
+              const collapsed = !!collapsedDays[day._key];
+              return (
               <div key={day._key} className="card" style={{ marginBottom: 16 }}>
-                {/* Day header */}
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 14 }}>
-                  <input
-                    className="input"
-                    placeholder="Nombre del día (ej: Lunes — Pecho)"
-                    value={day.day_name}
-                    onChange={e => updateDay(di, 'day_name', e.target.value)}
-                    style={{ flex: 1, fontWeight: 700 }}
-                  />
-                  <button onClick={() => suggestName(di)} disabled={day.suggesting} title="Sugerir nombre con IA" style={{
-                    background: 'var(--coral-light)', border: 'none', borderRadius: 8, cursor: 'pointer',
-                    padding: '8px 10px', fontSize: 13, fontWeight: 700, color: 'var(--coral)', flexShrink: 0,
-                  }}>
-                    {day.suggesting ? <span className="spinner" style={{ width: 14, height: 14 }} /> : '✨'}
-                  </button>
-                  <button onClick={() => removeDay(di)} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: 'var(--muted)', padding: '4px 8px' }}>✕</button>
+                {/* Day header — acordeón */}
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: collapsed ? 0 : 14 }}>
+                  <button onClick={() => toggleDay(day._key)} title={collapsed ? 'Desplegar' : 'Plegar'} style={{
+                    background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: 'var(--muted)',
+                    padding: '4px 6px', flexShrink: 0, transform: collapsed ? 'rotate(-90deg)' : 'none', transition: 'transform .15s',
+                  }}>▼</button>
+                  {collapsed ? (
+                    <div onClick={() => toggleDay(day._key)} style={{ flex: 1, cursor: 'pointer', minWidth: 0 }}>
+                      <p style={{ fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {day.day_name || <span style={{ color: 'var(--muted)', fontWeight: 400 }}>Día sin nombre</span>}
+                      </p>
+                      <p style={{ fontSize: 11.5, color: 'var(--muted)' }}>
+                        {day.exercises.filter(e => e.name?.trim()).length} ejercicio{day.exercises.filter(e => e.name?.trim()).length !== 1 ? 's' : ''}
+                        {day.warmup_type ? ' · 🔥 calent.' : ''}{day.cardio_type ? ' · 🏃 cardio' : ''}
+                      </p>
+                    </div>
+                  ) : (
+                    <input
+                      className="input"
+                      placeholder="Nombre del día (ej: Lunes — Pecho)"
+                      value={day.day_name}
+                      onChange={e => updateDay(di, 'day_name', e.target.value)}
+                      style={{ flex: 1, fontWeight: 700 }}
+                    />
+                  )}
+                  {!collapsed && (
+                    <button onClick={() => suggestName(di)} disabled={day.suggesting} title="Sugerir nombre con IA" style={{
+                      background: 'var(--coral-light)', border: 'none', borderRadius: 8, cursor: 'pointer',
+                      padding: '8px 10px', fontSize: 13, fontWeight: 700, color: 'var(--coral)', flexShrink: 0,
+                    }}>
+                      {day.suggesting ? <span className="spinner" style={{ width: 14, height: 14 }} /> : '✨'}
+                    </button>
+                  )}
+                  <button onClick={() => removeDay(di)} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: 'var(--muted)', padding: '4px 8px', flexShrink: 0 }}>✕</button>
                 </div>
 
+                {!collapsed && (<>
                 {/* Warmup & Cardio */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -807,8 +838,9 @@ export default function ClientDetail() {
                   width: '100%', padding: '10px', borderRadius: 10, border: '2px dashed var(--border)',
                   background: 'none', cursor: 'pointer', color: 'var(--muted)', fontWeight: 600, fontSize: 13,
                 }}>+ Agregar ejercicio</button>
+                </>)}
               </div>
-            ))}
+            );})}
 
             <button onClick={addDay} style={{
               width: '100%', padding: '14px', borderRadius: 12, border: '2px dashed var(--border)',
