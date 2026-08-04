@@ -58,6 +58,89 @@ router.get('/week', async (req, res) => {
 });
 
 
+// GET /meal-plan/by-type — nutrición de HOY según el tipo de entreno del día + la semana del mes
+router.get('/by-type', async (req, res) => {
+  try {
+    const uid = req.user.id;
+    const today = colombiaToday();
+
+    const [[u]] = await db.query('SELECT nutrition_mode FROM users WHERE id=?', [uid]);
+    const mode = u?.nutrition_mode || 'simple';
+
+    // Plan activo → fecha de inicio para calcular la semana del mes
+    const [[plan]] = await db.query(
+      'SELECT start_date, created_at FROM workout_plans WHERE user_id=? AND is_active=TRUE ORDER BY created_at DESC LIMIT 1', [uid]
+    );
+    let week_no = 1;
+    if (mode === 'rotativo' && plan) {
+      const startStr = (plan.start_date ? new Date(plan.start_date) : new Date(plan.created_at)).toISOString().slice(0, 10);
+      const days = Math.max(0, Math.floor((new Date(today) - new Date(startStr)) / 86400000));
+      week_no = (Math.floor(days / 7) % 4) + 1; // semana 5 → vuelve a la 1
+    }
+
+    // Tipo del día: si la clienta completó un día HOY, usamos su day_type
+    const [[doneDay]] = await db.query(
+      `SELECT wd.day_type FROM workout_day_completions c
+       JOIN workout_days wd ON wd.id = c.day_id
+       WHERE c.user_id=? AND c.completed_date=? AND wd.day_type IS NOT NULL
+       ORDER BY c.id DESC LIMIT 1`,
+      [uid, today]
+    );
+    const today_day_type = doneDay?.day_type || null;
+    // Descanso y superior comen igual (zona 'superior'); inferior come 'inferior'
+    const auto_zone = today_day_type === 'inferior' ? 'inferior' : (today_day_type ? 'superior' : null);
+
+    // Slots de la semana correspondiente
+    const [slots] = await db.query(
+      'SELECT * FROM client_meal_slots WHERE client_id=? AND week_no=? ORDER BY body_zone, meal_type, sort_order',
+      [uid, week_no]
+    );
+
+    // Comidas ya registradas hoy (para marcar ✓)
+    const [eaten] = await db.query(
+      'SELECT input_text FROM food_logs WHERE user_id=? AND logged_at=? AND input_text LIKE ?',
+      [uid, today, 'plan:%']
+    );
+    const eatenKeys = eaten.map(r => r.input_text);
+
+    res.json({ mode, week_no, today_day_type, auto_zone, slots, eatenKeys, today });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /meal-plan/eat — marca una comida del plan como consumida y suma sus calorías al día
+router.post('/eat', async (req, res) => {
+  try {
+    const uid = req.user.id;
+    const { slot_id, done } = req.body;
+    const today = req.body.date || colombiaToday();
+    const key = `plan:${slot_id}`;
+
+    if (done === false) {
+      await db.query('DELETE FROM food_logs WHERE user_id=? AND logged_at=? AND input_text=?', [uid, today, key]);
+      return res.json({ ok: true });
+    }
+
+    const [[slot]] = await db.query('SELECT * FROM client_meal_slots WHERE id=? AND client_id=?', [slot_id, uid]);
+    if (!slot) return res.status(404).json({ error: 'Comida no encontrada' });
+
+    // Evita duplicar si ya está registrada hoy
+    const [[exists]] = await db.query(
+      'SELECT id FROM food_logs WHERE user_id=? AND logged_at=? AND input_text=? LIMIT 1', [uid, today, key]
+    );
+    if (exists) return res.json({ ok: true });
+
+    const MAP = { desayuno: 'breakfast', almuerzo: 'lunch', merienda: 'snack', cena: 'dinner' };
+    await db.query(
+      `INSERT INTO food_logs (id, user_id, input_text, parsed_items, calories, protein_g, carbs_g, fat_g, meal_type, logged_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [uuidv4(), uid, key, JSON.stringify([{ name: slot.name }]),
+       slot.calories || 0, slot.protein_g || null, slot.carbs_g || null, slot.fat_g || null,
+       MAP[slot.meal_type] || 'snack', today]
+    );
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // POST /meal-plan/complete
 router.post('/complete', async (req, res) => {
   try {

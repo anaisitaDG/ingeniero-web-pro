@@ -152,6 +152,8 @@ export const api = {
     today:    ()                       => request('/meal-plan'),
     week:     ()                       => request('/meal-plan/week'),
     complete: (meal_type, date, done)  => request('/meal-plan/complete', { method: 'POST', body: JSON.stringify({ meal_type, date, done }) }),
+    byType:   ()                       => request('/meal-plan/by-type'),
+    eat:      (slot_id, done)          => request('/meal-plan/eat', { method: 'POST', body: JSON.stringify({ slot_id, done, date: new Date().toLocaleDateString('en-CA') }) }),
   },
   trainer: {
     clients:       ()     => request('/trainer/clients'),

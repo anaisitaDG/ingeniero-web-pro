@@ -143,7 +143,7 @@ export default function MyPlan() {
       )}
 
       {tab === 'nutrition' && (
-        <MealPlanView legacyNutrition={nutrition} />
+        <MealByTypeView legacyNutrition={nutrition} />
       )}
     </div>
   );
@@ -181,6 +181,128 @@ const MEAL_META = {
   dinner:    { label: 'Cena',        icon: '🌙',  color: '#2D6EA0' },
 };
 const MEAL_ORDER = ['breakfast', 'lunch', 'snack', 'dinner'];
+
+const BYTYPE_MOMENTS = [
+  { value: 'desayuno', label: '🌅 Desayuno' },
+  { value: 'almuerzo', label: '☀️ Almuerzo' },
+  { value: 'merienda', label: '🍎 Merienda' },
+  { value: 'cena',     label: '🌙 Cena' },
+];
+const ZONE_META = {
+  superior: { label: '💪 Tren superior', color: '#8B5CF6' },
+  inferior: { label: '🦵 Tren inferior', color: '#EA580C' },
+};
+const DAYTYPE_TEXT = {
+  superior: 'Hoy entrenaste 💪 tren superior',
+  inferior: 'Hoy entrenaste 🦵 tren inferior',
+  descanso: 'Hoy es 😴 día de descanso',
+};
+
+function MealByTypeView({ legacyNutrition }) {
+  const [data, setData]       = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [zone, setZone]       = useState('superior');
+  const [eaten, setEaten]     = useState([]);   // keys 'plan:<id>'
+  const [busy, setBusy]       = useState({});
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await api.mealPlan.byType();
+        setData(res);
+        setZone(res.auto_zone || 'superior');
+        setEaten(res.eatenKeys || []);
+      } catch (_) { setData({ slots: [] }); }
+      setLoading(false);
+    })();
+  }, []);
+
+  async function toggleEat(slot) {
+    const key = `plan:${slot.id}`;
+    const isEaten = eaten.includes(key);
+    setBusy(b => ({ ...b, [slot.id]: true }));
+    setEaten(e => isEaten ? e.filter(k => k !== key) : [...e, key]);
+    try { await api.mealPlan.eat(slot.id, !isEaten); }
+    catch (_) { setEaten(e => isEaten ? [...e, key] : e.filter(k => k !== key)); }
+    setBusy(b => ({ ...b, [slot.id]: false }));
+  }
+
+  if (loading) return <div style={{ textAlign: 'center', padding: 48 }}><div className="spinner" style={{ borderTopColor: 'var(--coral)', borderColor: 'var(--border)', width: 28, height: 28 }} /></div>;
+
+  // Sin plan por tipo → usa el sistema anterior (plan semanal o texto libre)
+  if (!data || !data.slots || data.slots.length === 0) {
+    return <MealPlanView legacyNutrition={legacyNutrition} />;
+  }
+
+  const zoneSlots = data.slots.filter(s => s.body_zone === zone);
+  const byMoment = {};
+  zoneSlots.forEach(s => { (byMoment[s.meal_type] = byMoment[s.meal_type] || []).push(s); });
+
+  return (
+    <div>
+      {/* Contexto: qué entrenó hoy + semana */}
+      {(data.today_day_type || (data.mode === 'rotativo' && data.week_no)) && (
+        <div className="card" style={{ marginBottom: 14, padding: '12px 14px', background: 'var(--coral-light)', border: 'none' }}>
+          <p style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--coral)' }}>
+            {data.today_day_type ? DAYTYPE_TEXT[data.today_day_type] : 'Elige el tipo de tu día'}
+            {data.mode === 'rotativo' ? `  ·  Semana ${data.week_no}` : ''}
+          </p>
+          {!data.today_day_type && (
+            <p style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 3 }}>Marca tu entrenamiento de hoy como hecho y verás sola la comida que te toca.</p>
+          )}
+        </div>
+      )}
+
+      {/* Toggle de zona */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+        {['superior', 'inferior'].map(z => (
+          <button key={z} onClick={() => setZone(z)} style={{
+            flex: 1, padding: '11px', borderRadius: 12, cursor: 'pointer', fontWeight: 800, fontSize: 13, border: 'none',
+            background: zone === z ? ZONE_META[z].color : 'var(--card)',
+            color: zone === z ? '#fff' : 'var(--muted)',
+            boxShadow: zone === z ? '0 2px 8px rgba(0,0,0,0.15)' : 'var(--shadow)',
+          }}>{ZONE_META[z].label}</button>
+        ))}
+      </div>
+
+      {/* Momentos */}
+      {BYTYPE_MOMENTS.map(m => {
+        const items = byMoment[m.value] || [];
+        if (items.length === 0) return null;
+        return (
+          <div key={m.value} style={{ marginBottom: 16 }}>
+            <p style={{ fontWeight: 800, fontSize: 13, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>{m.label}</p>
+            {items.map(s => {
+              const key = `plan:${s.id}`;
+              const isEaten = eaten.includes(key);
+              return (
+                <div key={s.id} className="card" style={{
+                  marginBottom: 10, padding: 14, borderLeft: `4px solid ${isEaten ? '#16a34a' : ZONE_META[zone].color}`,
+                  opacity: isEaten ? 0.8 : 1, transition: 'all .3s',
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontWeight: 700, fontSize: 15, textDecoration: isEaten ? 'line-through' : 'none' }}>{s.name}</p>
+                      {s.description && <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: 3 }}>{s.description}</p>}
+                      {s.calories != null && <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 5 }}>🔥 {s.calories} kcal{s.protein_g != null ? ` · P ${s.protein_g}g` : ''}{s.carbs_g != null ? ` · C ${s.carbs_g}g` : ''}{s.fat_g != null ? ` · G ${s.fat_g}g` : ''}</p>}
+                    </div>
+                    <button onClick={() => toggleEat(s)} disabled={busy[s.id]} style={{
+                      flexShrink: 0, padding: '8px 12px', borderRadius: 10, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12.5,
+                      background: isEaten ? '#16a34a' : 'var(--coral-light)', color: isEaten ? '#fff' : 'var(--coral)',
+                    }}>{busy[s.id] ? '…' : (isEaten ? '✓ Comido' : 'Ya comí')}</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
+      {zoneSlots.length === 0 && (
+        <div className="empty-state"><div className="icon">🍽️</div><p>No hay comidas para {ZONE_META[zone].label} esta semana.</p></div>
+      )}
+    </div>
+  );
+}
 
 function MealPlanView({ legacyNutrition }) {
   const [meals, setMeals]           = useState(null); // today's meals
