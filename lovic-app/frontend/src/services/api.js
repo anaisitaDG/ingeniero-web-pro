@@ -192,5 +192,9 @@ export const api = {
     addMealLibrary:    (body)     => request('/trainer/meal-library', { method: 'POST', body: JSON.stringify(body) }),
     updateMealLibrary: (id, body) => request(`/trainer/meal-library/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
     deleteMealLibrary: (id)       => request(`/trainer/meal-library/${id}`, { method: 'DELETE' }),
+    // Asignación de nutrición por clienta
+    getNutritionConfig: (id)        => request(`/trainer/clients/${id}/nutrition-config`),
+    setNutritionMode:   (id, mode)  => request(`/trainer/clients/${id}/nutrition-mode`, { method: 'PUT', body: JSON.stringify({ mode }) }),
+    saveMealSlots:      (id, slots) => request(`/trainer/clients/${id}/meal-slots`, { method: 'PUT', body: JSON.stringify({ slots }) }),
   },
 };

@@ -4,6 +4,7 @@ import { api } from '../../services/api';
 import { AreaChart, Area, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import PhotoCompareView from '../../components/PhotoCompare';
 import Avatar from '../../components/Avatar';
+import NutritionByType from './NutritionByType';
 
 const API_BASE = process.env.REACT_APP_API_URL || '';
 function fmtDate(str, opts = { day: 'numeric', month: 'short' }) {
@@ -18,7 +19,7 @@ function photoUrl(p) {
 
 
 const EMPTY_EXERCISE = () => ({ _key: Math.random(), name: '', youtube_url: '', sets: 3, reps: '10', weight_kg: '' });
-const EMPTY_DAY = () => ({ _key: Math.random(), day_name: '', warmup_type: '', warmup_duration: '', cardio_type: '', cardio_duration: '', exercises: [EMPTY_EXERCISE()] });
+const EMPTY_DAY = () => ({ _key: Math.random(), day_name: '', day_type: '', warmup_type: '', warmup_duration: '', cardio_type: '', cardio_duration: '', exercises: [EMPTY_EXERCISE()] });
 
 export default function ClientDetail() {
   const { id } = useParams();
@@ -128,6 +129,7 @@ export default function ClientDetail() {
           _key: Math.random(),
           id: d.id || null,
           day_name: d.day_name,
+          day_type: d.day_type || '',
           warmup_type: d.warmup_type || '',
           warmup_duration: d.warmup_duration || '',
           cardio_type: d.cardio_type || '',
@@ -190,6 +192,7 @@ export default function ClientDetail() {
       .map(d => ({
         day_id: d.id || null,
         day_name: d.day_name,
+        day_type: d.day_type || null,
         warmup_type: d.warmup_type || null,
         warmup_duration: d.warmup_duration ? Number(d.warmup_duration) : null,
         cardio_type: d.cardio_type || null,
@@ -732,6 +735,7 @@ export default function ClientDetail() {
                         {day.day_name || <span style={{ color: 'var(--muted)', fontWeight: 400 }}>Día sin nombre</span>}
                       </p>
                       <p style={{ fontSize: 11.5, color: 'var(--muted)' }}>
+                        {day.day_type === 'superior' ? '💪 Superior · ' : day.day_type === 'inferior' ? '🦵 Inferior · ' : day.day_type === 'descanso' ? '😴 Descanso · ' : ''}
                         {day.exercises.filter(e => e.name?.trim()).length} ejercicio{day.exercises.filter(e => e.name?.trim()).length !== 1 ? 's' : ''}
                         {day.warmup_type ? ' · 🔥 calent.' : ''}{day.cardio_type ? ' · 🏃 cardio' : ''}
                       </p>
@@ -757,6 +761,21 @@ export default function ClientDetail() {
                 </div>
 
                 {!collapsed && (<>
+                {/* Tipo de día — define qué nutrición ve la clienta */}
+                <div style={{ marginBottom: 14 }}>
+                  <label className="label" style={{ marginBottom: 6 }}>🍽️ Tipo de día (para la nutrición)</label>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    {[['superior', '💪 Superior'], ['inferior', '🦵 Inferior'], ['descanso', '😴 Descanso']].map(([val, lbl]) => (
+                      <button key={val} type="button" onClick={() => updateDay(di, 'day_type', day.day_type === val ? '' : val)} style={{
+                        flex: 1, padding: '9px 4px', borderRadius: 10, fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
+                        border: day.day_type === val ? '2px solid var(--coral)' : '1px solid var(--border)',
+                        background: day.day_type === val ? 'var(--coral-light)' : 'var(--card)',
+                        color: day.day_type === val ? 'var(--coral)' : 'var(--muted)',
+                      }}>{lbl}</button>
+                    ))}
+                  </div>
+                </div>
+
                 {/* Warmup & Cardio */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -993,7 +1012,7 @@ export default function ClientDetail() {
           <div>
             {/* Sub-tab switcher */}
             <div style={{ display: 'flex', gap: 8, marginBottom: 16, background: 'var(--border)', padding: 4, borderRadius: 12 }}>
-              {[['planner', '📅 Planner semanal'], ['text', '📝 Plan en texto'], ['ai', '✨ Generar con IA']].map(([k, l]) => (
+              {[['planner', '🍽️ Por tipo de día'], ['text', '📝 Plan en texto'], ['ai', '✨ Generar con IA']].map(([k, l]) => (
                 <button key={k} onClick={() => setNutritionSubTab(k)} style={{
                   flex: 1, padding: '8px 4px', borderRadius: 10, fontWeight: 700, fontSize: 12, border: 'none', cursor: 'pointer',
                   background: nutritionSubTab === k ? 'var(--gold)' : 'transparent',
@@ -1004,73 +1023,7 @@ export default function ClientDetail() {
             </div>
 
             {nutritionSubTab === 'planner' && (
-              <div>
-                {/* Day navigator */}
-                <div style={{ display: 'flex', gap: 6, marginBottom: 16, overflowX: 'auto', paddingBottom: 4 }}>
-                  {[1,2,3,4,5,6,7].map(dow => {
-                    const count = (draft[dow] || []).length;
-                    return (
-                      <button key={dow} onClick={() => setMealPlanDow(dow)} style={{
-                        flexShrink: 0, padding: '8px 10px', borderRadius: 10, border: 'none', cursor: 'pointer',
-                        fontWeight: 700, fontSize: 12, minWidth: 52, textAlign: 'center',
-                        background: mealPlanDow === dow ? 'var(--gold)' : 'var(--card)',
-                        color: mealPlanDow === dow ? '#fff' : count > 0 ? 'var(--text)' : 'var(--muted)',
-                        boxShadow: 'var(--shadow)',
-                      }}>
-                        {DAYS_LABELS_T[dow].slice(0, 3)}
-                        {count > 0 && <span style={{ display: 'block', fontSize: 9, marginTop: 2, opacity: 0.8 }}>{count} items</span>}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Day label + copy menu */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                  <p style={{ fontWeight: 800, fontSize: 16 }}>{DAYS_LABELS_T[mealPlanDow]}</p>
-                  <select onChange={e => { if (e.target.value) copyDayTo(Number(e.target.value), mealPlanDow); e.target.value = ''; }}
-                    style={{ fontSize: 12, padding: '4px 8px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--muted)', cursor: 'pointer' }}>
-                    <option value="">Copiar de…</option>
-                    {[1,2,3,4,5,6,7].filter(d => d !== mealPlanDow && (draft[d]||[]).length > 0).map(d => (
-                      <option key={d} value={d}>{DAYS_LABELS_T[d]}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Meals editor by type */}
-                {MEAL_ORDER_T.map(mealType => {
-                  const meta = MEAL_META_T[mealType];
-                  const items = dayDraft.map((it, i) => ({ ...it, _idx: i })).filter(it => it.meal_type === mealType);
-                  return (
-                    <div key={mealType} className="card" style={{ marginBottom: 12, padding: 14 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                        <p style={{ fontWeight: 700, fontSize: 14 }}>{meta.icon} {meta.label}</p>
-                        <button onClick={() => addItem(mealType)} style={{
-                          background: 'var(--coral)', color: '#fff', border: 'none', borderRadius: 8,
-                          padding: '4px 10px', fontSize: 18, cursor: 'pointer', lineHeight: 1,
-                        }}>+</button>
-                      </div>
-                      {items.length === 0 && (
-                        <p style={{ fontSize: 13, color: 'var(--muted)', fontStyle: 'italic' }}>Sin items — toca + para agregar</p>
-                      )}
-                      {items.map((it) => (
-                        <div key={it._idx} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'flex-start' }}>
-                          <textarea className="input" rows={2} value={it.description}
-                            onChange={e => updateItem(it._idx, 'description', e.target.value)}
-                            placeholder="Ej: 2 huevos revueltos con espinaca, 1 arepa"
-                            style={{ flex: 1, resize: 'vertical', fontSize: 13, padding: '8px 10px' }} />
-                          <button onClick={() => removeItem(it._idx)} style={{
-                            background: 'none', border: 'none', color: '#E05252', fontSize: 20, cursor: 'pointer', padding: '4px', flexShrink: 0,
-                          }}>×</button>
-                        </div>
-                      ))}
-                    </div>
-                  );
-                })}
-
-                <button className="btn-primary" onClick={saveMealPlan} disabled={savingMealPlan} style={{ width: '100%', justifyContent: 'center', background: 'var(--gold)', marginTop: 4 }}>
-                  {savingMealPlan ? <><span className="spinner" /> Guardando…</> : '💾 Guardar planner'}
-                </button>
-              </div>
+              <NutritionByType clientId={id} />
             )}
 
             {nutritionSubTab === 'text' && (

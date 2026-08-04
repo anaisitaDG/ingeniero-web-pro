@@ -149,14 +149,14 @@ router.put('/clients/:id/workout', async (req, res) => {
         let dayId = existingDaysFull[di]?.id || null;
         if (dayId) {
           await conn.query(
-            'UPDATE workout_days SET day_name=?, day_order=?, warmup_type=?, warmup_duration=?, cardio_type=?, cardio_duration=? WHERE id=?',
-            [day.day_name, di, day.warmup_type || null, day.warmup_duration || null, day.cardio_type || null, day.cardio_duration || null, dayId]
+            'UPDATE workout_days SET day_name=?, day_order=?, warmup_type=?, warmup_duration=?, cardio_type=?, cardio_duration=?, day_type=? WHERE id=?',
+            [day.day_name, di, day.warmup_type || null, day.warmup_duration || null, day.cardio_type || null, day.cardio_duration || null, day.day_type || null, dayId]
           );
         } else {
           dayId = uuidv4();
           await conn.query(
-            'INSERT INTO workout_days (id, plan_id, day_name, day_order, warmup_type, warmup_duration, cardio_type, cardio_duration) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-            [dayId, plan_id, day.day_name, di, day.warmup_type || null, day.warmup_duration || null, day.cardio_type || null, day.cardio_duration || null]
+            'INSERT INTO workout_days (id, plan_id, day_name, day_order, warmup_type, warmup_duration, cardio_type, cardio_duration, day_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [dayId, plan_id, day.day_name, di, day.warmup_type || null, day.warmup_duration || null, day.cardio_type || null, day.cardio_duration || null, day.day_type || null]
           );
         }
         const exercises = day.exercises || [];
@@ -202,8 +202,8 @@ router.put('/clients/:id/workout', async (req, res) => {
       const day = days[di];
       const dayId = uuidv4();
       await conn.query(
-        'INSERT INTO workout_days (id, plan_id, day_name, day_order, warmup_type, warmup_duration, cardio_type, cardio_duration) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        [dayId, planId, day.day_name, di, day.warmup_type || null, day.warmup_duration || null, day.cardio_type || null, day.cardio_duration || null]
+        'INSERT INTO workout_days (id, plan_id, day_name, day_order, warmup_type, warmup_duration, cardio_type, cardio_duration, day_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [dayId, planId, day.day_name, di, day.warmup_type || null, day.warmup_duration || null, day.cardio_type || null, day.cardio_duration || null, day.day_type || null]
       );
       const exercises = day.exercises || [];
       for (let ei = 0; ei < exercises.length; ei++) {
@@ -246,8 +246,8 @@ router.post('/clients/:id/workout/new', async (req, res) => {
       const day = days[di];
       const dayId = uuidv4();
       await conn.query(
-        'INSERT INTO workout_days (id, plan_id, day_name, day_order, warmup_type, warmup_duration, cardio_type, cardio_duration) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        [dayId, planId, day.day_name, di, day.warmup_type || null, day.warmup_duration || null, day.cardio_type || null, day.cardio_duration || null]
+        'INSERT INTO workout_days (id, plan_id, day_name, day_order, warmup_type, warmup_duration, cardio_type, cardio_duration, day_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [dayId, planId, day.day_name, di, day.warmup_type || null, day.warmup_duration || null, day.cardio_type || null, day.cardio_duration || null, day.day_type || null]
       );
       for (let ei = 0; ei < (day.exercises || []).length; ei++) {
         const ex = day.exercises[ei];
@@ -974,6 +974,55 @@ router.delete('/meal-library/:id', async (req, res) => {
     await db.query('DELETE FROM meal_library WHERE id=? AND trainer_id=?', [req.params.id, req.user.id]);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ===== Asignación de nutrición por clienta (modo + slots por semana × zona × momento) =====
+// GET /trainer/clients/:id/nutrition-config
+router.get('/clients/:id/nutrition-config', async (req, res) => {
+  try {
+    const uid = req.params.id;
+    const [[u]] = await db.query('SELECT nutrition_mode FROM users WHERE id=?', [uid]);
+    const [slots] = await db.query(
+      'SELECT * FROM client_meal_slots WHERE client_id=? ORDER BY week_no, body_zone, meal_type, sort_order', [uid]
+    );
+    res.json({ nutrition_mode: u?.nutrition_mode || 'simple', slots });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// PUT /trainer/clients/:id/nutrition-mode
+router.put('/clients/:id/nutrition-mode', async (req, res) => {
+  try {
+    const mode = ['simple', 'rotativo'].includes(req.body.mode) ? req.body.mode : 'simple';
+    await db.query('UPDATE users SET nutrition_mode=? WHERE id=?', [mode, req.params.id]);
+    res.json({ ok: true, nutrition_mode: mode });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// PUT /trainer/clients/:id/meal-slots — reemplaza TODOS los slots de la clienta
+router.put('/clients/:id/meal-slots', async (req, res) => {
+  const uid = req.params.id;
+  const { slots } = req.body;
+  if (!Array.isArray(slots)) return res.status(400).json({ error: 'slots requerido' });
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+    await conn.query('DELETE FROM client_meal_slots WHERE client_id=?', [uid]);
+    for (const s of slots) {
+      if (!s.name?.trim() || !['superior', 'inferior'].includes(s.body_zone) || !MEAL_TYPES.includes(s.meal_type)) continue;
+      const week = [1, 2, 3, 4].includes(Number(s.week_no)) ? Number(s.week_no) : 1;
+      await conn.query(
+        `INSERT INTO client_meal_slots (id, client_id, week_no, body_zone, meal_type, library_id, name, description, calories, protein_g, carbs_g, fat_g, sort_order)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [uuidv4(), uid, week, s.body_zone, s.meal_type, s.library_id || null, s.name.trim(), s.description || null,
+         numOrNull(s.calories), numOrNull(s.protein_g), numOrNull(s.carbs_g), numOrNull(s.fat_g), Number(s.sort_order) || 0]
+      );
+    }
+    await conn.commit();
+    res.json({ ok: true });
+  } catch (e) {
+    await conn.rollback();
+    res.status(500).json({ error: e.message });
+  } finally { conn.release(); }
 });
 
 // GET /trainer/billing — panel de ingresos
