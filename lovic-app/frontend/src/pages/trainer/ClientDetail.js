@@ -687,28 +687,31 @@ export default function ClientDetail() {
 
             {/* Duración del plan */}
             <div className="card" style={{ marginBottom: 16, padding: '14px 16px' }}>
-              <p style={{ fontWeight: 700, fontSize: 14, marginBottom: 10 }}>⏱ Duración del plan</p>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {[15, 30, 45, 60, 90].map(d => (
-                  <button key={d} onClick={() => setDurationDays(durationDays === d ? '' : d)} style={{
-                    padding: '8px 16px', borderRadius: 10, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 13,
-                    background: durationDays === d ? 'var(--coral)' : 'var(--bg)',
-                    color: durationDays === d ? '#fff' : 'var(--muted)',
-                  }}>{d} días</button>
-                ))}
-                <input className="input" type="number" min="1" max="365" placeholder="Otro…"
-                  value={![15,30,45,60,90].includes(Number(durationDays)) && durationDays ? durationDays : ''}
-                  onChange={e => setDurationDays(e.target.value)}
-                  style={{ width: 90 }} />
+              <p style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>⏱ Duración del plan</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                {[{ d: 7, label: '1 semana' }, { d: 15, label: '15 días' }, { d: 30, label: '1 mes' }].map(({ d, label }) => {
+                  const active = Number(durationDays) === d;
+                  return (
+                  <button key={d} onClick={() => setDurationDays(active ? '' : d)} style={{
+                    padding: '16px 8px', borderRadius: 14, cursor: 'pointer', textAlign: 'center',
+                    border: active ? '2px solid var(--coral)' : '2px solid var(--border)',
+                    background: active ? 'var(--coral)' : 'var(--card)',
+                    color: active ? '#fff' : 'var(--text)',
+                    boxShadow: active ? '0 4px 12px rgba(255,107,107,0.28)' : 'none',
+                    transition: 'all .15s',
+                  }}>
+                    <div style={{ fontSize: 18, fontWeight: 800, lineHeight: 1 }}>{label}</div>
+                    <div style={{ fontSize: 11, marginTop: 4, opacity: active ? 0.9 : 0.55, fontWeight: 600 }}>{d} días</div>
+                  </button>
+                );})}
               </div>
-              {durationDays && <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 8 }}>La clienta verá que este plan dura <strong>{durationDays} días</strong>.</p>}
-              <div style={{ marginTop: 14 }}>
+              <div style={{ marginTop: 16 }}>
                 <label className="label" style={{ marginBottom: 6 }}>📅 Fecha de inicio</label>
                 <input className="input" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={{ maxWidth: 200 }} />
                 {durationDays && startDate && (() => {
                   const end = new Date(startDate);
                   end.setDate(end.getDate() + Number(durationDays));
-                  return <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 6 }}>Vence el <strong>{end.toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' })}</strong></p>;
+                  return <p style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 8 }}>La clienta verá un plan de <strong>{durationDays} días</strong> · vence el <strong>{end.toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' })}</strong></p>;
                 })()}
               </div>
             </div>
