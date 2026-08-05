@@ -603,12 +603,14 @@ function NutritionView({ content, updatedAt }) {
 }
 
 function PlanProgress({ startDate, durationDays }) {
-  const start = new Date(startDate + 'T00:00:00');
-  const elapsed = Math.floor((Date.now() - start) / 86400000);
-  const dayOfPlan = Math.min(elapsed + 1, durationDays);
-  const pct = Math.min(Math.round((elapsed / durationDays) * 100), 100);
-  const daysLeft = durationDays - elapsed;
-  const expired = elapsed >= durationDays;
+  const start = new Date(String(startDate).slice(0, 10) + 'T00:00:00');
+  const dur = Number(durationDays) || 0;
+  if (isNaN(start.getTime()) || !dur) return null; // sin fecha/duración válida no mostramos la barra
+  const elapsed = Math.max(0, Math.floor((Date.now() - start) / 86400000));
+  const dayOfPlan = Math.min(elapsed + 1, dur);
+  const pct = Math.min(Math.round((elapsed / dur) * 100), 100);
+  const daysLeft = Math.max(0, dur - elapsed);
+  const expired = elapsed >= dur;
   const expiringSoon = !expired && daysLeft <= 7;
 
   return (
@@ -784,10 +786,11 @@ function formatDayDate(dateStr) {
 const DAYS_ES = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
 
 function DayCard({ day, onLogged, completedDate, onToggleComplete, weightFactor = 1 }) {
-  const todayDayEs = DAYS_ES[new Date().getDay()];
-  const dayNameLc = day.day_name.toLowerCase();
-  // Match if the day name contains the current weekday name (handles "Lunes — Pecho", "Día 1 Lunes", etc.)
-  const isToday = DAYS_ES.some(d => dayNameLc.includes(d))
+  const noAccents = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const todayDayEs = noAccents(DAYS_ES[new Date().getDay()]);
+  const dayNameLc = noAccents(day.day_name.toLowerCase());
+  // Match if the day name contains the current weekday name (ignora tildes: "MIERCOLES" = "miércoles")
+  const isToday = DAYS_ES.some(d => dayNameLc.includes(noAccents(d)))
     ? dayNameLc.includes(todayDayEs)
     : false;
   const [open, setOpen] = useState(isToday);
