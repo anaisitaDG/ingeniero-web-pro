@@ -22,6 +22,10 @@ export default function NutritionByType({ clientId }) {
   const [saving, setSaving]   = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
   const [picker, setPicker]   = useState(null);     // { meal_type } cuando se está eligiendo
+  const [pickerSearch, setPickerSearch] = useState('');
+  const [creating, setCreating] = useState(false);  // form "crear comida nueva" abierto dentro del picker
+  const [newMeal, setNewMeal]   = useState(null);    // { name, description, calories, protein_g, carbs_g, fat_g }
+  const [creatingSave, setCreatingSave] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -61,7 +65,34 @@ export default function NutritionByType({ clientId }) {
       calories: meal.calories, protein_g: meal.protein_g, carbs_g: meal.carbs_g, fat_g: meal.fat_g,
       sort_order: slotsFor(picker.meal_type).length,
     }]);
-    setPicker(null);
+    closePicker();
+  }
+
+  function openPicker(meal_type) { setPicker({ meal_type }); setPickerSearch(''); setCreating(false); }
+  function closePicker() { setPicker(null); setPickerSearch(''); setCreating(false); setNewMeal(null); }
+
+  function startCreate() {
+    setNewMeal({ name: pickerSearch.trim(), description: '', calories: '', protein_g: '', carbs_g: '', fat_g: '' });
+    setCreating(true);
+  }
+
+  async function saveNewMeal() {
+    if (!newMeal.name.trim()) return alert('Nombre requerido');
+    setCreatingSave(true);
+    try {
+      const body = {
+        name: newMeal.name.trim(), description: newMeal.description, meal_type: picker.meal_type, body_zone: zone,
+        calories: newMeal.calories, protein_g: newMeal.protein_g, carbs_g: newMeal.carbs_g, fat_g: newMeal.fat_g,
+      };
+      const { id } = await api.trainer.addMealLibrary(body);          // guarda en la biblioteca
+      const created = { id, ...body, calories: newMeal.calories === '' ? null : Number(newMeal.calories),
+        protein_g: newMeal.protein_g === '' ? null : Number(newMeal.protein_g),
+        carbs_g: newMeal.carbs_g === '' ? null : Number(newMeal.carbs_g),
+        fat_g: newMeal.fat_g === '' ? null : Number(newMeal.fat_g) };
+      setLibrary(prev => [...prev, created]);
+      addFromLibrary(created);                                        // y la agrega al plan
+    } catch (e) { alert(e.message); }
+    finally { setCreatingSave(false); }
   }
 
   function removeSlot(key) { setSlots(prev => prev.filter(s => s._key !== key)); }
@@ -93,9 +124,11 @@ export default function NutritionByType({ clientId }) {
   if (loading) return <div style={{ textAlign: 'center', padding: 40 }}><div className="spinner" style={{ borderTopColor: 'var(--coral)', borderColor: 'var(--border)', width: 28, height: 28 }} /></div>;
 
   // Comidas de biblioteca disponibles para el picker: del momento pedido, priorizando la zona actual
+  const q = pickerSearch.trim().toLowerCase();
   const pickerMeals = picker ? library
     .filter(m => m.meal_type === picker.meal_type)
     .filter(m => !m.body_zone || m.body_zone === zone)
+    .filter(m => !q || m.name.toLowerCase().includes(q) || (m.description || '').toLowerCase().includes(q))
     .sort((a, b) => (b.body_zone === zone ? 1 : 0) - (a.body_zone === zone ? 1 : 0)) : [];
 
   return (
@@ -165,7 +198,7 @@ export default function NutritionByType({ clientId }) {
           <div key={mt.value} className="card" style={{ marginBottom: 12, padding: 14 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
               <p style={{ fontWeight: 700, fontSize: 14 }}>{mt.label}</p>
-              <button onClick={() => setPicker({ meal_type: mt.value })} style={{
+              <button onClick={() => openPicker(mt.value)} style={{
                 background: 'var(--coral)', color: '#fff', border: 'none', borderRadius: 8, padding: '4px 12px', fontSize: 13, fontWeight: 700, cursor: 'pointer',
               }}>+ Agregar</button>
             </div>
@@ -191,30 +224,74 @@ export default function NutritionByType({ clientId }) {
 
       {/* Picker de biblioteca */}
       {picker && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
-          onClick={e => e.target === e.currentTarget && setPicker(null)}>
-          <div className="card" style={{ width: '100%', maxWidth: 520, maxHeight: '80vh', overflowY: 'auto', borderRadius: '20px 20px 0 0' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+          onClick={e => e.target === e.currentTarget && closePicker()}>
+          <div className="card" style={{ width: '100%', maxWidth: 520, maxHeight: '85vh', display: 'flex', flexDirection: 'column', borderRadius: 18 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <p style={{ fontWeight: 800, fontSize: 15 }}>Elegir {MEAL_TYPES.find(m => m.value === picker.meal_type)?.label} · {ZONES.find(z => z.value === zone)?.label}</p>
-              <button onClick={() => setPicker(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--muted)' }}>✕</button>
+              <p style={{ fontWeight: 800, fontSize: 15 }}>{creating ? '➕ Nueva comida' : 'Elegir'} {MEAL_TYPES.find(m => m.value === picker.meal_type)?.label} · {ZONES.find(z => z.value === zone)?.label}</p>
+              <button onClick={closePicker} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--muted)', flexShrink: 0 }}>✕</button>
             </div>
-            {pickerMeals.length === 0 ? (
-              <p style={{ fontSize: 13, color: 'var(--muted)', padding: '20px 0', textAlign: 'center' }}>
-                No hay comidas de este momento en tu biblioteca.<br />Agrégalas primero en la pestaña <b>🍽️ Comidas</b>.
-              </p>
-            ) : pickerMeals.map(m => (
-              <button key={m.id} onClick={() => addFromLibrary(m)} style={{
-                width: '100%', textAlign: 'left', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 12,
-                padding: 12, marginBottom: 8, cursor: 'pointer',
-              }}>
-                <p style={{ fontWeight: 700, fontSize: 14 }}>
-                  {m.name}
-                  {m.body_zone && <span style={{ fontSize: 10.5, fontWeight: 700, marginLeft: 6, padding: '1px 6px', borderRadius: 5, background: 'var(--coral-light)', color: 'var(--coral)' }}>{m.body_zone === 'superior' ? '💪' : '🦵'}</span>}
-                </p>
-                {m.description && <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>{m.description}</p>}
-                {m.calories != null && <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 3 }}>🔥 {m.calories} kcal</p>}
-              </button>
-            ))}
+
+            {creating ? (
+              /* Formulario completo — crea en biblioteca y agrega al plan */
+              <div style={{ overflowY: 'auto' }}>
+                <label className="label">Nombre *</label>
+                <input className="input" placeholder="Ej: Avena con proteína" value={newMeal.name}
+                  onChange={e => setNewMeal(f => ({ ...f, name: e.target.value }))} style={{ marginBottom: 10 }} />
+                <label className="label">Descripción / preparación</label>
+                <textarea className="input" rows={2} placeholder="Ej: 40g de avena, 1/2 scoop proteína, arándanos"
+                  value={newMeal.description} onChange={e => setNewMeal(f => ({ ...f, description: e.target.value }))} style={{ marginBottom: 10, resize: 'vertical' }} />
+                <label className="label">Calorías y macros (opcional)</label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8, marginBottom: 16 }}>
+                  {[['calories', 'kcal'], ['protein_g', 'Prot'], ['carbs_g', 'Carbs'], ['fat_g', 'Grasa']].map(([k, lbl]) => (
+                    <div key={k}>
+                      <input className="input" type="number" min="0" placeholder={lbl} value={newMeal[k]}
+                        onChange={e => setNewMeal(f => ({ ...f, [k]: e.target.value }))} />
+                      <p style={{ fontSize: 10, color: 'var(--muted)', textAlign: 'center', marginTop: 2 }}>{lbl}</p>
+                    </div>
+                  ))}
+                </div>
+                <p style={{ fontSize: 11.5, color: 'var(--muted)', marginBottom: 12 }}>Se guardará en tu biblioteca (💪/🦵 {ZONES.find(z => z.value === zone)?.label}) y se agrega a este plan.</p>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button className="btn-ghost" onClick={() => setCreating(false)} style={{ flex: 1 }}>Volver</button>
+                  <button className="btn-primary" onClick={saveNewMeal} disabled={creatingSave} style={{ flex: 2, justifyContent: 'center', background: 'var(--gold)' }}>
+                    {creatingSave ? <span className="spinner" /> : 'Guardar y agregar'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Buscador */}
+                <input className="input" placeholder="🔍 Buscar comida..." value={pickerSearch}
+                  onChange={e => setPickerSearch(e.target.value)} style={{ marginBottom: 10 }} autoFocus />
+
+                <div style={{ overflowY: 'auto', flex: 1 }}>
+                  {pickerMeals.length === 0 ? (
+                    <p style={{ fontSize: 13, color: 'var(--muted)', padding: '16px 0', textAlign: 'center' }}>
+                      {q ? `Sin resultados para "${pickerSearch}".` : 'No hay comidas de este momento en tu biblioteca.'}
+                    </p>
+                  ) : pickerMeals.map(m => (
+                    <button key={m.id} onClick={() => addFromLibrary(m)} style={{
+                      width: '100%', textAlign: 'left', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 12,
+                      padding: 12, marginBottom: 8, cursor: 'pointer',
+                    }}>
+                      <p style={{ fontWeight: 700, fontSize: 14 }}>
+                        {m.name}
+                        {m.body_zone && <span style={{ fontSize: 10.5, fontWeight: 700, marginLeft: 6, padding: '1px 6px', borderRadius: 5, background: 'var(--coral-light)', color: 'var(--coral)' }}>{m.body_zone === 'superior' ? '💪' : '🦵'}</span>}
+                      </p>
+                      {m.description && <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>{m.description}</p>}
+                      {m.calories != null && <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 3 }}>🔥 {m.calories} kcal</p>}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Crear comida nueva */}
+                <button onClick={startCreate} style={{
+                  width: '100%', marginTop: 10, padding: '12px', borderRadius: 12, border: '2px dashed var(--gold)',
+                  background: 'var(--gold-light)', color: 'var(--gold)', fontWeight: 800, fontSize: 13.5, cursor: 'pointer', flexShrink: 0,
+                }}>+ Crear comida nueva{pickerSearch.trim() ? ` "${pickerSearch.trim()}"` : ''}</button>
+              </>
+            )}
           </div>
         </div>
       )}
