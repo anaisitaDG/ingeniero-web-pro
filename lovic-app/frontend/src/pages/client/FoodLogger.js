@@ -403,6 +403,10 @@ function LogCard({ log, onDelete }) {
     if (!Array.isArray(items)) items = [];
   } catch { items = []; }
   const mealIcons = { breakfast: '🌅', lunch: '☀️', dinner: '🌙', snack: '🍎' };
+  // Las comidas del plan se guardan con input_text 'plan:<id>' — mostrar el nombre real
+  const displayText = log.input_text?.startsWith('plan:')
+    ? (items[0]?.name || 'Comida del plan')
+    : log.input_text;
 
   return (
     <div className="card" style={{ padding: 16 }}>
@@ -410,7 +414,7 @@ function LogCard({ log, onDelete }) {
         <div style={{ flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
             <span>{mealIcons[log.meal_type] || '🍽️'}</span>
-            <span style={{ fontSize: 14, fontWeight: 600, flex: 1 }}>{log.input_text}</span>
+            <span style={{ fontSize: 14, fontWeight: 600, flex: 1 }}>{displayText}</span>
           </div>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <span className="pill pill-coral">{log.calories} kcal</span>
