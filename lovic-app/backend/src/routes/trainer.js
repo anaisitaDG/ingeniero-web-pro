@@ -939,7 +939,7 @@ router.post('/meal-library', async (req, res) => {
     const { name, description, meal_type, body_zone, calories, protein_g, carbs_g, fat_g } = req.body;
     if (!name?.trim()) return res.status(400).json({ error: 'name requerido' });
     if (!MEAL_TYPES.includes(meal_type)) return res.status(400).json({ error: 'meal_type inválido' });
-    const zone = ['superior', 'inferior'].includes(body_zone) ? body_zone : null;
+    const zone = ['superior', 'inferior', 'descanso'].includes(body_zone) ? body_zone : null;
     const id = uuidv4();
     await db.query(
       `INSERT INTO meal_library (id, trainer_id, name, description, meal_type, body_zone, calories, protein_g, carbs_g, fat_g)
@@ -956,7 +956,7 @@ router.put('/meal-library/:id', async (req, res) => {
   try {
     const { name, description, meal_type, body_zone, calories, protein_g, carbs_g, fat_g } = req.body;
     if (!MEAL_TYPES.includes(meal_type)) return res.status(400).json({ error: 'meal_type inválido' });
-    const zone = ['superior', 'inferior'].includes(body_zone) ? body_zone : null;
+    const zone = ['superior', 'inferior', 'descanso'].includes(body_zone) ? body_zone : null;
     const [r] = await db.query(
       `UPDATE meal_library SET name=?, description=?, meal_type=?, body_zone=?, calories=?, protein_g=?, carbs_g=?, fat_g=?
        WHERE id=? AND trainer_id=?`,
@@ -1008,7 +1008,7 @@ router.put('/clients/:id/meal-slots', async (req, res) => {
     await conn.beginTransaction();
     await conn.query('DELETE FROM client_meal_slots WHERE client_id=?', [uid]);
     for (const s of slots) {
-      if (!s.name?.trim() || !['superior', 'inferior'].includes(s.body_zone) || !MEAL_TYPES.includes(s.meal_type)) continue;
+      if (!s.name?.trim() || !['superior', 'inferior', 'descanso'].includes(s.body_zone) || !MEAL_TYPES.includes(s.meal_type)) continue;
       const week = [1, 2, 3, 4].includes(Number(s.week_no)) ? Number(s.week_no) : 1;
       await conn.query(
         `INSERT INTO client_meal_slots (id, client_id, week_no, body_zone, meal_type, library_id, name, description, calories, protein_g, carbs_g, fat_g, sort_order)

@@ -191,6 +191,7 @@ const BYTYPE_MOMENTS = [
 const ZONE_META = {
   superior: { label: '💪 Tren superior', color: '#8B5CF6' },
   inferior: { label: '🦵 Tren inferior', color: '#EA580C' },
+  descanso: { label: '😴 Descanso', color: '#0891B2' },
 };
 const DAYTYPE_TEXT = {
   superior: 'Hoy entrenaste 💪 tren superior',
@@ -255,7 +256,7 @@ function MealByTypeView({ legacyNutrition }) {
 
       {/* Toggle de zona */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        {['superior', 'inferior'].map(z => (
+        {['superior', 'inferior', 'descanso'].map(z => (
           <button key={z} onClick={() => setZone(z)} style={{
             flex: 1, padding: '11px', borderRadius: 12, cursor: 'pointer', fontWeight: 800, fontSize: 13, border: 'none',
             background: zone === z ? ZONE_META[z].color : 'var(--card)',

@@ -7,7 +7,7 @@ const MEAL_TYPES = [
   { value: 'merienda', label: '🍎 Merienda' },
   { value: 'cena',     label: '🌙 Cena' },
 ];
-const ZONE_LABEL = { superior: '💪 Superior', inferior: '🦵 Inferior' };
+const ZONE_LABEL = { superior: '💪 Superior', inferior: '🦵 Inferior', descanso: '😴 Descanso' };
 const EMPTY_FORM = { name: '', description: '', meal_type: 'desayuno', body_zone: '', calories: '', protein_g: '', carbs_g: '', fat_g: '' };
 
 export default function MealLibrary() {
@@ -90,6 +90,7 @@ export default function MealLibrary() {
           <option value="">Todas las zonas</option>
           <option value="superior">💪 Superior</option>
           <option value="inferior">🦵 Inferior</option>
+          <option value="descanso">😴 Descanso</option>
           <option value="_none">Sin zona</option>
         </select>
       </div>
@@ -122,8 +123,8 @@ export default function MealLibrary() {
             </div>
 
             <label className="label">Zona (para qué tipo de día es)</label>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-              {[['', 'Cualquiera'], ['superior', '💪 Superior'], ['inferior', '🦵 Inferior']].map(([val, lbl]) => (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginBottom: 12 }}>
+              {[['', 'Cualquiera'], ['superior', '💪 Superior'], ['inferior', '🦵 Inferior'], ['descanso', '😴 Descanso']].map(([val, lbl]) => (
                 <button key={val} type="button" onClick={() => setForm(f => ({ ...f, body_zone: val }))} style={{
                   flex: 1, padding: '9px 6px', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer',
                   border: form.body_zone === val ? '2px solid var(--coral)' : '1px solid var(--border)',

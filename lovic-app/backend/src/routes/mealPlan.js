@@ -87,8 +87,8 @@ router.get('/by-type', async (req, res) => {
       [uid, today]
     );
     const today_day_type = doneDay?.day_type || null;
-    // Descanso y superior comen igual (zona 'superior'); inferior come 'inferior'
-    const auto_zone = today_day_type === 'inferior' ? 'inferior' : (today_day_type ? 'superior' : null);
+    // Cada tipo de día tiene su propia zona de comida (superior / inferior / descanso)
+    const auto_zone = ['superior', 'inferior', 'descanso'].includes(today_day_type) ? today_day_type : null;
 
     // Slots de la semana correspondiente
     const [slots] = await db.query(

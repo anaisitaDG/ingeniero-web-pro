@@ -10,6 +10,7 @@ const MEAL_TYPES = [
 const ZONES = [
   { value: 'superior', label: '💪 Tren superior' },
   { value: 'inferior', label: '🦵 Tren inferior' },
+  { value: 'descanso', label: '😴 Descanso' },
 ];
 
 export default function NutritionByType({ clientId }) {
