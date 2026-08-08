@@ -321,13 +321,15 @@ async function sendMeasurementUpdate(trainerEmail, trainerName, clientName, clie
         <p style="color:rgba(255,255,255,.9);margin:4px 0 0;font-size:12px;letter-spacing:.12em">NUEVAS MEDIDAS DE UNA CLIENTA</p>
       </div>
       <div style="padding:26px 28px 30px">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:22px">
-          <div style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#FF6B6B,#FF8E53);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px">${initial}</div>
-          <div>
+        <table cellpadding="0" cellspacing="0" style="width:100%;margin-bottom:22px"><tr>
+          <td width="46" valign="middle" style="padding-right:12px">
+            <div style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#FF6B6B,#FF8E53);color:#fff;text-align:center;line-height:46px;font-weight:700;font-size:18px">${initial}</div>
+          </td>
+          <td valign="middle">
             <div style="font-weight:800;font-size:17px;color:#1A1A1A">${clientName}</div>
             <div style="color:#8A8F98;font-size:13px">${previous ? 'Comparado con su registro anterior' : 'Primer registro de medidas'}</div>
-          </div>
-        </div>
+          </td>
+        </tr></table>
         <p style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#FF6B6B;font-weight:800;margin:0 0 12px">📏 Medidas</p>
         <table style="width:100%;border-collapse:collapse">
           <thead><tr>
@@ -356,9 +358,9 @@ async function sendProgressPhotoUpdate(trainerEmail, trainerName, clientName, cl
   const AREA = { hombros:'Hombros', pecho:'Pecho', espalda:'Espalda', brazos:'Brazos', cintura:'Cintura', abdomen:'Abdomen', gluteos:'Glúteos', piernas:'Piernas', postura:'Postura', general:'General' };
 
   const zonesHtml = (zones || []).filter(z => AREA[z.area]).map(z => `
-    <div style="display:flex;align-items:center;gap:8px;font-size:13.5px;color:#1A1A1A;margin:6px 0">
-      <span style="width:9px;height:9px;border-radius:50%;background:${TREND[z.trend] || TREND.estable};display:inline-block"></span>
-      <span><b>${AREA[z.area]}:</b> ${z.change} · ${LABEL[z.trend] || 'Estable'}</span>
+    <div style="font-size:13.5px;color:#1A1A1A;margin:6px 0">
+      <span style="width:9px;height:9px;border-radius:50%;background:${TREND[z.trend] || TREND.estable};display:inline-block;vertical-align:middle;margin-right:8px"></span>
+      <span style="vertical-align:middle"><b>${AREA[z.area]}:</b> ${z.change} · ${LABEL[z.trend] || 'Estable'}</span>
     </div>`).join('');
 
   const subject = `${clientName} subió fotos de progreso${isFirst ? '' : ' — hay cambios 📸'}`;
@@ -374,13 +376,15 @@ async function sendProgressPhotoUpdate(trainerEmail, trainerName, clientName, cl
         <p style="color:rgba(255,255,255,.9);margin:4px 0 0;font-size:12px;letter-spacing:.12em">NUEVAS FOTOS DE PROGRESO</p>
       </div>
       <div style="padding:26px 28px 30px">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:22px">
-          <div style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#FF6B6B,#FF8E53);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px">${initial}</div>
-          <div>
+        <table cellpadding="0" cellspacing="0" style="width:100%;margin-bottom:22px"><tr>
+          <td width="46" valign="middle" style="padding-right:12px">
+            <div style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#FF6B6B,#FF8E53);color:#fff;text-align:center;line-height:46px;font-weight:700;font-size:18px">${initial}</div>
+          </td>
+          <td valign="middle">
             <div style="font-weight:800;font-size:17px;color:#1A1A1A">${clientName}</div>
             <div style="color:#8A8F98;font-size:13px">${isFirst ? 'Primer registro de fotos' : `Registro del ${dateAfter} · vs. ${dateBefore}`}</div>
-          </div>
-        </div>
+          </td>
+        </tr></table>
         <p style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#FF6B6B;font-weight:800;margin:0 0 12px">📸 Análisis de fotos (IA)</p>
         <div style="background:#FFF8F5;border:1px solid #FDE6DC;border-radius:12px;padding:16px 18px">
           <p style="margin:0;font-size:14px;line-height:1.65;color:#3a3a3a">${summary || 'Se registraron nuevas fotos de progreso.'}</p>
@@ -399,16 +403,20 @@ async function sendClientStats(trainerEmail, trainerName, clientName, clientId, 
   const appUrl = process.env.APP_URL || 'https://app.lovicgym.com';
   const link = `${appUrl}/trainer/clients/${clientId}`;
   const initial = (clientName || '?').charAt(0).toUpperCase();
+  // Tarjeta como celda de tabla (Gmail no soporta flexbox — se usa <table> para el grid)
   const stat = (label, value, sub) => `
-    <div style="flex:1;min-width:130px;background:#FFF8F5;border:1px solid #FDE6DC;border-radius:12px;padding:12px 14px">
-      <p style="margin:0;font-size:11px;color:#8A8F98;font-weight:700;text-transform:uppercase;letter-spacing:.04em">${label}</p>
-      <p style="margin:4px 0 0;font-size:20px;font-weight:900;color:#1A1A1A">${value}</p>
-      ${sub ? `<p style="margin:2px 0 0;font-size:11px;color:#8A8F98">${sub}</p>` : ''}
-    </div>`;
+    <td width="50%" valign="top" style="padding:5px">
+      <div style="background:#FFF8F5;border:1px solid #FDE6DC;border-radius:12px;padding:12px 14px">
+        <p style="margin:0;font-size:11px;color:#8A8F98;font-weight:700;text-transform:uppercase;letter-spacing:.04em">${label}</p>
+        <p style="margin:4px 0 0;font-size:20px;font-weight:900;color:#1A1A1A">${value}</p>
+        ${sub ? `<p style="margin:2px 0 0;font-size:11px;color:#8A8F98">${sub}</p>` : ''}
+      </div>
+    </td>`;
 
   const weightLine = (s.weightNow != null)
     ? stat('Peso actual', `${s.weightNow} kg`, s.weightDelta != null ? `${s.weightDelta > 0 ? '+' : ''}${s.weightDelta} kg desde el inicio` : '')
     : stat('Peso', 'Sin registro', '');
+  const routineLabel = s.planName ? `Rutina "${s.planName}" · últimas 2 semanas` : 'Últimas 2 semanas';
 
   await resend.emails.send({
     from: FROM,
@@ -421,20 +429,20 @@ async function sendClientStats(trainerEmail, trainerName, clientName, clientId, 
         <p style="color:rgba(255,255,255,.9);margin:4px 0 0;font-size:12px;letter-spacing:.12em">REPORTE DE PROGRESO · 2 SEMANAS</p>
       </div>
       <div style="padding:26px 28px 30px">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
-          <div style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#FF6B6B,#FF8E53);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px">${initial}</div>
-          <div>
+        <table cellpadding="0" cellspacing="0" style="width:100%;margin-bottom:18px"><tr>
+          <td width="46" valign="middle" style="padding-right:12px">
+            <div style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#FF6B6B,#FF8E53);color:#fff;text-align:center;line-height:46px;font-weight:700;font-size:18px">${initial}</div>
+          </td>
+          <td valign="middle">
             <div style="font-weight:800;font-size:17px;color:#1A1A1A">${clientName}</div>
-            <div style="color:#8A8F98;font-size:13px">Rutina "${s.planName || '—'}" · últimas 2 semanas</div>
-          </div>
-        </div>
-        <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px">
-          ${stat('Entrenamientos', `${s.daysTrained}`, 'días activos')}
-          ${stat('Series registradas', `${s.totalSets}`, 'total de series')}
-          ${weightLine}
-          ${stat('Agua', s.avgWater != null ? `${s.avgWater} vasos` : '—', 'promedio por día')}
-          ${stat('Comidas', s.avgCalories != null ? `${s.avgCalories} kcal` : '—', 'consumo promedio/día')}
-        </div>
+            <div style="color:#8A8F98;font-size:13px">${routineLabel}</div>
+          </td>
+        </tr></table>
+        <table cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;margin-bottom:16px">
+          <tr>${stat('Entrenamientos', `${s.daysTrained}`, 'días activos')}${stat('Series registradas', `${s.totalSets}`, 'total de series')}</tr>
+          <tr>${weightLine}${stat('Agua', s.avgWater != null ? `${s.avgWater} vasos` : '—', 'promedio por día')}</tr>
+          <tr>${stat('Comidas', s.avgCalories != null ? `${s.avgCalories} kcal` : '—', 'consumo promedio/día')}<td width="50%"></td></tr>
+        </table>
         <p style="font-size:14px;color:#3a3a3a;line-height:1.6;margin:0 0 20px">
           Ya lleva 2 semanas con esta rutina. Revisa su progreso y <b>decide si conviene ajustarla</b> (subir cargas, cambiar ejercicios) o mantenerla.
         </p>
