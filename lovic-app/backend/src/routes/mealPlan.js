@@ -103,7 +103,12 @@ router.get('/by-type', async (req, res) => {
     );
     const eatenKeys = eaten.map(r => r.input_text);
 
-    res.json({ mode, week_no, today_day_type, auto_zone, slots, eatenKeys, today });
+    // Consumo real de hoy (todo lo registrado, no solo lo del plan) para comparar plan vs realidad
+    const [[cons]] = await db.query(
+      'SELECT COALESCE(SUM(calories),0) AS c FROM food_logs WHERE user_id=? AND logged_at=?', [uid, today]
+    );
+
+    res.json({ mode, week_no, today_day_type, auto_zone, slots, eatenKeys, today, consumedToday: Number(cons.c) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

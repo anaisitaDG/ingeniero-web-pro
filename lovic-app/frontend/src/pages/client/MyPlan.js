@@ -266,6 +266,36 @@ function MealByTypeView({ legacyNutrition }) {
         ))}
       </div>
 
+      {/* Plan vs. realidad — cumplimiento del plan de esta zona */}
+      {zoneSlots.length > 0 && (() => {
+        const plannedKcal = zoneSlots.reduce((s, x) => s + (Number(x.calories) || 0), 0);
+        const total = zoneSlots.length;
+        const done = zoneSlots.filter(x => eaten.includes(`plan:${x.id}`)).length;
+        const consumed = data.consumedToday || 0;
+        const mealsPct = total ? Math.round((done / total) * 100) : 0;
+        return (
+          <div className="card" style={{ marginBottom: 16, padding: '13px 15px' }}>
+            <p style={{ fontWeight: 800, fontSize: 14, marginBottom: 10 }}>🎯 Plan vs. realidad {zone !== (data.auto_zone || zone) ? '' : '(hoy)'}</p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, marginBottom: 4 }}>
+              <span style={{ fontWeight: 600 }}>Comidas del plan registradas</span>
+              <span style={{ color: 'var(--muted)' }}>{done} / {total}</span>
+            </div>
+            <div style={{ height: 7, background: 'var(--border)', borderRadius: 7, overflow: 'hidden', marginBottom: 12 }}>
+              <div style={{ height: '100%', width: `${mealsPct}%`, background: '#16a34a', borderRadius: 7, transition: 'width .3s' }} />
+            </div>
+            {plannedKcal > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5 }}>
+                <span style={{ fontWeight: 600 }}>Calorías: hoy vs. plan</span>
+                <span style={{ color: 'var(--muted)' }}>
+                  {Math.round(consumed)} / {Math.round(plannedKcal)} kcal
+                  {(() => { const diff = Math.round(consumed - plannedKcal); if (Math.abs(diff) < 50) return ''; return diff > 0 ? ` · +${diff}` : ` · ${diff}`; })()}
+                </span>
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
       {/* Momentos */}
       {BYTYPE_MOMENTS.map(m => {
         const items = byMoment[m.value] || [];
