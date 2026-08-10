@@ -53,6 +53,12 @@ const EVENING_MSGS = [
   { title: '💪 Vic te está mirando', body: '¿A qué esperas? Son las mejores horas para entrenar.' },
 ];
 
+const MEAL_MSGS = [
+  { title: '🍽️ ¿Ya registraste tus comidas?', body: 'Va media tarde y no veo nada anotado. Registra lo que has comido para no perder el conteo.' },
+  { title: '📋 No olvides tu comida', body: 'Aún no has registrado nada hoy. Anótalo ahora que lo tienes fresco.' },
+  { title: '🥗 Vic no ve tu comida de hoy', body: 'Registra tus comidas para llevar el control. ¡Solo toma un momento!' },
+];
+
 function pick(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
@@ -92,6 +98,33 @@ function startCronJobs() {
       }
     }
     } catch (e) { console.error('[push] Error agua:', e.message); }
+  });
+
+  // 3pm Colombia (20:00 UTC) — recordatorio de comida si no han registrado nada hoy
+  cron.schedule('0 20 * * *', async () => {
+    try {
+      console.log('[push] Enviando recordatorio de comida');
+      const today = colombiaToday();
+      const [rows] = await db.query(
+        `SELECT ps.user_id, ps.subscription
+         FROM push_subscriptions ps
+         JOIN users u ON u.id = ps.user_id AND u.role = 'client'
+         LEFT JOIN food_logs fl ON fl.user_id = ps.user_id AND fl.logged_at = ?
+         WHERE fl.id IS NULL`,
+        [today]
+      );
+      const msg = pick(MEAL_MSGS);
+      for (const row of rows) {
+        try {
+          await webpush.sendNotification(JSON.parse(row.subscription), JSON.stringify({ ...msg, url: '/food' }));
+        } catch (err) {
+          if (err.statusCode === 410 || err.statusCode === 404) {
+            const sub = JSON.parse(row.subscription);
+            await db.query('DELETE FROM push_subscriptions WHERE endpoint=?', [sub.endpoint]);
+          }
+        }
+      }
+    } catch (e) { console.error('[push] Error comida:', e.message); }
   });
 
   // 5pm Colombia (22:00 UTC) — motivación de tarde si no han entrenado

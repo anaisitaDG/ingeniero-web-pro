@@ -17,7 +17,13 @@ function defaultMeal() {
   return 'dinner';
 }
 
+const TODAY_STR = () => new Date().toLocaleDateString('en-CA');
+const MIN_DATE = () => { const d = new Date(); d.setDate(d.getDate() - 3); return d.toLocaleDateString('en-CA'); };
+
 export default function FoodLogger() {
+  const [logDate, setLogDate]   = useState(TODAY_STR());
+  const logDateRef = useRef(logDate);
+  logDateRef.current = logDate;
   const [logs, setLogs]         = useState([]);
   const [daily, setDaily]       = useState(null);
   const [status, setStatus]     = useState(null);
@@ -75,10 +81,10 @@ export default function FoodLogger() {
         carbs_g: review.carbs_g,
         fat_g: review.fat_g,
         meal_type: review.meal_type,
-      });
+      }, logDate);
       setDaily(res.daily);
       setReview(null);
-      await fetchToday();
+      await fetchToday(logDate);
     } catch (err) {
       alert(err.message);
     } finally {
@@ -86,11 +92,11 @@ export default function FoodLogger() {
     }
   }
 
-  useEffect(() => { fetchToday(); }, []);
+  useEffect(() => { fetchToday(logDate); }, [logDate]); // eslint-disable-line
 
   // Recargar al volver la app a primer plano (PWA reanudada)
   useEffect(() => {
-    const onVisible = () => { if (document.visibilityState === 'visible') fetchToday(); };
+    const onVisible = () => { if (document.visibilityState === 'visible') fetchToday(logDateRef.current); };
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('focus', onVisible);
     return () => {
@@ -103,11 +109,11 @@ export default function FoodLogger() {
     if (tab === 'history' && history.length === 0) fetchHistory();
   }, [tab, history.length]); // eslint-disable-line
 
-  async function fetchToday() {
+  async function fetchToday(date = logDateRef.current) {
     setFetching(true);
     setLoadError(false);
     try {
-      const d = await api.food.today();
+      const d = await api.food.today(date);
       setLogs(d.logs);
       setDaily(d.daily);
       setStatus(d.status);
@@ -143,10 +149,10 @@ export default function FoodLogger() {
     if (!input.trim()) return;
     setLoading(true);
     try {
-      const res = await api.food.log(input.trim(), mealType);
+      const res = await api.food.log(input.trim(), mealType, logDate);
       setInput('');
       setDaily(res.daily);
-      await fetchToday();
+      await fetchToday(logDate);
     } catch (err) {
       alert(err.message);
     } finally {
@@ -187,6 +193,27 @@ export default function FoodLogger() {
 
       {tab === 'today' && (
         <>
+          {/* Selector de fecha — permite registrar días olvidados (hasta 3 días atrás) */}
+          <div style={{ marginBottom: 16 }}>
+            <label className="label">📅 Día que estás registrando</label>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+              {[['Hoy', TODAY_STR()], ['Ayer', (() => { const d = new Date(); d.setDate(d.getDate() - 1); return d.toLocaleDateString('en-CA'); })()]].map(([lbl, val]) => (
+                <button key={lbl} type="button" onClick={() => setLogDate(val)} style={{
+                  padding: '8px 16px', borderRadius: 10, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 13,
+                  background: logDate === val ? 'var(--coral)' : 'var(--card)', color: logDate === val ? '#fff' : 'var(--muted)', boxShadow: 'var(--shadow)',
+                }}>{lbl}</button>
+              ))}
+              <input type="date" value={logDate} min={MIN_DATE()} max={TODAY_STR()}
+                onChange={e => e.target.value && setLogDate(e.target.value)}
+                style={{ padding: '7px 10px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--card)', fontSize: 13, color: 'var(--text)' }} />
+            </div>
+            {logDate !== TODAY_STR() && (
+              <p style={{ fontSize: 12, color: 'var(--coral)', fontWeight: 700, marginTop: 8 }}>
+                ✏️ Estás registrando un día anterior ({(() => { const [y,m,d] = logDate.split('-').map(Number); return new Date(y, m-1, d).toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' }); })()})
+              </p>
+            )}
+          </div>
+
           {/* Log input */}
           <form onSubmit={handleLog} style={{ marginBottom: 20 }}>
             <label className="label">Tipo de comida</label>

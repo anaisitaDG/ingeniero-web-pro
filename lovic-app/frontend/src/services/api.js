@@ -52,13 +52,13 @@ export const api = {
     postTracking:(body)  => request('/dashboard/tracking', { method: 'POST', body: JSON.stringify({ ...body, date: new Date().toLocaleDateString('en-CA') }) }),
   },
   food: {
-    log:    (input_text, meal_type) => request('/food/log', { method: 'POST', body: JSON.stringify({ input_text, meal_type, date: new Date().toLocaleDateString('en-CA') }) }),
+    log:    (input_text, meal_type, date) => request('/food/log', { method: 'POST', body: JSON.stringify({ input_text, meal_type, date: date || new Date().toLocaleDateString('en-CA') }) }),
     scan:   (formData) => {
       const token = getToken();
       return fetch(`${BASE}/food/scan`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData }).then(r => r.json());
     },
-    logParsed: (data) => request('/food/log-parsed', { method: 'POST', body: JSON.stringify({ ...data, date: new Date().toLocaleDateString('en-CA') }) }),
-    today:  ()           => request(`/food/today?date=${new Date().toLocaleDateString('en-CA')}`),
+    logParsed: (data, date) => request('/food/log-parsed', { method: 'POST', body: JSON.stringify({ ...data, date: date || new Date().toLocaleDateString('en-CA') }) }),
+    today:  (date)       => request(`/food/today?date=${date || new Date().toLocaleDateString('en-CA')}`),
     history:(days = 7)   => request(`/food/history?days=${days}`),
     remove: (id)         => request(`/food/log/${id}`, { method: 'DELETE' }),
   },
