@@ -36,6 +36,7 @@ export default function FoodLogger() {
   const [histLoading, setHistLoading] = useState(false);
   const [histItems, setHistItems] = useState({});   // { 'YYYY-MM-DD': [logs] }
   const [expandedDay, setExpandedDay] = useState(null);
+  const [adherence, setAdherence] = useState(null);
   const [loadError, setLoadError] = useState(false);
   const photoRef = useRef(null);
   const [scanning, setScanning] = useState(false);
@@ -87,6 +88,7 @@ export default function FoodLogger() {
       setDaily(res.daily);
       setReview(null);
       await fetchToday(logDate);
+      refreshAdherence();
     } catch (err) {
       alert(err.message);
     } finally {
@@ -95,6 +97,8 @@ export default function FoodLogger() {
   }
 
   useEffect(() => { fetchToday(logDate); }, [logDate]); // eslint-disable-line
+  useEffect(() => { api.food.adherence().then(setAdherence).catch(() => {}); }, []);
+  function refreshAdherence() { api.food.adherence().then(setAdherence).catch(() => {}); }
 
   // Recargar al volver la app a primer plano (PWA reanudada)
   useEffect(() => {
@@ -157,6 +161,7 @@ export default function FoodLogger() {
       setInput('');
       setDaily(res.daily);
       await fetchToday(logDate);
+      refreshAdherence();
     } catch (err) {
       alert(err.message);
     } finally {
@@ -197,6 +202,33 @@ export default function FoodLogger() {
 
       {tab === 'today' && (
         <>
+          {/* Adherencia nutricional — constancia de la semana */}
+          {adherence && adherence.last7.daysLogged > 0 && (
+            <div className="card" style={{ marginBottom: 16, padding: '14px 16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <span style={{ fontWeight: 800, fontSize: 15 }}>📊 Tu constancia</span>
+                {adherence.streak > 0 && (
+                  <span style={{ fontSize: 13, fontWeight: 800, color: '#EA580C' }}>🔥 {adherence.streak} día{adherence.streak !== 1 ? 's' : ''} en meta</span>
+                )}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: adherence.proteinTarget ? '1fr 1fr' : '1fr', gap: 10 }}>
+                <div style={{ background: 'var(--bg)', borderRadius: 12, padding: '10px 12px' }}>
+                  <p style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: .3 }}>Días en meta (7d)</p>
+                  <p style={{ fontSize: 20, fontWeight: 900 }}>{adherence.last7.daysInTarget}<span style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600 }}> / {adherence.last7.daysLogged} reg.</span></p>
+                </div>
+                {adherence.proteinTarget && (
+                  <div style={{ background: 'var(--bg)', borderRadius: 12, padding: '10px 12px' }}>
+                    <p style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: .3 }}>Proteína prom.</p>
+                    <p style={{ fontSize: 20, fontWeight: 900 }}>{adherence.last7.avgProtein ?? '—'}<span style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600 }}> / {adherence.proteinTarget}g</span></p>
+                  </div>
+                )}
+              </div>
+              {adherence.proteinTarget && adherence.last7.avgProtein != null && adherence.last7.avgProtein < adherence.proteinTarget * 0.9 && (
+                <p style={{ fontSize: 12, color: '#2D6EA0', marginTop: 10, fontWeight: 600 }}>💪 Estás por debajo de tu proteína. Súmale una fuente de proteína a tus comidas.</p>
+              )}
+            </div>
+          )}
+
           {/* Selector de fecha — permite registrar días olvidados (hasta 3 días atrás) */}
           <div style={{ marginBottom: 16 }}>
             <label className="label">📅 Día que estás registrando</label>

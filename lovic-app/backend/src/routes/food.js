@@ -214,6 +214,60 @@ router.get('/history', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// GET /food/adherence — resumen de constancia nutricional (últimos 7 y 30 días)
+router.get('/adherence', async (req, res) => {
+  try {
+    const uid = req.user.id;
+    const target = req.user.calorie_target || 2000;
+    const pTarget = req.user.protein_target_g || null;
+    const today = colombiaToday();
+
+    const [rows] = await db.query(
+      `SELECT logged_at, SUM(calories) AS c, SUM(protein_g) AS p
+       FROM food_logs WHERE user_id=? AND logged_at >= DATE_SUB(?, INTERVAL 60 DAY)
+       GROUP BY logged_at`,
+      [uid, today]
+    );
+    const map = {};
+    for (const r of rows) {
+      const d = r.logged_at instanceof Date ? r.logged_at.toISOString().slice(0, 10) : String(r.logged_at).slice(0, 10);
+      map[d] = { c: Number(r.c), p: Number(r.p) };
+    }
+    const inTarget = c => target && c >= target * 0.85 && c <= target * 1.10;
+    const dateAgo = n => { const [y, m, d] = today.split('-').map(Number); const dt = new Date(Date.UTC(y, m - 1, d)); dt.setUTCDate(dt.getUTCDate() - n); return dt.toISOString().slice(0, 10); };
+
+    const window = (nDays) => {
+      let daysLogged = 0, daysInTarget = 0, sumC = 0, sumP = 0, proteinDaysMet = 0;
+      for (let i = 0; i < nDays; i++) {
+        const day = map[dateAgo(i)];
+        if (!day) continue;
+        daysLogged++; sumC += day.c; sumP += day.p;
+        if (inTarget(day.c)) daysInTarget++;
+        if (pTarget && day.p >= pTarget * 0.9) proteinDaysMet++;
+      }
+      return {
+        days: nDays,
+        daysLogged,
+        daysInTarget,
+        avgCalories: daysLogged ? Math.round(sumC / daysLogged) : null,
+        avgProtein: daysLogged ? Math.round(sumP / daysLogged) : null,
+        proteinDaysMet,
+      };
+    };
+
+    // Racha: días seguidos en meta terminando hoy (hoy solo cuenta si ya está en meta)
+    let streak = 0;
+    for (let i = 0; i <= 60; i++) {
+      const c = map[dateAgo(i)]?.c || 0;
+      const it = inTarget(c);
+      if (i === 0 && !it) continue; // hoy aún puede completarse
+      if (it) streak++; else break;
+    }
+
+    res.json({ calorieTarget: target, proteinTarget: pTarget, last7: window(7), last30: window(30), streak });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // DELETE /food/log/:id
 router.delete('/log/:id', async (req, res) => {
   try {
