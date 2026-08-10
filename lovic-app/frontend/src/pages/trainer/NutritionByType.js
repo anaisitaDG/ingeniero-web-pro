@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { api } from '../../services/api';
+import ShoppingList from '../../components/ShoppingList';
 
 const MEAL_TYPES = [
   { value: 'desayuno', label: '🌅 Desayuno' },
@@ -27,6 +28,7 @@ export default function NutritionByType({ clientId }) {
   const [creating, setCreating] = useState(false);  // form "crear comida nueva" abierto dentro del picker
   const [newMeal, setNewMeal]   = useState(null);    // { name, description, calories, protein_g, carbs_g, fat_g }
   const [creatingSave, setCreatingSave] = useState(false);
+  const [showShopping, setShowShopping] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -222,6 +224,21 @@ export default function NutritionByType({ clientId }) {
         {saving ? <><span className="spinner" /> Guardando…</> : '💾 Guardar nutrición'}
       </button>
       {saveMsg && <p style={{ textAlign: 'center', color: '#2D9B5A', fontWeight: 700, fontSize: 13, marginTop: 8 }}>{saveMsg}</p>}
+
+      {/* Lista de mercado */}
+      <div style={{ marginTop: 20, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+        {!showShopping ? (
+          <button onClick={() => setShowShopping(true)} style={{
+            width: '100%', padding: '12px', borderRadius: 12, border: '2px dashed var(--coral)', background: 'var(--coral-light)',
+            color: 'var(--coral)', fontWeight: 800, fontSize: 13.5, cursor: 'pointer',
+          }}>🛒 Generar lista de mercado</button>
+        ) : (
+          <>
+            <p style={{ fontWeight: 800, fontSize: 15, marginBottom: 10 }}>🛒 Lista de mercado</p>
+            <ShoppingList fetcher={(p) => api.trainer.getShoppingList(clientId, p)} />
+          </>
+        )}
+      </div>
 
       {/* Picker de biblioteca */}
       {picker && (

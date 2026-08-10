@@ -305,6 +305,37 @@ Reglas MUY importantes:
   }
 }
 
+// Extrae ingredientes + cantidad + categoría de una lista de comidas (para la lista de mercado).
+// Devuelve un array alineado con las comidas de entrada.
+async function parseShoppingIngredients(meals) {
+  const list = meals.map((m, i) => `${i}. ${m.name}${m.description ? ` — ${m.description}` : ''}`).join('\n');
+  const message = await client.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 2048,
+    messages: [{
+      role: 'user',
+      content: `Eres un nutricionista colombiano. Para cada comida, extrae los ingredientes con su cantidad para UNA porción. Devuelve SOLO un JSON válido.
+
+Comidas:
+${list}
+
+Devuelve exactamente:
+{ "meals": [ { "i": índice, "ingredients": [ { "name": "ingrediente en singular y genérico", "qty": número, "unit": "g|ml|unidad|taza|cucharada", "category": "Proteínas|Carbohidratos|Frutas y verduras|Lácteos|Grasas y otros" } ] } ] }
+
+Reglas:
+- Cantidades realistas para 1 porción adulta. Si no hay cantidad, estima una típica.
+- Nombres genéricos y en singular ("huevo", "pechuga de pollo", "avena", "banano").
+- Agrupa por las 5 categorías dadas exactamente como están escritas.
+- Ignora agua, sal, especias y condimentos menores.
+- Solo el JSON, sin texto adicional.`
+    }]
+  });
+  const text = message.content[0].text.trim();
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error('No se pudo parsear ingredientes');
+  return JSON.parse(jsonMatch[0]).meals || [];
+}
+
 async function suggestDayName(exerciseNames) {
   const message = await client.messages.create({
     model: 'claude-haiku-4-5-20251001',
@@ -320,4 +351,4 @@ Solo el nombre, sin puntuación ni explicación.`,
   return message.content[0].text.trim().replace(/[."]/g, '');
 }
 
-module.exports = { parseFood, parseFoodImage, getFoodRecommendation, generateRoutine, generateNutritionPlan, parseBioimpedance, generateBioSummary, comparePhotos, suggestDayName };
+module.exports = { parseFood, parseFoodImage, getFoodRecommendation, generateRoutine, generateNutritionPlan, parseBioimpedance, generateBioSummary, comparePhotos, suggestDayName, parseShoppingIngredients };

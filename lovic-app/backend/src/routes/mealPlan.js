@@ -112,6 +112,16 @@ router.get('/by-type', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// GET /meal-plan/shopping-list?period=weekly|biweekly|monthly
+router.get('/shopping-list', async (req, res) => {
+  try {
+    const { computeShoppingList } = require('../services/shoppingList');
+    const period = ['weekly', 'biweekly', 'monthly'].includes(req.query.period) ? req.query.period : 'weekly';
+    const out = await computeShoppingList(req.user.id, period);
+    res.json(out);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // POST /meal-plan/eat — marca una comida del plan como consumida y suma sus calorías al día
 router.post('/eat', async (req, res) => {
   try {

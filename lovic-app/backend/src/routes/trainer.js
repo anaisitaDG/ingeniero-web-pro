@@ -91,6 +91,16 @@ router.post('/suggest-day-name', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// GET /trainer/clients/:id/shopping-list?period=... — lista de mercado de la clienta
+router.get('/clients/:id/shopping-list', async (req, res) => {
+  try {
+    const { computeShoppingList } = require('../services/shoppingList');
+    const period = ['weekly', 'biweekly', 'monthly'].includes(req.query.period) ? req.query.period : 'weekly';
+    const out = await computeShoppingList(req.params.id, period);
+    res.json(out);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // GET /trainer/clients/:id/nutrition-adherence — constancia + qué comió (para Lorena)
 router.get('/clients/:id/nutrition-adherence', async (req, res) => {
   try {

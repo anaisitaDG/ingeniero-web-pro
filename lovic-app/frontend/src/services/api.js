@@ -155,6 +155,7 @@ export const api = {
     week:     ()                       => request('/meal-plan/week'),
     complete: (meal_type, date, done)  => request('/meal-plan/complete', { method: 'POST', body: JSON.stringify({ meal_type, date, done }) }),
     byType:   ()                       => request('/meal-plan/by-type'),
+    shoppingList: (period)             => request(`/meal-plan/shopping-list?period=${period || 'weekly'}`),
     eat:      (slot_id, done)          => request('/meal-plan/eat', { method: 'POST', body: JSON.stringify({ slot_id, done, date: new Date().toLocaleDateString('en-CA') }) }),
   },
   trainer: {
@@ -178,6 +179,7 @@ export const api = {
     setTargets:    (id, body) => request(`/trainer/clients/${id}/targets`, { method: 'PUT', body: JSON.stringify(body) }),
     getProgress:   (id) => request(`/trainer/clients/${id}/progress`),
     getNutritionAdherence: (id) => request(`/trainer/clients/${id}/nutrition-adherence`),
+    getShoppingList: (id, period) => request(`/trainer/clients/${id}/shopping-list?period=${period || 'weekly'}`),
     getAdherence:  (id) => request(`/trainer/clients/${id}/adherence-detail`),
     getWorkoutLogs:(id) => request(`/trainer/clients/${id}/workout-logs`),
     getNotes:      (id) => request(`/trainer/clients/${id}/notes`),

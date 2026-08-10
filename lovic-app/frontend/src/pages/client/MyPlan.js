@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { api } from '../../services/api';
+import ShoppingList from '../../components/ShoppingList';
 
 export default function MyPlan() {
   const [tab, setTab]         = useState('routine');
@@ -205,6 +206,7 @@ function MealByTypeView({ legacyNutrition }) {
   const [zone, setZone]       = useState('superior');
   const [eaten, setEaten]     = useState([]);   // keys 'plan:<id>'
   const [busy, setBusy]       = useState({});
+  const [showShopping, setShowShopping] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -331,6 +333,21 @@ function MealByTypeView({ legacyNutrition }) {
       {zoneSlots.length === 0 && (
         <div className="empty-state"><div className="icon">🍽️</div><p>No hay comidas para {ZONE_META[zone].label} esta semana.</p></div>
       )}
+
+      {/* Lista de mercado */}
+      <div style={{ marginTop: 20, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+        {!showShopping ? (
+          <button onClick={() => setShowShopping(true)} style={{
+            width: '100%', padding: '13px', borderRadius: 12, border: '2px dashed var(--coral)', background: 'var(--coral-light)',
+            color: 'var(--coral)', fontWeight: 800, fontSize: 14, cursor: 'pointer',
+          }}>🛒 Ver mi lista de mercado</button>
+        ) : (
+          <>
+            <p style={{ fontWeight: 800, fontSize: 15, marginBottom: 10 }}>🛒 Lista de mercado</p>
+            <ShoppingList fetcher={api.mealPlan.shoppingList} />
+          </>
+        )}
+      </div>
     </div>
   );
 }
