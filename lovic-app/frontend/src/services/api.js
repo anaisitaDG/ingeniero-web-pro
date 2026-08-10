@@ -176,6 +176,7 @@ export const api = {
     inviteNew:     (email, name) => request('/trainer/invite-new', { method: 'POST', body: JSON.stringify({ email, name }) }),
     setTargets:    (id, body) => request(`/trainer/clients/${id}/targets`, { method: 'PUT', body: JSON.stringify(body) }),
     getProgress:   (id) => request(`/trainer/clients/${id}/progress`),
+    getNutritionAdherence: (id) => request(`/trainer/clients/${id}/nutrition-adherence`),
     getAdherence:  (id) => request(`/trainer/clients/${id}/adherence-detail`),
     getWorkoutLogs:(id) => request(`/trainer/clients/${id}/workout-logs`),
     getNotes:      (id) => request(`/trainer/clients/${id}/notes`),

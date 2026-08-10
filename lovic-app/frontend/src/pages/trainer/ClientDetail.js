@@ -5,6 +5,7 @@ import { AreaChart, Area, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveCont
 import PhotoCompareView from '../../components/PhotoCompare';
 import Avatar from '../../components/Avatar';
 import NutritionByType from './NutritionByType';
+import NutritionAdherence from './NutritionAdherence';
 
 const API_BASE = process.env.REACT_APP_API_URL || '';
 function fmtDate(str, opts = { day: 'numeric', month: 'short' }) {
@@ -1012,7 +1013,7 @@ export default function ClientDetail() {
           <div>
             {/* Sub-tab switcher */}
             <div style={{ display: 'flex', gap: 8, marginBottom: 16, background: 'var(--border)', padding: 4, borderRadius: 12 }}>
-              {[['planner', '🍽️ Por tipo de día'], ['text', '📝 Plan en texto'], ['ai', '✨ Generar con IA']].map(([k, l]) => (
+              {[['planner', '🍽️ Por tipo'], ['adherence', '📊 Cómo va'], ['text', '📝 Texto'], ['ai', '✨ IA']].map(([k, l]) => (
                 <button key={k} onClick={() => setNutritionSubTab(k)} style={{
                   flex: 1, padding: '8px 4px', borderRadius: 10, fontWeight: 700, fontSize: 12, border: 'none', cursor: 'pointer',
                   background: nutritionSubTab === k ? 'var(--gold)' : 'transparent',
@@ -1024,6 +1025,10 @@ export default function ClientDetail() {
 
             {nutritionSubTab === 'planner' && (
               <NutritionByType clientId={id} />
+            )}
+
+            {nutritionSubTab === 'adherence' && (
+              <NutritionAdherence clientId={id} />
             )}
 
             {nutritionSubTab === 'text' && (

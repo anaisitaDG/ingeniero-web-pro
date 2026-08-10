@@ -25,7 +25,8 @@ router.get('/clients', async (req, res) => {
          (SELECT weight_kg FROM measurements WHERE user_id=u.id ORDER BY logged_at DESC LIMIT 1) AS current_weight_kg,
          (SELECT logged_at FROM measurements WHERE user_id=u.id ORDER BY logged_at DESC LIMIT 1) AS last_measurement,
          (SELECT MAX(tracked_date) FROM daily_tracking WHERE user_id=u.id AND workout_done=1) AS last_trained,
-         (SELECT COUNT(*) FROM daily_tracking WHERE user_id=u.id AND workout_done=1 AND tracked_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)) AS workouts_this_week
+         (SELECT COUNT(*) FROM daily_tracking WHERE user_id=u.id AND workout_done=1 AND tracked_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)) AS workouts_this_week,
+         (SELECT MAX(logged_at) FROM food_logs WHERE user_id=u.id) AS last_food_log
        FROM users u
        LEFT JOIN questionnaire_data q ON q.user_id = u.id
        WHERE u.role = 'client'
@@ -87,6 +88,65 @@ router.post('/suggest-day-name', async (req, res) => {
     if (names.length === 0) return res.status(400).json({ error: 'Sin ejercicios' });
     const name = await suggestDayName(names);
     res.json({ name });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /trainer/clients/:id/nutrition-adherence — constancia + qué comió (para Lorena)
+router.get('/clients/:id/nutrition-adherence', async (req, res) => {
+  try {
+    const uid = req.params.id;
+    const [[u]] = await db.query('SELECT calorie_target, protein_target_g FROM users WHERE id=? AND role="client"', [uid]);
+    if (!u) return res.status(404).json({ error: 'Cliente no encontrado' });
+    const target = u.calorie_target || 2000;
+    const pTarget = u.protein_target_g || null;
+    const today = new Date(Date.now() - 5 * 3600 * 1000).toISOString().slice(0, 10);
+
+    const [rows] = await db.query(
+      `SELECT logged_at, SUM(calories) AS c, SUM(protein_g) AS p
+       FROM food_logs WHERE user_id=? AND logged_at >= DATE_SUB(?, INTERVAL 30 DAY)
+       GROUP BY logged_at`, [uid, today]);
+    const map = {};
+    for (const r of rows) {
+      const d = r.logged_at instanceof Date ? r.logged_at.toISOString().slice(0, 10) : String(r.logged_at).slice(0, 10);
+      map[d] = { c: Number(r.c), p: Number(r.p) };
+    }
+    const inTarget = c => target && c >= target * 0.85 && c <= target * 1.10;
+    const dateAgo = n => { const [y, m, d] = today.split('-').map(Number); const dt = new Date(Date.UTC(y, m - 1, d)); dt.setUTCDate(dt.getUTCDate() - n); return dt.toISOString().slice(0, 10); };
+    let daysLogged = 0, daysInTarget = 0, sumC = 0, sumP = 0, proteinDaysMet = 0;
+    for (let i = 0; i < 7; i++) {
+      const day = map[dateAgo(i)];
+      if (!day) continue;
+      daysLogged++; sumC += day.c; sumP += day.p;
+      if (inTarget(day.c)) daysInTarget++;
+      if (pTarget && day.p >= pTarget * 0.9) proteinDaysMet++;
+    }
+    // Días sin registrar (desde el último log)
+    const lastLog = rows.length ? Object.keys(map).sort().pop() : null;
+    const daysSinceLog = lastLog ? Math.floor((new Date(today) - new Date(lastLog)) / 86400000) : null;
+
+    // Detalle últimos 14 días (qué comió)
+    const [items] = await db.query(
+      `SELECT id, logged_at, input_text, parsed_items, meal_type, calories
+       FROM food_logs WHERE user_id=? AND logged_at >= DATE_SUB(?, INTERVAL 14 DAY)
+       ORDER BY logged_at DESC, created_at ASC`, [uid, today]);
+    const itemsByDay = {};
+    for (const it of items) {
+      const d = it.logged_at instanceof Date ? it.logged_at.toISOString().slice(0, 10) : String(it.logged_at).slice(0, 10);
+      (itemsByDay[d] = itemsByDay[d] || []).push(it);
+    }
+    const recentDays = Object.keys(itemsByDay).sort().reverse().map(d => ({
+      date: d,
+      calories: Math.round(map[d]?.c || itemsByDay[d].reduce((s, x) => s + Number(x.calories || 0), 0)),
+      protein: Math.round(map[d]?.p || 0),
+      inTarget: inTarget(map[d]?.c || 0),
+      items: itemsByDay[d],
+    }));
+
+    res.json({
+      calorieTarget: target, proteinTarget: pTarget,
+      last7: { daysLogged, daysInTarget, avgCalories: daysLogged ? Math.round(sumC / daysLogged) : null, avgProtein: daysLogged ? Math.round(sumP / daysLogged) : null, proteinDaysMet },
+      lastLog, daysSinceLog, recentDays,
+    });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

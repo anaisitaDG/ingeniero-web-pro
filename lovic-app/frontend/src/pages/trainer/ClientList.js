@@ -186,7 +186,14 @@ function CardView({ clients, navigate }) {
 
             {/* Main info */}
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ fontWeight: 700, marginBottom: 2 }}>{c.name}</p>
+              <p style={{ fontWeight: 700, marginBottom: 2 }}>
+                {c.name}
+                {(() => {
+                  const dFood = c.last_food_log ? Math.floor((Date.now() - new Date(c.last_food_log)) / 86400000) : null;
+                  if (dFood == null || dFood >= 3) return <span style={{ fontSize: 10.5, fontWeight: 700, marginLeft: 8, padding: '2px 7px', borderRadius: 6, background: '#fef3c7', color: '#b45309' }}>🍽️ {dFood == null ? 'sin registrar' : `${dFood}d sin registrar`}</span>;
+                  return null;
+                })()}
+              </p>
               <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 4 }}>{c.email}</p>
               {c.main_goal && <p style={{ fontSize: 12, color: 'var(--gold)', fontWeight: 600 }}>{goals(c.main_goal)}</p>}
             </div>
