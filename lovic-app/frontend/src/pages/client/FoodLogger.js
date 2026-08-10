@@ -34,6 +34,8 @@ export default function FoodLogger() {
   const [tab, setTab]           = useState('today');
   const [history, setHistory]   = useState([]);
   const [histLoading, setHistLoading] = useState(false);
+  const [histItems, setHistItems] = useState({});   // { 'YYYY-MM-DD': [logs] }
+  const [expandedDay, setExpandedDay] = useState(null);
   const [loadError, setLoadError] = useState(false);
   const photoRef = useRef(null);
   const [scanning, setScanning] = useState(false);
@@ -129,7 +131,9 @@ export default function FoodLogger() {
     try {
       const d = await api.food.history(14);
       const target = d.target;
+      setHistItems(d.itemsByDay || {});
       setHistory(d.history.map(r => ({
+        key: r.logged_at.slice(0, 10),
         date: (() => { const [,m,dy] = r.logged_at.slice(0,10).split('-').map(Number); return `${dy} ${'ene feb mar abr may jun jul ago sep oct nov dic'.split(' ')[m-1]}`; })(),
         kcal: Math.round(r.calories),
         prot: Math.round(r.protein_g),
@@ -318,6 +322,33 @@ export default function FoodLogger() {
                 <span style={{ fontSize: 13, color: 'var(--muted)' }}>{daily.remaining} kcal restantes</span>
                 <span style={{ fontSize: 13, color: 'var(--muted)' }}>Meta: {daily.target}</span>
               </div>
+
+              {/* Macros del día vs meta — con foco en proteína */}
+              {daily.macros && (daily.macros.protein.target || daily.macros.carbs.target || daily.macros.fat.target) && (
+                <div style={{ marginTop: 14, borderTop: '1px solid var(--border)', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {[
+                    { key: 'protein', label: '🥩 Proteína', color: '#2D6EA0' },
+                    { key: 'carbs',   label: '🍚 Carbos',   color: '#C99A1E' },
+                    { key: 'fat',     label: '🥑 Grasa',    color: '#8B3A14' },
+                  ].map(({ key, label, color }) => {
+                    const m = daily.macros[key];
+                    if (!m.target) return null;
+                    const p = Math.min(Math.round((m.consumed / m.target) * 100), 100);
+                    const gap = Math.max(m.target - m.consumed, 0);
+                    return (
+                      <div key={key}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, marginBottom: 3 }}>
+                          <span style={{ fontWeight: 600 }}>{label}</span>
+                          <span style={{ color: 'var(--muted)' }}>{Math.round(m.consumed)} / {m.target}g{gap > 0 && key === 'protein' ? ` · faltan ${gap}g` : ''}</span>
+                        </div>
+                        <div style={{ height: 6, background: 'var(--border)', borderRadius: 6, overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: `${p}%`, background: color, borderRadius: 6, transition: 'width .3s' }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
@@ -388,20 +419,44 @@ export default function FoodLogger() {
                   : pct < 0.8 ? { color: '#2D6EA0', bg: '#EFF6FF', label: 'Bajo' }
                   : pct <= 1.1 ? { color: '#16a34a', bg: '#dcfce7', label: '✓' }
                   : { color: '#dc2626', bg: '#fee2e2', label: 'Exceso' };
+                const dayItems = histItems[r.key] || [];
+                const isOpen = expandedDay === r.key;
+                const mealIcons = { breakfast: '🌅', lunch: '☀️', dinner: '🌙', snack: '🍎' };
                 return (
                   <div key={i} className="card" style={{ padding: '12px 16px', borderLeft: status ? `4px solid ${status.color}` : undefined }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                      <span style={{ fontWeight: 700 }}>{r.date}</span>
-                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                        {status && <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 99, background: status.bg, color: status.color }}>{status.label}</span>}
-                        <span style={{ fontWeight: 800, color: status?.color || 'var(--coral)' }}>{r.kcal} kcal</span>
+                    <div onClick={() => setExpandedDay(isOpen ? null : r.key)} style={{ cursor: dayItems.length ? 'pointer' : 'default' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                        <span style={{ fontWeight: 700 }}>
+                          {dayItems.length > 0 && <span style={{ color: 'var(--muted)', marginRight: 6, fontSize: 12 }}>{isOpen ? '▲' : '▼'}</span>}
+                          {r.date}
+                        </span>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                          {status && <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 99, background: status.bg, color: status.color }}>{status.label}</span>}
+                          <span style={{ fontWeight: 800, color: status?.color || 'var(--coral)' }}>{r.kcal} kcal</span>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 10, fontSize: 12, color: 'var(--muted)' }}>
+                        <span>P <strong>{r.prot}g</strong></span>
+                        <span>C <strong>{r.carbs}g</strong></span>
+                        <span>G <strong>{r.fat}g</strong></span>
+                        {dayItems.length > 0 && !isOpen && <span style={{ marginLeft: 'auto', color: 'var(--coral)', fontWeight: 600 }}>Ver qué comió</span>}
                       </div>
                     </div>
-                    <div style={{ display: 'flex', gap: 10, fontSize: 12, color: 'var(--muted)' }}>
-                      <span>P <strong>{r.prot}g</strong></span>
-                      <span>C <strong>{r.carbs}g</strong></span>
-                      <span>G <strong>{r.fat}g</strong></span>
-                    </div>
+                    {isOpen && dayItems.length > 0 && (
+                      <div style={{ marginTop: 10, borderTop: '1px solid var(--border)', paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {dayItems.map(it => {
+                          let parsed = [];
+                          try { parsed = typeof it.parsed_items === 'string' ? JSON.parse(it.parsed_items) : (it.parsed_items || []); } catch { parsed = []; }
+                          const name = it.input_text?.startsWith('plan:') ? (parsed[0]?.name || 'Comida del plan') : it.input_text;
+                          return (
+                            <div key={it.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 13 }}>
+                              <span style={{ flex: 1 }}>{mealIcons[it.meal_type] || '🍽️'} {name}</span>
+                              <span style={{ color: 'var(--muted)', fontWeight: 600, flexShrink: 0 }}>{Math.round(it.calories)} kcal</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 );
               })}

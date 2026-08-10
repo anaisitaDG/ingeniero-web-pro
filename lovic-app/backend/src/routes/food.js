@@ -120,20 +120,26 @@ router.post('/log', async (req, res) => {
     ]
   );
 
-  const [[{ total }]] = await db.query(
-    `SELECT COALESCE(SUM(calories), 0) AS total FROM food_logs
-     WHERE user_id = ? AND logged_at = ?`,
+  const [[sums]] = await db.query(
+    `SELECT COALESCE(SUM(calories),0) AS calories, COALESCE(SUM(protein_g),0) AS protein_g,
+            COALESCE(SUM(carbs_g),0) AS carbs_g, COALESCE(SUM(fat_g),0) AS fat_g
+     FROM food_logs WHERE user_id = ? AND logged_at = ?`,
     [req.user.id, today]
   );
-
-  const remaining = (req.user.calorie_target || 2000) - total;
+  const total = Number(sums.calories);
+  const target = req.user.calorie_target || 2000;
 
   res.json({
     parsed,
     daily: {
-      target:    req.user.calorie_target || 2000,
+      target,
       consumed:  total,
-      remaining: Math.max(remaining, 0),
+      remaining: Math.max(target - total, 0),
+      macros: {
+        protein: { consumed: Number(sums.protein_g), target: req.user.protein_target_g || null },
+        carbs:   { consumed: Number(sums.carbs_g),   target: req.user.carbs_target_g || null },
+        fat:     { consumed: Number(sums.fat_g),     target: req.user.fat_target_g || null },
+      },
     },
   });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -148,18 +154,24 @@ router.get('/today', async (req, res) => {
       [req.user.id, today]
     );
 
-    const [[{ total }]] = await db.query(
-      `SELECT COALESCE(SUM(calories), 0) AS total FROM food_logs
-       WHERE user_id = ? AND logged_at = ?`,
+    const [[sums]] = await db.query(
+      `SELECT COALESCE(SUM(calories),0) AS calories, COALESCE(SUM(protein_g),0) AS protein_g,
+              COALESCE(SUM(carbs_g),0) AS carbs_g, COALESCE(SUM(fat_g),0) AS fat_g
+       FROM food_logs WHERE user_id = ? AND logged_at = ?`,
       [req.user.id, today]
     );
-
+    const total     = Number(sums.calories);
     const target    = req.user.calorie_target || 2000;
     const remaining = Math.max(target - total, 0);
+    const macros = {
+      protein: { consumed: Number(sums.protein_g), target: req.user.protein_target_g || null },
+      carbs:   { consumed: Number(sums.carbs_g),   target: req.user.carbs_target_g || null },
+      fat:     { consumed: Number(sums.fat_g),     target: req.user.fat_target_g || null },
+    };
 
     res.json({
       logs,
-      daily: { target, consumed: total, remaining },
+      daily: { target, consumed: total, remaining, macros },
       status: deficitStatus(total, target),
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -186,7 +198,19 @@ router.get('/history', async (req, res) => {
        GROUP BY logged_at ORDER BY logged_at ASC`,
       [req.user.id, colombiaToday(), days]
     );
-    res.json({ history: rows, target: req.user.calorie_target });
+    // Items de cada día (qué comió), para poder desplegar el detalle en el historial
+    const [items] = await db.query(
+      `SELECT id, logged_at, input_text, parsed_items, meal_type, calories, protein_g, carbs_g, fat_g
+       FROM food_logs WHERE user_id = ? AND logged_at >= DATE_SUB(?, INTERVAL ? DAY)
+       ORDER BY logged_at ASC, created_at ASC`,
+      [req.user.id, colombiaToday(), days]
+    );
+    const itemsByDay = {};
+    for (const it of items) {
+      const d = it.logged_at instanceof Date ? it.logged_at.toISOString().slice(0, 10) : String(it.logged_at).slice(0, 10);
+      (itemsByDay[d] = itemsByDay[d] || []).push(it);
+    }
+    res.json({ history: rows, itemsByDay, target: req.user.calorie_target, protein_target: req.user.protein_target_g || null });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
