@@ -142,10 +142,13 @@ router.get('/clients/:id/nutrition-adherence', async (req, res) => {
       items: itemsByDay[d],
     }));
 
+    const { computeInsights } = require('../services/nutritionInsights');
+    const { insights, correlation } = await computeInsights(uid, { calorieTarget: target, proteinTarget: pTarget });
+
     res.json({
       calorieTarget: target, proteinTarget: pTarget,
       last7: { daysLogged, daysInTarget, avgCalories: daysLogged ? Math.round(sumC / daysLogged) : null, avgProtein: daysLogged ? Math.round(sumP / daysLogged) : null, proteinDaysMet },
-      lastLog, daysSinceLog, recentDays,
+      lastLog, daysSinceLog, recentDays, insights, correlation,
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

@@ -60,6 +60,7 @@ export const api = {
     logParsed: (data, date) => request('/food/log-parsed', { method: 'POST', body: JSON.stringify({ ...data, date: date || new Date().toLocaleDateString('en-CA') }) }),
     today:  (date)       => request(`/food/today?date=${date || new Date().toLocaleDateString('en-CA')}`),
     adherence: ()        => request('/food/adherence'),
+    insights:  ()        => request('/food/insights'),
     history:(days = 7)   => request(`/food/history?days=${days}`),
     remove: (id)         => request(`/food/log/${id}`, { method: 'DELETE' }),
   },

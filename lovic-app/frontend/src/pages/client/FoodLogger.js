@@ -37,6 +37,7 @@ export default function FoodLogger() {
   const [histItems, setHistItems] = useState({});   // { 'YYYY-MM-DD': [logs] }
   const [expandedDay, setExpandedDay] = useState(null);
   const [adherence, setAdherence] = useState(null);
+  const [insights, setInsights] = useState(null);
   const [loadError, setLoadError] = useState(false);
   const photoRef = useRef(null);
   const [scanning, setScanning] = useState(false);
@@ -98,6 +99,7 @@ export default function FoodLogger() {
 
   useEffect(() => { fetchToday(logDate); }, [logDate]); // eslint-disable-line
   useEffect(() => { api.food.adherence().then(setAdherence).catch(() => {}); }, []);
+  useEffect(() => { if (tab === 'history' && !insights) api.food.insights().then(setInsights).catch(() => {}); }, [tab, insights]);
   function refreshAdherence() { api.food.adherence().then(setAdherence).catch(() => {}); }
 
   // Recargar al volver la app a primer plano (PWA reanudada)
@@ -412,6 +414,20 @@ export default function FoodLogger() {
           <div className="empty-state"><div className="icon">📊</div><p>Aún no hay historial</p></div>
         ) : (
           <>
+            {insights && (insights.insights?.length > 0 || insights.correlation) && (
+              <div className="card" style={{ marginBottom: 16, background: 'var(--gold-light)', border: 'none' }}>
+                <p style={{ fontWeight: 800, fontSize: 15, marginBottom: 10 }}>🔎 Lo que nota la app</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+                  {insights.correlation && (
+                    <p style={{ fontSize: 13.5, lineHeight: 1.5 }}><span style={{ marginRight: 6 }}>⚖️</span>{insights.correlation.text}</p>
+                  )}
+                  {(insights.insights || []).map((it, i) => (
+                    <p key={i} style={{ fontSize: 13.5, lineHeight: 1.5 }}><span style={{ marginRight: 6 }}>{it.icon}</span>{it.text}</p>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="card" style={{ marginBottom: 16 }}>
               <p style={{ fontWeight: 700, marginBottom: 14 }}>Calorías últimos 14 días</p>
               <ResponsiveContainer width="100%" height={160}>

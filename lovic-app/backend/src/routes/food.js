@@ -268,6 +268,18 @@ router.get('/adherence', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// GET /food/insights — patrones de comportamiento + correlación con peso
+router.get('/insights', async (req, res) => {
+  try {
+    const { computeInsights } = require('../services/nutritionInsights');
+    const out = await computeInsights(req.user.id, {
+      calorieTarget: req.user.calorie_target || null,
+      proteinTarget: req.user.protein_target_g || null,
+    });
+    res.json(out);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // DELETE /food/log/:id
 router.delete('/log/:id', async (req, res) => {
   try {

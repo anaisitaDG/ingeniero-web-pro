@@ -50,6 +50,19 @@ export default function NutritionAdherence({ clientId }) {
             </div>
           </div>
 
+          {/* Insights de comportamiento + correlación */}
+          {((data.insights && data.insights.length > 0) || data.correlation) && (
+            <div className="card" style={{ marginBottom: 14, background: 'var(--gold-light)', border: 'none' }}>
+              <p style={{ fontWeight: 800, fontSize: 14, marginBottom: 10 }}>🔎 Patrones detectados</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {data.correlation && <p style={{ fontSize: 13, lineHeight: 1.5 }}><span style={{ marginRight: 6 }}>⚖️</span>{data.correlation.text}</p>}
+                {(data.insights || []).map((it, i) => (
+                  <p key={i} style={{ fontSize: 13, lineHeight: 1.5 }}><span style={{ marginRight: 6 }}>{it.icon}</span>{it.text}</p>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Qué comió, por día */}
           <p className="label" style={{ marginBottom: 8 }}>🍽️ Qué comió (últimos 14 días)</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
