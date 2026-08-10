@@ -100,31 +100,61 @@ function startCronJobs() {
     } catch (e) { console.error('[push] Error agua:', e.message); }
   });
 
-  // 3pm Colombia (20:00 UTC) — recordatorio de comida si no han registrado nada hoy
-  cron.schedule('0 20 * * *', async () => {
+  // Cada hora — recordatorio DINÁMICO de comida: a la hora habitual de cada clienta.
+  // Si ya pasó su hora usual de registrar (+2h de margen) y hoy no ha anotado nada, se avisa una vez.
+  // Clientas sin historial suficiente (<3 días): respaldo a las 3pm Colombia.
+  cron.schedule('0 * * * *', async () => {
     try {
-      console.log('[push] Enviando recordatorio de comida');
       const today = colombiaToday();
+      const colHour = new Date(Date.now() - 5 * 3600 * 1000).getUTCHours(); // hora actual en Colombia
       const [rows] = await db.query(
-        `SELECT ps.user_id, ps.subscription
+        `SELECT ps.user_id, ps.subscription, up.usual_hour, up.days, HOUR(NOW()) AS db_hour
          FROM push_subscriptions ps
          JOIN users u ON u.id = ps.user_id AND u.role = 'client'
-         LEFT JOIN food_logs fl ON fl.user_id = ps.user_id AND fl.logged_at = ?
-         WHERE fl.id IS NULL`,
+         LEFT JOIN (
+           SELECT user_id, AVG(fh) AS usual_hour, COUNT(*) AS days FROM (
+             SELECT user_id, HOUR(MIN(created_at)) AS fh
+             FROM food_logs WHERE created_at >= NOW() - INTERVAL 30 DAY
+             GROUP BY user_id, DATE(created_at)
+           ) x GROUP BY user_id
+         ) up ON up.user_id = ps.user_id
+         WHERE NOT EXISTS (SELECT 1 FROM food_logs f WHERE f.user_id = ps.user_id AND f.logged_at = ?)`,
         [today]
       );
-      const msg = pick(MEAL_MSGS);
-      for (const row of rows) {
-        try {
-          await webpush.sendNotification(JSON.parse(row.subscription), JSON.stringify({ ...msg, url: '/food' }));
-        } catch (err) {
-          if (err.statusCode === 410 || err.statusCode === 404) {
-            const sub = JSON.parse(row.subscription);
-            await db.query('DELETE FROM push_subscriptions WHERE endpoint=?', [sub.endpoint]);
+
+      // Agrupar por clienta (puede tener varios dispositivos)
+      const byUser = new Map();
+      for (const r of rows) {
+        if (!byUser.has(r.user_id)) byUser.set(r.user_id, { subs: [], usual_hour: r.usual_hour, days: r.days, db_hour: r.db_hour });
+        byUser.get(r.user_id).subs.push(r.subscription);
+      }
+
+      for (const [userId, u] of byUser) {
+        const hasHistory = u.days >= 3 && u.usual_hour != null;
+        // Con historial: dispara a la hora usual + 2h (mismo reloj de BD, el desfase se cancela).
+        // Sin historial: respaldo a las 3pm Colombia.
+        const due = hasHistory
+          ? Number(u.db_hour) >= Math.round(Number(u.usual_hour)) + 2
+          : colHour === 15;
+        if (!due) continue;
+
+        // 1 aviso por día por clienta
+        const [ins] = await db.query('INSERT IGNORE INTO meal_reminder_sent (user_id, sent_date) VALUES (?, ?)', [userId, today]);
+        if (ins.affectedRows === 0) continue;
+
+        const msg = pick(MEAL_MSGS);
+        for (const subStr of u.subs) {
+          try {
+            await webpush.sendNotification(JSON.parse(subStr), JSON.stringify({ ...msg, url: '/food' }));
+          } catch (err) {
+            if (err.statusCode === 410 || err.statusCode === 404) {
+              const sub = JSON.parse(subStr);
+              await db.query('DELETE FROM push_subscriptions WHERE endpoint=?', [sub.endpoint]);
+            }
           }
         }
       }
-    } catch (e) { console.error('[push] Error comida:', e.message); }
+    } catch (e) { console.error('[push] Error recordatorio comida:', e.message); }
   });
 
   // 5pm Colombia (22:00 UTC) — motivación de tarde si no han entrenado

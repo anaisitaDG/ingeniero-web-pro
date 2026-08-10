@@ -249,6 +249,15 @@ const db = require('./database/db');
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
 
+    // Dedupe del recordatorio dinámico de comida (1 aviso por clienta por día)
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS meal_reminder_sent (
+        user_id   VARCHAR(36) NOT NULL,
+        sent_date DATE NOT NULL,
+        PRIMARY KEY (user_id, sent_date)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
     // ===== Nutrición por tipo de entrenamiento (superior / inferior / descanso) =====
     // Zona muscular de cada ejercicio de la biblioteca: sirve para auto-sugerir el tipo del día
     await db.query(`ALTER TABLE exercise_library ADD COLUMN IF NOT EXISTS body_zone VARCHAR(12) DEFAULT NULL`).catch(() => {});
