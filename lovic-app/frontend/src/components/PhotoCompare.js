@@ -105,6 +105,18 @@ function ZoneMarkers({ src, zones }) {
   const activeZone = active != null ? positioned[active] : null;
   const at = activeZone ? (TREND[activeZone.trend] || TREND.estable) : null;
   const activeMeta = activeZone ? AREA_META[activeZone.area] : null;
+
+  // De-clustering: separa marcadores que quedan muy juntos (mismas coords anatómicas)
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  const pts = positioned.map(z => ({ x: AREA_META[z.area].x, y: AREA_META[z.area].y }));
+  for (let i = 1; i < pts.length; i++) {
+    for (let j = 0; j < i; j++) {
+      if (Math.abs(pts[i].x - pts[j].x) < 9 && Math.abs(pts[i].y - pts[j].y) < 9) {
+        pts[i].x = clamp(pts[i].x + 13, 8, 92);
+        pts[i].y = clamp(pts[i].y + 7, 6, 94);
+      }
+    }
+  }
   return (
     <div>
       <div style={{ position: 'relative', width: '100%', aspectRatio: '3/4', borderRadius: 12, overflow: 'hidden', background: 'var(--surface)' }}>
@@ -118,7 +130,7 @@ function ZoneMarkers({ src, zones }) {
               onClick={() => setActive(isActive ? null : i)}
               title={`${meta.label}: ${z.change}`}
               style={{
-                position: 'absolute', left: `${meta.x}%`, top: `${meta.y}%`, transform: 'translate(-50%,-50%)',
+                position: 'absolute', left: `${pts[i].x}%`, top: `${pts[i].y}%`, transform: 'translate(-50%,-50%)',
                 width: isActive ? 30 : 25, height: isActive ? 30 : 25, borderRadius: '50%', background: t.color, color: '#fff', cursor: 'pointer',
                 fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center',
                 border: isActive ? '3px solid #fff' : '2px solid #fff',

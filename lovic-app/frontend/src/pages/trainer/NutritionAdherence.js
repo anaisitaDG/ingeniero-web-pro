@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../../services/api';
+import ShoppingList from '../../components/ShoppingList';
 
 const MEAL_ICON = { breakfast: '🌅', lunch: '☀️', dinner: '🌙', snack: '🍎' };
 
@@ -12,6 +13,7 @@ export default function NutritionAdherence({ clientId }) {
   const [data, setData]     = useState(null);
   const [loading, setLoading] = useState(true);
   const [open, setOpen]     = useState(null);
+  const [showShopping, setShowShopping] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -98,6 +100,21 @@ export default function NutritionAdherence({ clientId }) {
           </div>
         </>
       )}
+
+      {/* Lista de mercado */}
+      <div style={{ marginTop: 20, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+        {!showShopping ? (
+          <button onClick={() => setShowShopping(true)} style={{
+            width: '100%', padding: '12px', borderRadius: 12, border: '2px dashed var(--coral)', background: 'var(--coral-light)',
+            color: 'var(--coral)', fontWeight: 800, fontSize: 13.5, cursor: 'pointer',
+          }}>🛒 Generar lista de mercado</button>
+        ) : (
+          <>
+            <p style={{ fontWeight: 800, fontSize: 15, marginBottom: 10 }}>🛒 Lista de mercado</p>
+            <ShoppingList fetcher={(p) => api.trainer.getShoppingList(clientId, p)} />
+          </>
+        )}
+      </div>
     </div>
   );
 }

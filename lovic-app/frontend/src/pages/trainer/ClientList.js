@@ -65,6 +65,18 @@ export default function ClientList() {
 
   useEffect(() => { loadClients(); }, []);
 
+  async function sendTestEmail() {
+    setSendingSummary(true);
+    try {
+      const r = await api.trainer.testEmail();
+      setSummaryMsg(`✅ Correo de prueba enviado a ${r.sentTo}`);
+    } catch (e) { setSummaryMsg('❌ ' + e.message); }
+    finally {
+      setSendingSummary(false);
+      setTimeout(() => setSummaryMsg(''), 5000);
+    }
+  }
+
   async function sendWeeklySummary() {
     setSendingSummary(true);
     try {
@@ -104,6 +116,9 @@ export default function ClientList() {
           <p style={{ color: 'var(--muted)', fontSize: 14 }}>{clients.length} en total</p>
         </div>
         <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+          <button onClick={sendTestEmail} disabled={sendingSummary} className="btn-ghost" title="Enviarte un correo de muestra" style={{ fontSize: 13, padding: '10px 14px', border: '1.5px solid var(--border)' }}>
+            ✉️ Prueba
+          </button>
           <button onClick={sendWeeklySummary} disabled={sendingSummary} className="btn-ghost" style={{ fontSize: 13, padding: '10px 14px', border: '1.5px solid var(--border)' }}>
             {sendingSummary ? <span className="spinner" /> : '📧 Resumen semanal'}
           </button>

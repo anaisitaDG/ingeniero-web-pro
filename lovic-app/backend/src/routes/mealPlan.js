@@ -69,7 +69,7 @@ router.get('/by-type', async (req, res) => {
 
     // Plan activo → fecha de inicio para calcular la semana del mes
     const [[plan]] = await db.query(
-      'SELECT start_date, created_at FROM workout_plans WHERE user_id=? AND is_active=TRUE ORDER BY created_at DESC LIMIT 1', [uid]
+      'SELECT id, start_date, created_at FROM workout_plans WHERE user_id=? AND is_active=TRUE ORDER BY created_at DESC LIMIT 1', [uid]
     );
     let week_no = 1;
     if (mode === 'rotativo' && plan) {
@@ -86,7 +86,21 @@ router.get('/by-type', async (req, res) => {
        ORDER BY c.id DESC LIMIT 1`,
       [uid, today]
     );
-    const today_day_type = doneDay?.day_type || null;
+    let today_day_type = doneDay?.day_type || null;
+
+    // Si aún no marcó el entreno, intentamos deducir el tipo por el NOMBRE del día de hoy
+    // (ej. día "MARTES: ..." cuando hoy es martes). Ignora tildes.
+    if (!today_day_type && plan) {
+      const [pdays] = await db.query(
+        'SELECT day_name, day_type FROM workout_days WHERE plan_id=? AND day_type IS NOT NULL', [plan.id]
+      );
+      const DIAS = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+      const noAcc = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+      const todayName = DIAS[new Date(today + 'T12:00:00').getDay()];
+      const match = pdays.find(d => noAcc(d.day_name).includes(todayName));
+      if (match) today_day_type = match.day_type;
+    }
+
     // Cada tipo de día tiene su propia zona de comida (superior / inferior / descanso)
     const auto_zone = ['superior', 'inferior', 'descanso'].includes(today_day_type) ? today_day_type : null;
 

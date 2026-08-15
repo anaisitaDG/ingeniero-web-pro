@@ -91,6 +91,18 @@ router.post('/suggest-day-name', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// POST /trainer/test-email — envía a la entrenadora un correo de muestra (para ver el diseño)
+router.post('/test-email', async (req, res) => {
+  try {
+    const { sendClientStats } = require('../services/email');
+    await sendClientStats(req.user.email, req.user.name || 'Lorena', 'Clienta de ejemplo', 'demo', {
+      planName: 'Agosto', daysTrained: 11, totalSets: 316,
+      weightNow: 62.4, weightDelta: -1.2, avgWater: 6.5, avgCalories: 1580,
+    });
+    res.json({ ok: true, sentTo: req.user.email });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // GET /trainer/clients/:id/shopping-list?period=... — lista de mercado de la clienta
 router.get('/clients/:id/shopping-list', async (req, res) => {
   try {

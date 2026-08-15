@@ -180,6 +180,7 @@ export const api = {
     getProgress:   (id) => request(`/trainer/clients/${id}/progress`),
     getNutritionAdherence: (id) => request(`/trainer/clients/${id}/nutrition-adherence`),
     getShoppingList: (id, period) => request(`/trainer/clients/${id}/shopping-list?period=${period || 'weekly'}`),
+    testEmail:       ()           => request('/trainer/test-email', { method: 'POST' }),
     getAdherence:  (id) => request(`/trainer/clients/${id}/adherence-detail`),
     getWorkoutLogs:(id) => request(`/trainer/clients/${id}/workout-logs`),
     getNotes:      (id) => request(`/trainer/clients/${id}/notes`),
