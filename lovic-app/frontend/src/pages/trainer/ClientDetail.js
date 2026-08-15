@@ -15,7 +15,8 @@ function fmtDate(str, opts = { day: 'numeric', month: 'short' }) {
 }
 function photoUrl(p) {
   if (!p) return '';
-  return p.startsWith('http') ? p : `${API_BASE}/${p}`;
+  if (p.startsWith('http')) return p;
+  return `${API_BASE}/progress-photos/f/${p.split('/').pop()}`;
 }
 
 

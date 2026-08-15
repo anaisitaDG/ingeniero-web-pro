@@ -11,7 +11,8 @@ const BASE = process.env.REACT_APP_API_URL || '';
 
 function imgUrl(path) {
   if (!path) return null;
-  return path.startsWith('http') ? path : `${BASE}/${path}`;
+  if (path.startsWith('http')) return path;
+  return `${BASE}/progress-photos/f/${path.split('/').pop()}`;
 }
 
 function formatDate(dateStr) {
