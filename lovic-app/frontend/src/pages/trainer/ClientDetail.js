@@ -91,11 +91,6 @@ export default function ClientDetail() {
   const [savingBilling, setSavingBilling] = useState(false);
   const [saveMsg, setSaveMsg]           = useState('');
 
-  // Meal planner state
-  const [mealPlan, setMealPlan]           = useState(null); // { 1: [...], 2: [...], ... }
-  const [mealPlanDraft, setMealPlanDraft] = useState(null); // editing state
-  const [savingMealPlan, setSavingMealPlan] = useState(false);
-  const [mealPlanDow, setMealPlanDow]     = useState(1); // selected day 1-7
   const [nutritionSubTab, setNutritionSubTab] = useState('planner'); // 'planner' | 'text'
 
   const load = useCallback(async () => {
@@ -164,10 +159,6 @@ export default function ClientDetail() {
     if (tab === 'adherencia') api.trainer.getAdherence(id).then(d => setAdherence(d.days)).catch(console.error);
     if (tab === 'logs') api.trainer.getWorkoutLogs(id).then(d => setWorkoutLogs(d)).catch(console.error);
     if (tab === 'notas') api.trainer.getNotes(id).then(d => setNotes(d.notes || '')).catch(console.error);
-    if (tab === 'nutrition') api.trainer.getMealPlan(id).then(res => {
-      setMealPlan(res.plan || {});
-      setMealPlanDraft(JSON.parse(JSON.stringify(res.plan || {})));
-    }).catch(console.error);
     if (tab === 'facturacion') api.trainer.getBilling().then(res => {
       const c = (res.clients || []).find(c => String(c.id) === String(id));
       if (c) setBilling({ monthly_fee: c.monthly_fee != null ? String(c.monthly_fee) : '', next_payment_date: c.next_payment_date ? String(c.next_payment_date).slice(0, 10) : '', notes: c.notes || '' });
@@ -275,16 +266,6 @@ export default function ClientDetail() {
     try { await api.trainer.saveNutrition(id, manualNutrition); await load(); setSaveMsg('✅ Plan guardado'); setTimeout(() => setSaveMsg(''), 3000); }
     catch (e) { setSaveMsg('❌ ' + e.message); setTimeout(() => setSaveMsg(''), 4000); }
     finally { setSavingNutrition(false); }
-  }
-
-  async function saveMealPlan() {
-    setSavingMealPlan(true);
-    try {
-      await api.trainer.saveMealPlan(id, mealPlanDraft);
-      setMealPlan(JSON.parse(JSON.stringify(mealPlanDraft)));
-      setSaveMsg('✅ Planner guardado'); setTimeout(() => setSaveMsg(''), 3000);
-    } catch (e) { setSaveMsg('❌ ' + e.message); setTimeout(() => setSaveMsg(''), 4000); }
-    finally { setSavingMealPlan(false); }
   }
 
   async function genNutrition() {
@@ -976,40 +957,6 @@ export default function ClientDetail() {
 
       {/* Nutrición */}
       {tab === 'nutrition' && (() => {
-        const DAYS_LABELS_T = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-        const MEAL_META_T = {
-          breakfast: { label: 'Desayuno',    icon: '🌅' },
-          lunch:     { label: 'Almuerzo',    icon: '☀️' },
-          snack:     { label: 'Media tarde', icon: '🍎' },
-          dinner:    { label: 'Cena',        icon: '🌙' },
-        };
-        const MEAL_ORDER_T = ['breakfast', 'lunch', 'snack', 'dinner'];
-
-        const draft = mealPlanDraft || {};
-        const dayDraft = draft[mealPlanDow] || [];
-
-        function setDayMeals(dow, meals) {
-          setMealPlanDraft(prev => ({ ...(prev || {}), [dow]: meals }));
-        }
-
-        function updateItem(idx, field, value) {
-          const updated = [...dayDraft];
-          updated[idx] = { ...updated[idx], [field]: value };
-          setDayMeals(mealPlanDow, updated);
-        }
-
-        function addItem(meal_type) {
-          setDayMeals(mealPlanDow, [...dayDraft, { meal_type, description: '' }]);
-        }
-
-        function removeItem(idx) {
-          setDayMeals(mealPlanDow, dayDraft.filter((_, i) => i !== idx));
-        }
-
-        function copyDayTo(fromDow, toDow) {
-          setMealPlanDraft(prev => ({ ...(prev || {}), [toDow]: JSON.parse(JSON.stringify((prev || {})[fromDow] || [])) }));
-        }
-
         return (
           <div>
             {/* Sub-tab switcher */}

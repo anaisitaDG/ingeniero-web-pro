@@ -1143,12 +1143,33 @@ router.put('/billing/:clientId', requireTrainer, async (req, res) => {
 
 // DELETE /trainer/clients/:id
 router.delete('/clients/:id', requireTrainer, async (req, res) => {
+  const uid = req.params.id;
+  const conn = await db.getConnection();
   try {
-    const [[user]] = await db.query('SELECT id FROM users WHERE id=? AND role="client"', [req.params.id]);
-    if (!user) return res.status(404).json({ error: 'Cliente no encontrado' });
-    await db.query('DELETE FROM users WHERE id=?', [req.params.id]);
+    const [[user]] = await conn.query('SELECT id FROM users WHERE id=? AND role="client"', [uid]);
+    if (!user) { conn.release(); return res.status(404).json({ error: 'Cliente no encontrado' }); }
+    await conn.beginTransaction();
+    // Items del plan de comidas viejo (cuelgan de meal_plan_days, sin FK)
+    await conn.query('DELETE FROM meal_plan_items WHERE day_id IN (SELECT id FROM meal_plan_days WHERE client_id=?)', [uid]).catch(() => {});
+    // Tablas que NO tienen borrado en cascada hacia users → se limpian a mano
+    const orphanTables = [
+      'client_meal_slots', 'meal_completions', 'meal_plan_days',
+      'meal_reminder_sent', 'meal_evening_sent', 'nutrition_alert_sent',
+      'photo_comparisons', 'push_subscriptions',
+    ];
+    const cols = { nutrition_alert_sent: 'client_id', client_meal_slots: 'client_id', meal_completions: 'client_id', meal_plan_days: 'client_id' };
+    for (const t of orphanTables) {
+      const col = cols[t] || 'user_id';
+      await conn.query(`DELETE FROM ${t} WHERE ${col}=?`, [uid]).catch(() => {});
+    }
+    // meal_plan_items cuelga de meal_plan_days (por si quedaron): se borran por sus days ya eliminados
+    await conn.query('DELETE FROM users WHERE id=?', [uid]);
+    await conn.commit();
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) {
+    await conn.rollback();
+    res.status(500).json({ error: e.message });
+  } finally { conn.release(); }
 });
 
 // POST /trainer/push-reminder — envía recordatorio push a un cliente
