@@ -353,7 +353,10 @@ app.get('/progress-photos/img', async (req, res) => {
       if (!fs.existsSync(thumbDir)) fs.mkdirSync(thumbDir, { recursive: true });
       const thumb = path.resolve(thumbDir, `${w}_${file}.webp`);
       if (!fs.existsSync(thumb)) {
-        await _sharp(src).rotate().resize({ width: w, withoutEnlargement: true }).webp({ quality: 72 }).toFile(thumb);
+        // Escribir a un temporal único y renombrar (evita servir un thumb a medio escribir)
+        const tmp = path.resolve(thumbDir, `.tmp_${process.pid}_${Date.now()}_${w}_${file}.webp`);
+        await _sharp(src).rotate().resize({ width: w, withoutEnlargement: true }).webp({ quality: 72 }).toFile(tmp);
+        try { fs.renameSync(tmp, thumb); } catch { /* otro proceso ya lo creó */ }
       }
       return res.sendFile(thumb, opts, err => { if (err && !res.headersSent) res.status(404).end(); });
     } catch { /* si falla el resize, cae al original */ }
