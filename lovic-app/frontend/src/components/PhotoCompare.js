@@ -102,49 +102,46 @@ const AREA_META = {
 function ZoneMarkers({ src, zones }) {
   const positioned = zones.filter(z => AREA_META[z.area]);
   const [active, setActive] = useState(null);
+  const activeZone = active != null ? positioned[active] : null;
+  const at = activeZone ? (TREND[activeZone.trend] || TREND.estable) : null;
+  const activeMeta = activeZone ? AREA_META[activeZone.area] : null;
   return (
-    <div style={{ position: 'relative', width: '100%', aspectRatio: '3/4', borderRadius: 12, overflow: 'hidden', background: 'var(--surface)' }}
-      onClick={() => setActive(null)}>
-      <img src={src} alt="Zonas de cambio" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-      {positioned.map((z, i) => {
-        const meta = AREA_META[z.area];
-        const t = TREND[z.trend] || TREND.estable;
-        const isActive = active === i;
-        const onLeftHalf = meta.x < 50;
-        return (
-          <div key={i}>
-            <button
-              onClick={(e) => { e.stopPropagation(); setActive(isActive ? null : i); }}
+    <div>
+      <div style={{ position: 'relative', width: '100%', aspectRatio: '3/4', borderRadius: 12, overflow: 'hidden', background: 'var(--surface)' }}>
+        <img src={src} alt="Zonas de cambio" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+        {positioned.map((z, i) => {
+          const meta = AREA_META[z.area];
+          const t = TREND[z.trend] || TREND.estable;
+          const isActive = active === i;
+          return (
+            <button key={i}
+              onClick={() => setActive(isActive ? null : i)}
               title={`${meta.label}: ${z.change}`}
               style={{
                 position: 'absolute', left: `${meta.x}%`, top: `${meta.y}%`, transform: 'translate(-50%,-50%)',
-                width: 26, height: 26, borderRadius: '50%', background: t.color, color: '#fff', cursor: 'pointer',
-                fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                border: isActive ? '3px solid #fff' : '2px solid #fff', boxShadow: '0 1px 5px rgba(0,0,0,0.6)',
-                zIndex: isActive ? 5 : 2, animation: isActive ? 'none' : undefined,
+                width: isActive ? 30 : 25, height: isActive ? 30 : 25, borderRadius: '50%', background: t.color, color: '#fff', cursor: 'pointer',
+                fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                border: isActive ? '3px solid #fff' : '2px solid #fff',
+                boxShadow: isActive ? `0 0 0 4px ${t.color}55, 0 1px 5px rgba(0,0,0,0.6)` : '0 1px 5px rgba(0,0,0,0.6)',
+                zIndex: isActive ? 5 : 2, transition: 'all .15s',
               }}>{i + 1}</button>
-            {isActive && (
-              <div style={{
-                position: 'absolute', left: `${Math.min(Math.max(meta.x, 22), 78)}%`, top: `${meta.y}%`,
-                transform: `translate(${onLeftHalf ? '-10%' : '-90%'}, 18px)`,
-                background: 'rgba(20,20,20,0.92)', color: '#fff', borderRadius: 10, padding: '9px 11px',
-                width: 180, zIndex: 6, boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
-              }} onClick={(e) => e.stopPropagation()}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                  <span style={{ fontSize: 11, fontWeight: 800, background: t.color, borderRadius: 5, padding: '1px 6px' }}>{t.label}</span>
-                  <span style={{ fontWeight: 800, fontSize: 13 }}>{meta.label}</span>
-                </div>
-                <p style={{ fontSize: 12.5, lineHeight: 1.4 }}>{z.change}</p>
-              </div>
-            )}
+          );
+        })}
+      </div>
+
+      {/* Detalle debajo de la foto (sin recortes, no tapa el cuerpo) */}
+      {activeZone ? (
+        <div style={{ marginTop: 8, background: 'var(--bg)', borderRadius: 10, padding: '10px 12px', borderLeft: `4px solid ${at.color}` }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+            <span style={{ width: 22, height: 22, borderRadius: '50%', background: at.color, color: '#fff', fontSize: 11, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{active + 1}</span>
+            <span style={{ fontWeight: 800, fontSize: 14 }}>{activeMeta.label}</span>
+            <span style={{ fontSize: 11, fontWeight: 800, color: at.color }}>· {at.label}</span>
           </div>
-        );
-      })}
-      {positioned.length > 0 && (
-        <span style={{ position: 'absolute', bottom: 8, left: 8, background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: 10.5, padding: '3px 8px', borderRadius: 20 }}>
-          👆 Toca cada punto para ver el cambio
-        </span>
-      )}
+          <p style={{ fontSize: 13, lineHeight: 1.45, color: 'var(--text)' }}>{activeZone.change}</p>
+        </div>
+      ) : positioned.length > 0 ? (
+        <p style={{ marginTop: 8, fontSize: 12.5, color: 'var(--muted)', textAlign: 'center' }}>👆 Toca cada punto para ver qué cambió ahí</p>
+      ) : null}
     </div>
   );
 }

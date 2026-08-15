@@ -1,4 +1,4 @@
-const CACHE = 'lovic-v29';
+const CACHE = 'lovic-v30';
 
 // Sin barra final: '/dashboard' debe cubrir tanto '/dashboard' como '/dashboard?date=...'
 const API_PATHS = ['/auth', '/food', '/dashboard', '/measurements', '/bioimpedance', '/questionnaire', '/trainer', '/profile', '/progress-photos', '/workout', '/meal-plan', '/push'];
