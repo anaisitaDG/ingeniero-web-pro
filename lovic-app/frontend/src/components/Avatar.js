@@ -10,7 +10,7 @@ function initials(name) {
 // → iniciales. Cada fallo de imagen (onError) avanza al siguiente candidato.
 export default function Avatar({ user, size = 40, style }) {
   const custom = user?.avatar_url
-    ? (String(user.avatar_url).startsWith('http') ? user.avatar_url : `${BASE}/progress-photos/img?f=${encodeURIComponent(String(user.avatar_url).split('/').pop())}&w=${Math.round(size * 2)}`)
+    ? (String(user.avatar_url).startsWith('http') ? user.avatar_url : `${BASE}/progress-photos/img?f=${encodeURIComponent(String(user.avatar_url).split('/').pop())}&w=${Math.round(size * 2)}&t=${localStorage.getItem('lovic_token') || ''}`)
     : null;
 
   const candidates = [];

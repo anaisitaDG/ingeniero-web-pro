@@ -16,7 +16,7 @@ function fmtDate(str, opts = { day: 'numeric', month: 'short' }) {
 function photoUrl(p, w) {
   if (!p) return '';
   if (p.startsWith('http')) return p;
-  return `${API_BASE}/progress-photos/img?f=${encodeURIComponent(p.split('/').pop())}${w ? `&w=${w}` : ''}`;
+  return `${API_BASE}/progress-photos/img?f=${encodeURIComponent(p.split('/').pop())}${w ? `&w=${w}` : ''}&t=${localStorage.getItem('lovic_token') || ''}`;
 }
 
 

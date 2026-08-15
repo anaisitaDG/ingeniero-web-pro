@@ -340,7 +340,11 @@ app.use('/uploads', express.static(path.resolve(uploadPath)));
 // Con ?w=ANCHO devuelve una miniatura liviana (webp) cacheada en disco.
 let _sharp = null;
 try { _sharp = require('sharp'); } catch { /* opcional: si no está, se sirve el original */ }
+const _jwt = require('jsonwebtoken');
 app.get('/progress-photos/img', async (req, res) => {
+  // Candado: solo con una sesión válida (el token va como ?t= porque <img> no manda cabeceras)
+  try { _jwt.verify(String(req.query.t || ''), process.env.JWT_SECRET); }
+  catch { return res.status(403).end(); }
   const file = path.basename(String(req.query.f || ''));
   if (!file) return res.status(400).end();
   const src = path.resolve(uploadPath, file);

@@ -12,7 +12,7 @@ const BASE = process.env.REACT_APP_API_URL || '';
 function imgUrl(path, w) {
   if (!path) return null;
   if (path.startsWith('http')) return path;
-  return `${BASE}/progress-photos/img?f=${encodeURIComponent(path.split('/').pop())}${w ? `&w=${w}` : ''}`;
+  return `${BASE}/progress-photos/img?f=${encodeURIComponent(path.split('/').pop())}${w ? `&w=${w}` : ''}&t=${localStorage.getItem('lovic_token') || ''}`;
 }
 
 function formatDate(dateStr) {
