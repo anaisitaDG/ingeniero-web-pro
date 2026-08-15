@@ -9,10 +9,10 @@ const ANGLES = [
 
 const BASE = process.env.REACT_APP_API_URL || '';
 
-function imgUrl(path) {
+function imgUrl(path, w) {
   if (!path) return null;
   if (path.startsWith('http')) return path;
-  return `${BASE}/progress-photos/img?f=${encodeURIComponent(path.split('/').pop())}`;
+  return `${BASE}/progress-photos/img?f=${encodeURIComponent(path.split('/').pop())}${w ? `&w=${w}` : ''}`;
 }
 
 function formatDate(dateStr) {
@@ -192,8 +192,8 @@ export default function PhotoCompareView({ a, b, onClose, userId, embedded }) {
     }
   }
 
-  const beforeSrc = older.photos[activeAngle] ? imgUrl(older.photos[activeAngle].image_url) : null;
-  const afterSrc  = newer.photos[activeAngle] ? imgUrl(newer.photos[activeAngle].image_url) : null;
+  const beforeSrc = older.photos[activeAngle] ? imgUrl(older.photos[activeAngle].image_url, 800) : null;
+  const afterSrc  = newer.photos[activeAngle] ? imgUrl(newer.photos[activeAngle].image_url, 800) : null;
 
   const wrapStyle = embedded
     ? {}
@@ -316,7 +316,7 @@ export default function PhotoCompareView({ a, b, onClose, userId, embedded }) {
           <div key={i}>
             <p style={{ fontSize: 12, fontWeight: 700, textAlign: 'center', marginBottom: 6 }}>{formatDate(reg.date)}</p>
             {reg.photos[activeAngle] ? (
-              <img src={imgUrl(reg.photos[activeAngle].image_url)} alt={activeAngle} style={{ width: '100%', borderRadius: 12, display: 'block' }} />
+              <img src={imgUrl(reg.photos[activeAngle].image_url, 800)} alt={activeAngle} style={{ width: '100%', borderRadius: 12, display: 'block' }} />
             ) : (
               <div style={{ width: '100%', aspectRatio: '3/4', borderRadius: 12, background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <span style={{ color: 'var(--muted)', fontSize: 13 }}>Sin foto</span>
@@ -337,7 +337,7 @@ export default function PhotoCompareView({ a, b, onClose, userId, embedded }) {
               <div key={i}>
                 <p style={{ fontSize: 10, textAlign: 'center', color: 'var(--muted)', marginBottom: 3 }}>{formatDate(reg.date)}</p>
                 {reg.photos[key] ? (
-                  <img src={imgUrl(reg.photos[key].image_url)} alt={label} style={{ width: '100%', borderRadius: 10 }} />
+                  <img src={imgUrl(reg.photos[key].image_url, 400)} alt={label} loading="lazy" style={{ width: '100%', borderRadius: 10 }} />
                 ) : (
                   <div style={{ width: '100%', aspectRatio: '3/4', borderRadius: 10, background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <span style={{ fontSize: 10, color: 'var(--muted)' }}>Sin foto</span>

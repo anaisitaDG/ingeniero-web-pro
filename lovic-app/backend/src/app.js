@@ -322,10 +322,28 @@ app.use(express.json());
 app.use('/uploads', express.static(path.resolve(uploadPath)));
 // Imágenes servidas por una URL SIN extensión de imagen (el nombre va como ?f=),
 // para que la regla de nginx que atrapa *.jpg no la intercepte. Pública, para <img>.
-app.get('/progress-photos/img', (req, res) => {
+// Con ?w=ANCHO devuelve una miniatura liviana (webp) cacheada en disco.
+let _sharp = null;
+try { _sharp = require('sharp'); } catch { /* opcional: si no está, se sirve el original */ }
+app.get('/progress-photos/img', async (req, res) => {
   const file = path.basename(String(req.query.f || ''));
   if (!file) return res.status(400).end();
-  res.sendFile(path.resolve(uploadPath, file), err => { if (err && !res.headersSent) res.status(404).end(); });
+  const src = path.resolve(uploadPath, file);
+  const w = Math.min(parseInt(req.query.w, 10) || 0, 1200);
+  const opts = { maxAge: '365d', immutable: true };
+  if (w && _sharp) {
+    try {
+      const fs = require('fs');
+      const thumbDir = path.resolve(uploadPath, '.thumbs');
+      if (!fs.existsSync(thumbDir)) fs.mkdirSync(thumbDir, { recursive: true });
+      const thumb = path.resolve(thumbDir, `${w}_${file}.webp`);
+      if (!fs.existsSync(thumb)) {
+        await _sharp(src).rotate().resize({ width: w, withoutEnlargement: true }).webp({ quality: 72 }).toFile(thumb);
+      }
+      return res.sendFile(thumb, opts, err => { if (err && !res.headersSent) res.status(404).end(); });
+    } catch { /* si falla el resize, cae al original */ }
+  }
+  res.sendFile(src, opts, err => { if (err && !res.headersSent) res.status(404).end(); });
 });
 
 // Límite estricto contra fuerza bruta en autenticación:

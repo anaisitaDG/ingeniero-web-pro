@@ -10,10 +10,10 @@ const ANGLES = [
 
 const BASE = process.env.REACT_APP_API_URL || '';
 
-function imgUrl(path) {
+function imgUrl(path, w) {
   if (!path) return null;
   if (path.startsWith('http')) return path;
-  return `${BASE}/progress-photos/img?f=${encodeURIComponent(path.split('/').pop())}`;
+  return `${BASE}/progress-photos/img?f=${encodeURIComponent(path.split('/').pop())}${w ? `&w=${w}` : ''}`;
 }
 
 function formatDate(dateStr) {
@@ -153,8 +153,8 @@ function RegisterCard({ register, onDelete, onSelect, selected, onLightbox }) {
           <div key={key} style={{ position: 'relative' }}>
             {register.photos[key] ? (
               <img
-                src={imgUrl(register.photos[key].image_url)}
-                alt={label}
+                src={imgUrl(register.photos[key].image_url, 400)}
+                alt={label} loading="lazy"
                 onClick={e => { e.stopPropagation(); onLightbox(imgUrl(register.photos[key].image_url), label); }}
                 style={{ width: '100%', aspectRatio: '3/4', objectFit: 'cover', borderRadius: 8, display: 'block', cursor: 'zoom-in' }}
               />

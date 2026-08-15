@@ -13,10 +13,10 @@ function fmtDate(str, opts = { day: 'numeric', month: 'short' }) {
   const [y, m, d] = str.slice(0, 10).split('-').map(Number);
   return new Date(y, m - 1, d).toLocaleDateString('es', opts);
 }
-function photoUrl(p) {
+function photoUrl(p, w) {
   if (!p) return '';
   if (p.startsWith('http')) return p;
-  return `${API_BASE}/progress-photos/img?f=${encodeURIComponent(p.split('/').pop())}`;
+  return `${API_BASE}/progress-photos/img?f=${encodeURIComponent(p.split('/').pop())}${w ? `&w=${w}` : ''}`;
 }
 
 
@@ -1326,7 +1326,7 @@ export default function ClientDetail() {
                         {['frente','espalda','perfil'].map(angle => (
                           <div key={angle}>
                             {reg.photos[angle] ? (
-                              <img src={photoUrl(reg.photos[angle].image_url)} alt={angle} onClick={e => { e.stopPropagation(); setLightbox(photoUrl(reg.photos[angle].image_url)); }} style={{ width: '100%', aspectRatio: '3/4', objectFit: 'cover', borderRadius: 10, cursor: 'zoom-in', display: 'block' }} />
+                              <img src={photoUrl(reg.photos[angle].image_url, 400)} alt={angle} loading="lazy" onClick={e => { e.stopPropagation(); setLightbox(photoUrl(reg.photos[angle].image_url)); }} style={{ width: '100%', aspectRatio: '3/4', objectFit: 'cover', borderRadius: 10, cursor: 'zoom-in', display: 'block' }} />
                             ) : (
                               <div style={{ width: '100%', aspectRatio: '3/4', borderRadius: 10, background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                 <span style={{ fontSize: 10, color: 'var(--muted)' }}>Sin foto</span>
