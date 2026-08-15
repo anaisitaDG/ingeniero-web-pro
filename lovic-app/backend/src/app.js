@@ -320,9 +320,13 @@ app.use(cors({
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 200, standardHeaders: true }));
 app.use(express.json());
 app.use('/uploads', express.static(path.resolve(uploadPath)));
-// Mismas imágenes servidas bajo un prefijo que nginx SÍ enruta al backend
-// (evita depender de que /uploads esté proxeado). Público, sin auth, para <img>.
-app.use('/progress-photos/f', express.static(path.resolve(uploadPath)));
+// Imágenes servidas por una URL SIN extensión de imagen (el nombre va como ?f=),
+// para que la regla de nginx que atrapa *.jpg no la intercepte. Pública, para <img>.
+app.get('/progress-photos/img', (req, res) => {
+  const file = path.basename(String(req.query.f || ''));
+  if (!file) return res.status(400).end();
+  res.sendFile(path.resolve(uploadPath, file), err => { if (err && !res.headersSent) res.status(404).end(); });
+});
 
 // Límite estricto contra fuerza bruta en autenticación:
 // máx. 10 intentos de login/magic-link cada 15 min por IP.

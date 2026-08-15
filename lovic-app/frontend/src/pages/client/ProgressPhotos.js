@@ -13,7 +13,7 @@ const BASE = process.env.REACT_APP_API_URL || '';
 function imgUrl(path) {
   if (!path) return null;
   if (path.startsWith('http')) return path;
-  return `${BASE}/progress-photos/f/${path.split('/').pop()}`;
+  return `${BASE}/progress-photos/img?f=${encodeURIComponent(path.split('/').pop())}`;
 }
 
 function formatDate(dateStr) {
