@@ -101,21 +101,50 @@ const AREA_META = {
 
 function ZoneMarkers({ src, zones }) {
   const positioned = zones.filter(z => AREA_META[z.area]);
+  const [active, setActive] = useState(null);
   return (
-    <div style={{ position: 'relative', width: '100%', aspectRatio: '3/4', borderRadius: 12, overflow: 'hidden', background: 'var(--surface)' }}>
+    <div style={{ position: 'relative', width: '100%', aspectRatio: '3/4', borderRadius: 12, overflow: 'hidden', background: 'var(--surface)' }}
+      onClick={() => setActive(null)}>
       <img src={src} alt="Zonas de cambio" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
       {positioned.map((z, i) => {
         const meta = AREA_META[z.area];
         const t = TREND[z.trend] || TREND.estable;
+        const isActive = active === i;
+        const onLeftHalf = meta.x < 50;
         return (
-          <div key={i} style={{
-            position: 'absolute', left: `${meta.x}%`, top: `${meta.y}%`, transform: 'translate(-50%,-50%)',
-            width: 24, height: 24, borderRadius: '50%', background: t.color, color: '#fff',
-            fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            border: '2px solid #fff', boxShadow: '0 1px 4px rgba(0,0,0,0.5)',
-          }}>{i + 1}</div>
+          <div key={i}>
+            <button
+              onClick={(e) => { e.stopPropagation(); setActive(isActive ? null : i); }}
+              title={`${meta.label}: ${z.change}`}
+              style={{
+                position: 'absolute', left: `${meta.x}%`, top: `${meta.y}%`, transform: 'translate(-50%,-50%)',
+                width: 26, height: 26, borderRadius: '50%', background: t.color, color: '#fff', cursor: 'pointer',
+                fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                border: isActive ? '3px solid #fff' : '2px solid #fff', boxShadow: '0 1px 5px rgba(0,0,0,0.6)',
+                zIndex: isActive ? 5 : 2, animation: isActive ? 'none' : undefined,
+              }}>{i + 1}</button>
+            {isActive && (
+              <div style={{
+                position: 'absolute', left: `${Math.min(Math.max(meta.x, 22), 78)}%`, top: `${meta.y}%`,
+                transform: `translate(${onLeftHalf ? '-10%' : '-90%'}, 18px)`,
+                background: 'rgba(20,20,20,0.92)', color: '#fff', borderRadius: 10, padding: '9px 11px',
+                width: 180, zIndex: 6, boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+              }} onClick={(e) => e.stopPropagation()}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                  <span style={{ fontSize: 11, fontWeight: 800, background: t.color, borderRadius: 5, padding: '1px 6px' }}>{t.label}</span>
+                  <span style={{ fontWeight: 800, fontSize: 13 }}>{meta.label}</span>
+                </div>
+                <p style={{ fontSize: 12.5, lineHeight: 1.4 }}>{z.change}</p>
+              </div>
+            )}
+          </div>
         );
       })}
+      {positioned.length > 0 && (
+        <span style={{ position: 'absolute', bottom: 8, left: 8, background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: 10.5, padding: '3px 8px', borderRadius: 20 }}>
+          👆 Toca cada punto para ver el cambio
+        </span>
+      )}
     </div>
   );
 }
@@ -181,7 +210,7 @@ export default function PhotoCompareView({ a, b, onClose, userId, embedded }) {
     setAnalyzing(true);
     setAiError(null);
     try {
-      const res = await api.progressPhotos.compare(a.id, b.id, userId, refresh);
+      const res = await api.progressPhotos.compare(a.id, b.id, userId, refresh === true);
       setAnalysis(res.analysis);
       setZones(res.zones || []);
       setBio({ bioBefore: res.bioBefore, bioAfter: res.bioAfter, dateBefore: res.dateBefore, dateAfter: res.dateAfter });
@@ -266,7 +295,7 @@ export default function PhotoCompareView({ a, b, onClose, userId, embedded }) {
             </p>
             <button
               className="btn-primary"
-              onClick={runAnalysis}
+              onClick={() => runAnalysis(false)}
               disabled={analyzing}
               style={{ width: '100%', justifyContent: 'center' }}
             >
