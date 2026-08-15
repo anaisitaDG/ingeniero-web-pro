@@ -453,4 +453,32 @@ async function sendClientStats(trainerEmail, trainerName, clientName, clientId, 
   });
 }
 
-module.exports = { sendMagicLink, sendWelcome, sendWelcomeWithInstructions, notifyTrainerOnboarding, sendWeeklySummary, sendRenewalReminder, sendMeasurementUpdate, sendProgressPhotoUpdate, sendClientStats };
+// ── Aviso a la entrenadora: clientas que dejaron de registrar comida ───────────
+async function sendNutritionAlert(trainerEmail, trainerName, clients) {
+  const appUrl = process.env.APP_URL || 'https://app.lovicgym.com';
+  const rows = clients.map(c => `
+    <tr>
+      <td style="padding:10px 8px;font-weight:700;font-size:14px">${c.name}</td>
+      <td style="padding:10px 8px;text-align:right;color:#b45309;font-weight:700;font-size:13px">${c.daysSince} días sin registrar</td>
+    </tr>`).join('');
+  await resend.emails.send({
+    from: FROM,
+    to: trainerEmail,
+    subject: `🍽️ ${clients.length} clienta${clients.length > 1 ? 's' : ''} dejó de registrar sus comidas`,
+    html: `
+    <div style="font-family:-apple-system,Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)">
+      <div style="background:linear-gradient(135deg,#FF6B6B,#FF8E53);padding:26px;text-align:center">
+        <h1 style="color:#fff;margin:0;font-size:20px;letter-spacing:.06em;font-weight:800">LOVIC</h1>
+        <p style="color:rgba(255,255,255,.9);margin:4px 0 0;font-size:12px;letter-spacing:.12em">SEGUIMIENTO DE NUTRICIÓN</p>
+      </div>
+      <div style="padding:24px 26px 28px">
+        <p style="font-size:15px;color:#1A1A1A;margin:0 0 14px">Hola ${trainerName || ''}, estas clientas llevan varios días sin registrar sus comidas:</p>
+        <table style="width:100%;border-collapse:collapse">${rows}</table>
+        <p style="font-size:13px;color:#666;line-height:1.6;margin:16px 0 20px">Un mensajito tuyo suele reactivarlas. Puedes ver su detalle en la app.</p>
+        <a href="${appUrl}/trainer" style="display:block;text-align:center;text-decoration:none;background:linear-gradient(135deg,#FF6B6B,#FF8E53);color:#fff;font-weight:800;padding:14px;border-radius:12px;font-size:15px">Abrir el panel →</a>
+      </div>
+    </div>`,
+  });
+}
+
+module.exports = { sendMagicLink, sendWelcome, sendWelcomeWithInstructions, notifyTrainerOnboarding, sendWeeklySummary, sendRenewalReminder, sendMeasurementUpdate, sendProgressPhotoUpdate, sendClientStats, sendNutritionAlert };

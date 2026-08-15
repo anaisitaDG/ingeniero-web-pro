@@ -257,6 +257,21 @@ const db = require('./database/db');
         PRIMARY KEY (user_id, sent_date)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
+    // Dedupe del recordatorio de la NOCHE (Nivel 2: por si faltó registrar alguna comida)
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS meal_evening_sent (
+        user_id   VARCHAR(36) NOT NULL,
+        sent_date DATE NOT NULL,
+        PRIMARY KEY (user_id, sent_date)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+    // Dedupe de la alerta a Lorena (clientas sin registrar): máx. 1 cada 3 días por clienta
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS nutrition_alert_sent (
+        client_id VARCHAR(36) PRIMARY KEY,
+        last_sent DATE NOT NULL
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
 
     // ===== Nutrición por tipo de entrenamiento (superior / inferior / descanso) =====
     // Zona muscular de cada ejercicio de la biblioteca: sirve para auto-sugerir el tipo del día
@@ -474,6 +489,35 @@ async function sendClientStatsJob() {
   } catch (e) { console.error('[client-stats] Error:', e.message); }
 }
 
+async function sendNutritionAlertsJob() {
+  try {
+    const { sendNutritionAlert } = require('./services/email');
+    const [[trainer]] = await db.query(`SELECT * FROM users WHERE role='trainer' LIMIT 1`);
+    if (!trainer) return;
+    const today = new Date(Date.now() - 5 * 3600 * 1000).toISOString().slice(0, 10);
+    // Clientas que YA registraron antes pero llevan 4+ días sin hacerlo
+    const [rows] = await db.query(
+      `SELECT u.id, u.name, MAX(f.logged_at) AS last_log
+       FROM users u JOIN food_logs f ON f.user_id = u.id
+       WHERE u.role='client'
+       GROUP BY u.id, u.name
+       HAVING last_log < DATE_SUB(?, INTERVAL 4 DAY)`, [today]);
+    const toAlert = [];
+    for (const r of rows) {
+      const [[a]] = await db.query('SELECT last_sent FROM nutrition_alert_sent WHERE client_id=?', [r.id]);
+      if (a && (new Date(today) - new Date(a.last_sent)) < 3 * 86400000) continue; // ya avisado hace <3 días
+      const lastStr = r.last_log instanceof Date ? r.last_log.toISOString().slice(0, 10) : String(r.last_log).slice(0, 10);
+      toAlert.push({ id: r.id, name: r.name, daysSince: Math.floor((new Date(today) - new Date(lastStr)) / 86400000) });
+    }
+    if (!toAlert.length) return;
+    await sendNutritionAlert(trainer.email, trainer.name, toAlert).catch(e => console.error('[nutrition-alert send]', e.message));
+    for (const c of toAlert) {
+      await db.query('INSERT INTO nutrition_alert_sent (client_id, last_sent) VALUES (?, ?) ON DUPLICATE KEY UPDATE last_sent=VALUES(last_sent)', [c.id, today]);
+    }
+    console.log(`[nutrition-alert] Avisadas ${toAlert.length} clientas a la entrenadora`);
+  } catch (e) { console.error('[nutrition-alert] Error:', e.message); }
+}
+
 (function scheduleRenewalReminders() {
   function msUntilTomorrow9am() {
     const now  = new Date();
@@ -485,6 +529,7 @@ async function sendClientStatsJob() {
   async function runDaily() {
     await sendRenewalRemindersJob();
     await sendClientStatsJob();
+    await sendNutritionAlertsJob();
   }
   function schedule() {
     setTimeout(async () => {

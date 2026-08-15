@@ -157,6 +157,41 @@ function startCronJobs() {
     } catch (e) { console.error('[push] Error recordatorio comida:', e.message); }
   });
 
+  // 8pm Colombia (01:00 UTC) — Nivel 2: si registró algo pero le faltó alguna comida
+  cron.schedule('0 1 * * *', async () => {
+    try {
+      const today = colombiaToday();
+      const [rows] = await db.query(
+        `SELECT ps.user_id, ps.subscription,
+                (SELECT COUNT(DISTINCT meal_type) FROM food_logs WHERE user_id=ps.user_id AND logged_at=?) AS today_meals,
+                (SELECT ROUND(AVG(mc)) FROM (
+                   SELECT COUNT(DISTINCT meal_type) mc FROM food_logs
+                   WHERE user_id=ps.user_id AND logged_at >= DATE_SUB(?, INTERVAL 14 DAY) AND logged_at < ?
+                   GROUP BY logged_at
+                 ) t) AS typical_meals
+         FROM push_subscriptions ps
+         JOIN users u ON u.id = ps.user_id AND u.role = 'client'`, [today, today, today]);
+
+      const byUser = new Map();
+      for (const r of rows) {
+        if (!byUser.has(r.user_id)) byUser.set(r.user_id, { subs: [], today: Number(r.today_meals) || 0, typical: Number(r.typical_meals) || 0 });
+        byUser.get(r.user_id).subs.push(r.subscription);
+      }
+      for (const [userId, u] of byUser) {
+        // Solo si registró AL MENOS una comida hoy (si no registró nada, ya lo cubre el aviso dinámico)
+        // y le falta al menos una respecto a su promedio.
+        if (u.typical < 2 || u.today < 1 || u.today >= u.typical) continue;
+        const [ins] = await db.query('INSERT IGNORE INTO meal_evening_sent (user_id, sent_date) VALUES (?, ?)', [userId, today]);
+        if (ins.affectedRows === 0) continue;
+        const msg = { title: '🌙 ¿Te faltó registrar alguna comida?', body: 'Anotaste algo hoy pero parece que falta. Complétalo antes de dormir para que el conteo quede bien.' };
+        for (const subStr of u.subs) {
+          try { await webpush.sendNotification(JSON.parse(subStr), JSON.stringify({ ...msg, url: '/food' })); }
+          catch (err) { if (err.statusCode === 410 || err.statusCode === 404) { const s = JSON.parse(subStr); await db.query('DELETE FROM push_subscriptions WHERE endpoint=?', [s.endpoint]); } }
+        }
+      }
+    } catch (e) { console.error('[push] Error recordatorio noche:', e.message); }
+  });
+
   // 5pm Colombia (22:00 UTC) — motivación de tarde si no han entrenado
   cron.schedule('0 22 * * *', async () => {
     try {
