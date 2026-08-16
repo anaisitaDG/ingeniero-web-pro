@@ -13,6 +13,7 @@ export default function MyPlan() {
   // Factor de peso corporal: las calorías se ajustan al peso ACTUAL de la persona
   // (las tablas base están calibradas a 65 kg). Ej: 90 kg → factor 1.38.
   const [weightFactor, setWeightFactor] = useState(1);
+  const [bodyWeight, setBodyWeight] = useState(65); // peso real para calorías de fuerza
 
   const [completedDays, setCompletedDays] = useState({});
   const [celebration, setCelebration] = useState(null); // { dayName, kcal }
@@ -27,6 +28,7 @@ export default function MyPlan() {
       setStreak(dRes.streak || 0);
       const bw = Number(dRes.weight_history?.[0]?.weight_kg) || Number(dRes.bio?.weight_kg) || Number(dRes.questionnaire?.weight_kg) || 65;
       setWeightFactor(Math.max(0.6, Math.min(2.2, bw / 65)));
+      setBodyWeight(bw);
       const map = {};
       (cRes.completed || []).forEach(r => {
         if (typeof r === 'string') map[r] = true;
@@ -119,7 +121,7 @@ export default function MyPlan() {
               )}
               {plan.duration_days && <PlanProgress startDate={plan.start_date || plan.created_at} durationDays={plan.duration_days} />}
               {plan.days.map(day => (
-                <DayCard key={day.id} day={day} onLogged={load} weightFactor={weightFactor}
+                <DayCard key={day.id} day={day} onLogged={load} weightFactor={weightFactor} bodyWeight={bodyWeight}
                   completedDate={completedDays[day.id]}
                   onToggleComplete={(kcal, date) => toggleDay(day.id, day.day_name, kcal, date)} />
               ))}
@@ -133,7 +135,7 @@ export default function MyPlan() {
           <div style={{ marginTop: 20, borderTop: '2px dashed var(--border)', paddingTop: 20 }}>
             <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>🆓 ¿Entrenaste algo diferente hoy?</p>
             <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 14 }}>Registra aquí cualquier actividad fuera de tu rutina asignada.</p>
-            <FreeWorkout weightFactor={weightFactor} onCompleted={(kcal, date) => {
+            <FreeWorkout weightFactor={weightFactor} bodyWeight={bodyWeight} onCompleted={(kcal, date) => {
               api.dashboard.get().then(d => {
                 setCelebration({ dayName: 'Entrenamiento libre', kcal, streak: d.streak || streak, date });
                 setStreak(d.streak || streak);
@@ -814,9 +816,8 @@ function ActivityBlock({ emoji, label, options, kcalTable, defaultRate, defaultD
 // kcal de fuerza basadas en el ESFUERZO (reps/segundos) escaladas por el peso corporal,
 // no en el peso externo. Así los ejercicios con el propio peso y las isometrías SÍ cuentan,
 // y el peso levantado solo suma un bono pequeño (no dispara el total).
-// factor = peso_corporal / 65 → recuperamos el peso real: 65 × factor.
-function calcStrengthKcal(setWeights, factor = 1) {
-  const bodyweight = 65 * factor;
+// Recibe el peso corporal REAL de la persona (kg).
+function calcStrengthKcal(setWeights, bodyweight = 65) {
   return Math.round((setWeights || []).reduce((sum, s) => {
     const w = parseFloat(s.weight_kg) || 0;         // peso externo (opcional)
     const r = parseFloat(s.reps_done) || 0;
@@ -839,7 +840,7 @@ function formatDayDate(dateStr) {
 
 const DAYS_ES = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
 
-function DayCard({ day, onLogged, completedDate, onToggleComplete, weightFactor = 1 }) {
+function DayCard({ day, onLogged, completedDate, onToggleComplete, weightFactor = 1, bodyWeight = 65 }) {
   const noAccents = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '');
   const todayDayEs = noAccents(DAYS_ES[new Date().getDay()]);
   const dayNameLc = noAccents(day.day_name.toLowerCase());
@@ -980,10 +981,10 @@ function DayCard({ day, onLogged, completedDate, onToggleComplete, weightFactor 
             mins={ciMins} setMins={setCiMins} done={ciDone} setDone={setCiDone}
             history={allActivities.filter(a => a.type === 'cardio_inicio')} />
           {day.exercises.map(ex => (
-            <ExerciseCard key={ex.id} exercise={ex} onLogged={() => onLogged(false)} weightFactor={weightFactor}
+            <ExerciseCard key={ex.id} exercise={ex} onLogged={() => onLogged(false)} weightFactor={weightFactor} bodyWeight={bodyWeight}
               onKcalChange={kcal => setExKcal(prev => ({ ...prev, [ex.id]: kcal }))} />
           ))}
-          <ExtraExercises dayId={day.id} onKcalChange={setExtraKcal} weightFactor={weightFactor} />
+          <ExtraExercises dayId={day.id} onKcalChange={setExtraKcal} weightFactor={weightFactor} bodyWeight={bodyWeight} />
           <ActivityBlock emoji="🏃" label="Cardio final" options={CARDIO_INICIO_OPTIONS} kcalTable={CARDIO_INICIO_KCAL} defaultRate={CARDIO_DEFAULT_RATE} weightFactor={weightFactor}
             defaultDuration={day.cardio_duration} choice={cardioChoice} setChoice={setCardioChoice}
             mins={cardioMins} setMins={setCardioMins} done={cardioDone} setDone={setCardioDone}
@@ -1036,7 +1037,7 @@ function DayCard({ day, onLogged, completedDate, onToggleComplete, weightFactor 
   );
 }
 
-function ExerciseCard({ exercise: ex, onLogged, onKcalChange, weightFactor = 1 }) {
+function ExerciseCard({ exercise: ex, onLogged, onKcalChange, weightFactor = 1, bodyWeight = 65 }) {
   const [showLog, setShowLog]     = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory]     = useState(null);
@@ -1058,8 +1059,8 @@ function ExerciseCard({ exercise: ex, onLogged, onKcalChange, weightFactor = 1 }
 
   // Report kcal to parent whenever weights change
   useEffect(() => {
-    onKcalChange?.(calcStrengthKcal(setWeights, weightFactor));
-  }, [setWeights, onKcalChange, weightFactor]); // eslint-disable-line
+    onKcalChange?.(calcStrengthKcal(setWeights, bodyWeight));
+  }, [setWeights, onKcalChange, bodyWeight]); // eslint-disable-line
 
   const today = new Date().toLocaleDateString('en-CA');
   const lastSession = ex.last_session;
@@ -1284,7 +1285,7 @@ function setChipText(s, i) {
 }
 
 // Ejercicios que la clienta agrega al día de HOY (solo para esta sesión)
-function ExtraExercises({ dayId, onKcalChange, weightFactor = 1 }) {
+function ExtraExercises({ dayId, onKcalChange, weightFactor = 1, bodyWeight = 65 }) {
   const today = new Date().toLocaleDateString('en-CA');
   const [list, setList]     = useState([]);
   const [adding, setAdding] = useState(false);
@@ -1298,9 +1299,9 @@ function ExtraExercises({ dayId, onKcalChange, weightFactor = 1 }) {
 
   // Reporta al día las kcal de los ejercicios extra guardados
   useEffect(() => {
-    const k = (list || []).reduce((sum, item) => sum + calcStrengthKcal(item.sets, weightFactor), 0);
+    const k = (list || []).reduce((sum, item) => sum + calcStrengthKcal(item.sets, bodyWeight), 0);
     onKcalChange?.(k);
-  }, [list, onKcalChange, weightFactor]);
+  }, [list, onKcalChange, bodyWeight]);
 
   function addRow()     { setSets(s => [...s, { weight_kg: '', reps_done: '', duration_secs: '' }]); }
   function rmRow(i)     { setSets(s => s.filter((_, j) => j !== i)); }
@@ -1391,7 +1392,7 @@ function emptyExercise() {
   return { name: '', type: 'strength', sets: '', reps: '', weight_kg: '', duration_secs: '', duration_mins: '' };
 }
 
-function FreeWorkout({ onCompleted, weightFactor = 1 }) {
+function FreeWorkout({ onCompleted, weightFactor = 1, bodyWeight = 65 }) {
   const [open, setOpen] = useState(false);
   const [exercises, setExercises] = useState([emptyExercise()]);
   const [note, setNote] = useState('');
@@ -1428,10 +1429,12 @@ function FreeWorkout({ onCompleted, weightFactor = 1 }) {
       const r = await api.workout.getFree(); setSessions(r.sessions || []);
       // calc kcal approx (ajustado al peso corporal)
       const kcal = payload.reduce((sum, e) => {
-        if (e.type === 'cardio') return sum + (e.duration_mins || 0) * 7;
-        if (e.type === 'time')   return sum + ((e.sets || 1) * (e.duration_secs || 0) / 60) * 4;
-        return sum + ((e.sets || 3) * (e.reps || 10) * (e.weight_kg || 0) * 0.1);
-      }, 0) * weightFactor;
+        // Cardio: por minutos, escalado al peso real (tabla base a 65 kg)
+        if (e.type === 'cardio') return sum + (e.duration_mins || 0) * 7 * (bodyWeight / 65);
+        // Fuerza / isometría: por esfuerzo × peso corporal REAL + bono por peso externo
+        const effReps = (e.sets || (e.type === 'time' ? 1 : 3)) * ((e.reps || 0) + (e.duration_secs || 0) / 3 || (e.type === 'time' ? 0 : 10));
+        return sum + effReps * (bodyWeight * 0.01 + (e.weight_kg || 0) * 0.004);
+      }, 0);
       setExercises([emptyExercise()]); setNote(''); setOpen(false);
       onCompleted(Math.round(kcal), date);
     } catch (e) { alert(e.message); }
