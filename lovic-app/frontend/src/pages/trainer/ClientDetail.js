@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
 import { AreaChart, Area, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
@@ -52,6 +52,8 @@ export default function ClientDetail() {
   const [planName, setPlanName]             = useState('');   // etiqueta de la rutina (ej. "Agosto")
   const [creatingNew, setCreatingNew]       = useState(false); // armando una rutina nueva (editor en blanco)
   const [collapsedDays, setCollapsedDays]   = useState({});   // acordeón: { [day._key]: true } = plegado
+  const dragEx = useRef(null);   // { di, ei } del ejercicio que se arrastra
+  const [dragOver, setDragOver] = useState(null); // ejercicio destino resaltado
   const [workoutPlans, setWorkoutPlans]     = useState([]);   // rutinas activa + archivadas
   const [viewingSummary, setViewingSummary] = useState(null); // resumen del mes de una rutina
   const [summaryLoading, setSummaryLoading] = useState(false);
@@ -385,6 +387,18 @@ export default function ClientDetail() {
   }
   function removeExercise(dayIdx, exIdx) {
     setWorkoutDays(d => d.map((day, i) => i === dayIdx ? { ...day, exercises: day.exercises.filter((_, j) => j !== exIdx) } : day));
+  }
+  // Reordenar ejercicios dentro de un día (arrastrar o flechas)
+  function moveExercise(dayIdx, from, to) {
+    if (from === to || to < 0) return;
+    setWorkoutDays(d => d.map((day, i) => {
+      if (i !== dayIdx) return day;
+      const arr = [...day.exercises];
+      if (to >= arr.length) return day;
+      const [moved] = arr.splice(from, 1);
+      arr.splice(to, 0, moved);
+      return { ...day, exercises: arr };
+    }));
   }
   function updateExercise(dayIdx, exIdx, field, val) {
     setWorkoutDays(d => d.map((day, i) => i !== dayIdx ? day : {
@@ -789,12 +803,30 @@ export default function ClientDetail() {
 
                 {/* Exercises */}
                 {day.exercises.map((ex, ei) => (
-                  <div key={ex._key} style={{ background: 'var(--bg)', borderRadius: 12, padding: 14, marginBottom: 10 }}>
+                  <div key={ex._key}
+                    onDragOver={e => { e.preventDefault(); if (dragOver !== `${di}-${ei}`) setDragOver(`${di}-${ei}`); }}
+                    onDragLeave={() => setDragOver(null)}
+                    onDrop={() => { if (dragEx.current && dragEx.current.di === di) moveExercise(di, dragEx.current.ei, ei); dragEx.current = null; setDragOver(null); }}
+                    style={{ background: 'var(--bg)', borderRadius: 12, padding: 14, marginBottom: 10,
+                      outline: dragOver === `${di}-${ei}` ? '2px dashed var(--coral)' : 'none' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                      <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--coral)' }}>Ejercicio {ei + 1}</span>
-                      {day.exercises.length > 1 && (
-                        <button onClick={() => removeExercise(di, ei)} style={{ background: 'none', border: 'none', fontSize: 16, cursor: 'pointer', color: 'var(--muted)' }}>✕</button>
-                      )}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span draggable
+                          onDragStart={() => { dragEx.current = { di, ei }; }}
+                          onDragEnd={() => { dragEx.current = null; setDragOver(null); }}
+                          title="Arrastra para reordenar"
+                          style={{ cursor: 'grab', color: 'var(--muted)', fontSize: 16, userSelect: 'none', lineHeight: 1 }}>⠿</span>
+                        <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--coral)' }}>Ejercicio {ei + 1}</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <button onClick={() => moveExercise(di, ei, ei - 1)} disabled={ei === 0} title="Subir"
+                          style={{ background: 'none', border: 'none', fontSize: 14, cursor: ei === 0 ? 'default' : 'pointer', color: ei === 0 ? 'var(--border)' : 'var(--muted)', padding: '2px 4px' }}>▲</button>
+                        <button onClick={() => moveExercise(di, ei, ei + 1)} disabled={ei === day.exercises.length - 1} title="Bajar"
+                          style={{ background: 'none', border: 'none', fontSize: 14, cursor: ei === day.exercises.length - 1 ? 'default' : 'pointer', color: ei === day.exercises.length - 1 ? 'var(--border)' : 'var(--muted)', padding: '2px 4px' }}>▼</button>
+                        {day.exercises.length > 1 && (
+                          <button onClick={() => removeExercise(di, ei)} style={{ background: 'none', border: 'none', fontSize: 16, cursor: 'pointer', color: 'var(--muted)', marginLeft: 4 }}>✕</button>
+                        )}
+                      </div>
                     </div>
 
                     <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
