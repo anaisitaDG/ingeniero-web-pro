@@ -257,6 +257,9 @@ const db = require('./database/db');
         PRIMARY KEY (user_id, sent_date)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
+    // Fibra en cada registro de comida (informativa, sin meta)
+    await db.query(`ALTER TABLE food_logs ADD COLUMN IF NOT EXISTS fiber_g SMALLINT DEFAULT NULL`).catch(() => {});
+
     // Dedupe del recordatorio de la NOCHE (Nivel 2: por si faltó registrar alguna comida)
     await db.query(`
       CREATE TABLE IF NOT EXISTS meal_evening_sent (

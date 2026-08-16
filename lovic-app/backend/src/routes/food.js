@@ -41,19 +41,19 @@ router.post('/scan', scanUpload.single('photo'), async (req, res) => {
 // POST /food/log-parsed — guarda un registro ya revisado por la clienta (sin re-analizar)
 router.post('/log-parsed', async (req, res) => {
   try {
-    const { input_text, items, calories, protein_g, carbs_g, fat_g, meal_type } = req.body;
+    const { input_text, items, calories, protein_g, carbs_g, fat_g, fiber_g, meal_type } = req.body;
     if (!input_text?.trim()) return res.status(400).json({ error: 'Descripción requerida' });
     const VALID = ['breakfast', 'lunch', 'dinner', 'snack'];
     const finalMealType = VALID.includes(meal_type) ? meal_type : 'snack';
     const today = req.body.date || colombiaToday();
 
     await db.query(
-      `INSERT INTO food_logs (id, user_id, input_text, parsed_items, calories, protein_g, carbs_g, fat_g, meal_type, logged_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO food_logs (id, user_id, input_text, parsed_items, calories, protein_g, carbs_g, fat_g, fiber_g, meal_type, logged_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         uuidv4(), req.user.id, input_text.trim(),
         JSON.stringify(Array.isArray(items) ? items : []),
-        num(calories), num(protein_g), num(carbs_g), num(fat_g),
+        num(calories), num(protein_g), num(carbs_g), num(fat_g), num(fiber_g),
         finalMealType, today,
       ]
     );
@@ -110,19 +110,19 @@ router.post('/log', async (req, res) => {
 
   const today = req.body.date || colombiaToday();
   await db.query(
-    `INSERT INTO food_logs (id, user_id, input_text, parsed_items, calories, protein_g, carbs_g, fat_g, meal_type, logged_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO food_logs (id, user_id, input_text, parsed_items, calories, protein_g, carbs_g, fat_g, fiber_g, meal_type, logged_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       uuidv4(), req.user.id, input_text,
       JSON.stringify(parsed.items),
-      parsed.total_calories, parsed.protein_g, parsed.carbs_g, parsed.fat_g,
+      parsed.total_calories, parsed.protein_g, parsed.carbs_g, parsed.fat_g, parsed.fiber_g ?? null,
       finalMealType, today,
     ]
   );
 
   const [[sums]] = await db.query(
     `SELECT COALESCE(SUM(calories),0) AS calories, COALESCE(SUM(protein_g),0) AS protein_g,
-            COALESCE(SUM(carbs_g),0) AS carbs_g, COALESCE(SUM(fat_g),0) AS fat_g
+            COALESCE(SUM(carbs_g),0) AS carbs_g, COALESCE(SUM(fat_g),0) AS fat_g, COALESCE(SUM(fiber_g),0) AS fiber_g
      FROM food_logs WHERE user_id = ? AND logged_at = ?`,
     [req.user.id, today]
   );
@@ -139,6 +139,7 @@ router.post('/log', async (req, res) => {
         protein: { consumed: Number(sums.protein_g), target: req.user.protein_target_g || null },
         carbs:   { consumed: Number(sums.carbs_g),   target: req.user.carbs_target_g || null },
         fat:     { consumed: Number(sums.fat_g),     target: req.user.fat_target_g || null },
+        fiber:   { consumed: Number(sums.fiber_g),   target: null },
       },
     },
   });
@@ -156,7 +157,7 @@ router.get('/today', async (req, res) => {
 
     const [[sums]] = await db.query(
       `SELECT COALESCE(SUM(calories),0) AS calories, COALESCE(SUM(protein_g),0) AS protein_g,
-              COALESCE(SUM(carbs_g),0) AS carbs_g, COALESCE(SUM(fat_g),0) AS fat_g
+              COALESCE(SUM(carbs_g),0) AS carbs_g, COALESCE(SUM(fat_g),0) AS fat_g, COALESCE(SUM(fiber_g),0) AS fiber_g
        FROM food_logs WHERE user_id = ? AND logged_at = ?`,
       [req.user.id, today]
     );
@@ -167,6 +168,7 @@ router.get('/today', async (req, res) => {
       protein: { consumed: Number(sums.protein_g), target: req.user.protein_target_g || null },
       carbs:   { consumed: Number(sums.carbs_g),   target: req.user.carbs_target_g || null },
       fat:     { consumed: Number(sums.fat_g),     target: req.user.fat_target_g || null },
+      fiber:   { consumed: Number(sums.fiber_g),   target: null },
     };
 
     res.json({
@@ -193,7 +195,7 @@ router.get('/history', async (req, res) => {
     const days = Math.min(parseInt(req.query.days) || 7, 30);
     const [rows] = await db.query(
       `SELECT logged_at, SUM(calories) as calories, SUM(protein_g) as protein_g,
-              SUM(carbs_g) as carbs_g, SUM(fat_g) as fat_g
+              SUM(carbs_g) as carbs_g, SUM(fat_g) as fat_g, SUM(fiber_g) as fiber_g
        FROM food_logs WHERE user_id = ? AND logged_at >= DATE_SUB(?, INTERVAL ? DAY)
        GROUP BY logged_at ORDER BY logged_at ASC`,
       [req.user.id, colombiaToday(), days]

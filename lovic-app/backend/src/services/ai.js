@@ -21,11 +21,13 @@ Devuelve exactamente este formato JSON:
   "protein_g": número,
   "carbs_g": número,
   "fat_g": número,
+  "fiber_g": número,
   "meal_type": "breakfast|lunch|dinner|snack"
 }
 
 Reglas:
 - Estima las porciones de forma realista para una persona adulta
+- "fiber_g" es la fibra estimada (frutas, verduras, granos integrales, legumbres aportan; carnes y lácteos casi no)
 - "patacón" es plátano verde frito, típico colombiano (~150 kcal cada uno)
 - "mojarra" es un pescado colombiano (~200 kcal porción normal)
 - Si no reconoces un alimento, estima con alimentos similares
@@ -74,6 +76,7 @@ Devuelve SOLO un JSON válido, sin texto adicional:
   "protein_g": número,
   "carbs_g": número,
   "fat_g": número,
+  "fiber_g": número,
   "meal_type": "breakfast|lunch|dinner|snack",
   "note": "si algo está tapado o es difícil de estimar, acláralo aquí en 1 frase"
 }

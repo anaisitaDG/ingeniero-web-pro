@@ -38,6 +38,9 @@ export default function FoodLogger() {
   const [expandedDay, setExpandedDay] = useState(null);
   const [adherence, setAdherence] = useState(null);
   const [insights, setInsights] = useState(null);
+  const [listening, setListening] = useState(false);
+  const recognitionRef = useRef(null);
+  const speechSupported = typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition);
   const [loadError, setLoadError] = useState(false);
   const photoRef = useRef(null);
   const [scanning, setScanning] = useState(false);
@@ -62,6 +65,7 @@ export default function FoodLogger() {
         protein_g: p.protein_g || 0,
         carbs_g: p.carbs_g || 0,
         fat_g: p.fat_g || 0,
+        fiber_g: p.fiber_g || 0,
         meal_type: p.meal_type || mealType,
         items: p.items || [],
         note: p.note || '',
@@ -84,6 +88,7 @@ export default function FoodLogger() {
         protein_g: review.protein_g,
         carbs_g: review.carbs_g,
         fat_g: review.fat_g,
+        fiber_g: review.fiber_g,
         meal_type: review.meal_type,
       }, logDate);
       setDaily(res.daily);
@@ -145,6 +150,7 @@ export default function FoodLogger() {
         prot: Math.round(r.protein_g),
         carbs: Math.round(r.carbs_g),
         fat: Math.round(r.fat_g),
+        fiber: r.fiber_g != null ? Math.round(r.fiber_g) : null,
         target,
       })));
     } catch (e) {
@@ -152,6 +158,30 @@ export default function FoodLogger() {
     } finally {
       setHistLoading(false);
     }
+  }
+
+  function toggleVoice() {
+    if (listening) { recognitionRef.current?.stop(); return; }
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return;
+    const rec = new SR();
+    rec.lang = 'es-CO';
+    rec.interimResults = true;
+    rec.continuous = false;
+    let finalText = '';
+    rec.onresult = (ev) => {
+      let interim = '';
+      for (let i = ev.resultIndex; i < ev.results.length; i++) {
+        const t = ev.results[i][0].transcript;
+        if (ev.results[i].isFinal) finalText += t; else interim += t;
+      }
+      setInput((finalText + interim).trim());
+    };
+    rec.onerror = () => setListening(false);
+    rec.onend = () => setListening(false);
+    recognitionRef.current = rec;
+    setListening(true);
+    rec.start();
   }
 
   async function handleLog(e) {
@@ -270,12 +300,21 @@ export default function FoodLogger() {
             </div>
             <label className="label">¿Qué comiste?</label>
             <div style={{ display: 'flex', gap: 10 }}>
-              <input className="input" placeholder="Ej: 2 huevos revueltos, 1 arepa, café con leche" value={input} onChange={e => setInput(e.target.value)} />
+              <input className="input" placeholder="Ej: 2 huevos revueltos, 1 arepa, café con leche" value={input} onChange={e => setInput(e.target.value)} style={{ flex: 1 }} />
+              {speechSupported && (
+                <button type="button" onClick={toggleVoice} title="Dictar por voz" style={{
+                  padding: '0 14px', borderRadius: 12, border: 'none', cursor: 'pointer', fontSize: 18, flexShrink: 0,
+                  background: listening ? '#dc2626' : 'var(--coral-light)', color: listening ? '#fff' : 'var(--coral)',
+                  animation: listening ? 'pulse 1s infinite' : 'none',
+                }}>{listening ? '⏹️' : '🎤'}</button>
+              )}
               <button className="btn-primary" type="submit" disabled={loading} style={{ whiteSpace: 'nowrap', padding: '12px 18px' }}>
                 {loading ? <span className="spinner" /> : 'Registrar'}
               </button>
             </div>
-            <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 6 }}>La IA calculará las calorías automáticamente</p>
+            <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 6 }}>
+              {listening ? '🎤 Escuchando… habla lo que comiste' : 'Escribe, dicta con 🎤 o escanea. La IA calcula las calorías.'}
+            </p>
 
             {/* Escanear plato con la cámara */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '12px 0 2px' }}>
@@ -383,6 +422,17 @@ export default function FoodLogger() {
                   })}
                 </div>
               )}
+
+              {/* Fibra — informativa (sin meta) */}
+              {daily.macros?.fiber && (
+                <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12.5 }}>
+                  <span style={{ fontWeight: 600 }}>🌾 Fibra</span>
+                  <span style={{ color: 'var(--muted)' }}>
+                    {Math.round(daily.macros.fiber.consumed)} g hoy
+                    {daily.macros.fiber.consumed > 0 && daily.macros.fiber.consumed < 20 ? ' · súmale frutas/verduras 🥦' : ''}
+                  </span>
+                </div>
+              )}
             </div>
           )}
 
@@ -487,6 +537,7 @@ export default function FoodLogger() {
                         <span>P <strong>{r.prot}g</strong></span>
                         <span>C <strong>{r.carbs}g</strong></span>
                         <span>G <strong>{r.fat}g</strong></span>
+                        {r.fiber != null && <span>🌾 <strong>{r.fiber}g</strong></span>}
                         {dayItems.length > 0 && !isOpen && <span style={{ marginLeft: 'auto', color: 'var(--coral)', fontWeight: 600 }}>Ver qué comió</span>}
                       </div>
                     </div>
