@@ -317,10 +317,15 @@ function MealByTypeView({ legacyNutrition }) {
         const s = items[pos];
         const isEaten = eaten.includes(`plan:${s.id}`);
         const many = items.length > 1;
-        const go = (delta) => setOptIdx(o => ({ ...o, [key]: (pos + delta + items.length) % items.length }));
-        const arrow = (dir) => (
-          <button onClick={() => go(dir === '◀' ? -1 : 1)} style={{
-            flexShrink: 0, width: 30, borderRadius: 8, border: 'none', cursor: 'pointer',
+        const canPrev = pos > 0;
+        const canNext = pos < items.length - 1;
+        // Sin dar la vuelta: la flecha se queda en el borde (no cicla)
+        const go = (delta) => setOptIdx(o => ({ ...o, [key]: Math.min(Math.max(pos + delta, 0), items.length - 1) }));
+        // Reservamos el espacio de la flecha para que la tarjeta no salte; se oculta cuando no hay a dónde ir
+        const arrow = (dir, enabled) => (
+          <button onClick={enabled ? () => go(dir === '◀' ? -1 : 1) : undefined} aria-hidden={!enabled} style={{
+            flexShrink: 0, width: 30, borderRadius: 8, border: 'none',
+            cursor: enabled ? 'pointer' : 'default', visibility: enabled ? 'visible' : 'hidden',
             background: 'var(--bg)', color: 'var(--coral)', fontSize: 14, fontWeight: 800,
           }}>{dir}</button>
         );
@@ -332,7 +337,7 @@ function MealByTypeView({ legacyNutrition }) {
             </div>
             <div className="card" style={{ padding: 14, borderLeft: `4px solid ${isEaten ? '#16a34a' : ZONE_META[zone].color}`, opacity: isEaten ? 0.85 : 1, transition: 'all .3s' }}>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                {many && arrow('◀')}
+                {many && arrow('◀', canPrev)}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontWeight: 700, fontSize: 15, textDecoration: isEaten ? 'line-through' : 'none' }}>{s.name}</p>
                   {s.description && <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: 3 }}>{s.description}</p>}
@@ -342,7 +347,7 @@ function MealByTypeView({ legacyNutrition }) {
                     background: isEaten ? '#16a34a' : 'var(--coral-light)', color: isEaten ? '#fff' : 'var(--coral)',
                   }}>{busy[s.id] ? '…' : (isEaten ? '✓ Esta comí' : 'Ya comí esta')}</button>
                 </div>
-                {many && arrow('▶')}
+                {many && arrow('▶', canNext)}
               </div>
               {many && eatenPos < 0 && (
                 <p style={{ fontSize: 11, color: 'var(--muted)', textAlign: 'center', marginTop: 8 }}>◀ ▶ Desliza y elige la que vas a comer</p>
