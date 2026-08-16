@@ -253,13 +253,13 @@ router.put('/clients/:id/workout', async (req, res) => {
           const existingExId = existingExsFull[ei]?.id || null;
           if (existingExId) {
             await conn.query(
-              'UPDATE workout_exercises SET name=?, youtube_url=?, sets=?, reps=?, weight_kg=?, exercise_order=?, library_exercise_id=? WHERE id=?',
-              [ex.name, ex.youtube_url || null, ex.sets || 3, ex.reps || '10', ex.weight_kg || null, ei, ex.library_exercise_id || null, existingExId]
+              'UPDATE workout_exercises SET name=?, youtube_url=?, sets=?, reps=?, weight_kg=?, exercise_order=?, library_exercise_id=?, tracking_type=? WHERE id=?',
+              [ex.name, ex.youtube_url || null, ex.sets || 3, ex.reps || '10', ex.weight_kg || null, ei, ex.library_exercise_id || null, ex.tracking_type === 'time' ? 'time' : 'reps', existingExId]
             );
           } else {
             await conn.query(
-              'INSERT INTO workout_exercises (id, day_id, name, youtube_url, sets, reps, weight_kg, exercise_order, library_exercise_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-              [uuidv4(), dayId, ex.name, ex.youtube_url || null, ex.sets || 3, ex.reps || '10', ex.weight_kg || null, ei, ex.library_exercise_id || null]
+              'INSERT INTO workout_exercises (id, day_id, name, youtube_url, sets, reps, weight_kg, exercise_order, library_exercise_id, tracking_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+              [uuidv4(), dayId, ex.name, ex.youtube_url || null, ex.sets || 3, ex.reps || '10', ex.weight_kg || null, ei, ex.library_exercise_id || null, ex.tracking_type === 'time' ? 'time' : 'reps']
             );
           }
         }
@@ -294,8 +294,8 @@ router.put('/clients/:id/workout', async (req, res) => {
       for (let ei = 0; ei < exercises.length; ei++) {
         const ex = exercises[ei];
         await conn.query(
-          'INSERT INTO workout_exercises (id, day_id, name, youtube_url, sets, reps, weight_kg, exercise_order, library_exercise_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-          [uuidv4(), dayId, ex.name, ex.youtube_url || null, ex.sets || 3, ex.reps || '10', ex.weight_kg || null, ei, ex.library_exercise_id || null]
+          'INSERT INTO workout_exercises (id, day_id, name, youtube_url, sets, reps, weight_kg, exercise_order, library_exercise_id, tracking_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [uuidv4(), dayId, ex.name, ex.youtube_url || null, ex.sets || 3, ex.reps || '10', ex.weight_kg || null, ei, ex.library_exercise_id || null, ex.tracking_type === 'time' ? 'time' : 'reps']
         );
       }
     }
@@ -337,8 +337,8 @@ router.post('/clients/:id/workout/new', async (req, res) => {
       for (let ei = 0; ei < (day.exercises || []).length; ei++) {
         const ex = day.exercises[ei];
         await conn.query(
-          'INSERT INTO workout_exercises (id, day_id, name, youtube_url, sets, reps, weight_kg, exercise_order, library_exercise_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-          [uuidv4(), dayId, ex.name, ex.youtube_url || null, ex.sets || 3, ex.reps || '10', ex.weight_kg || null, ei, ex.library_exercise_id || null]
+          'INSERT INTO workout_exercises (id, day_id, name, youtube_url, sets, reps, weight_kg, exercise_order, library_exercise_id, tracking_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [uuidv4(), dayId, ex.name, ex.youtube_url || null, ex.sets || 3, ex.reps || '10', ex.weight_kg || null, ei, ex.library_exercise_id || null, ex.tracking_type === 'time' ? 'time' : 'reps']
         );
       }
     }

@@ -1044,8 +1044,9 @@ function ExerciseCard({ exercise: ex, onLogged, onKcalChange, weightFactor = 1, 
   const plannedSets = ex.sets || 0;
   // Valores de la última vez: se muestran como PISTA (placeholder), no pre-llenados,
   // para que la sesión arranque en blanco y las calorías no cuenten antes de registrar.
-  const lastW = ex.last_session?.weights ? ex.last_session.weights.split(',') : [];
-  const lastR = ex.last_session?.reps    ? ex.last_session.reps.split(',')    : [];
+  const lastW = ex.last_session?.weights   ? ex.last_session.weights.split(',')   : [];
+  const lastR = ex.last_session?.reps      ? ex.last_session.reps.split(',')      : [];
+  const lastD = ex.last_session?.durations ? ex.last_session.durations.split(',') : [];
   const [setWeights, setSetWeights] = useState(() =>
     Array.from({ length: plannedSets }, () => ({ weight_kg: '', reps_done: '', duration_secs: '' }))
   );
@@ -1120,7 +1121,7 @@ function ExerciseCard({ exercise: ex, onLogged, onKcalChange, weightFactor = 1, 
         <div style={{ flex: 1 }}>
           <p style={{ fontWeight: 700, fontSize: 15 }}>{ex.name}</p>
           <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: 2 }}>
-            {ex.sets} series × {ex.reps} reps{ex.weight_kg ? ` · ${ex.weight_kg} kg` : ''}
+            {ex.sets} series × {ex.reps} {ex.tracking_type === 'time' ? 'seg' : 'reps'}{ex.weight_kg ? ` · ${ex.weight_kg} kg` : ''}
           </p>
         </div>
         {ex.youtube_url && (
@@ -1184,8 +1185,14 @@ function ExerciseCard({ exercise: ex, onLogged, onKcalChange, weightFactor = 1, 
           <p style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>Registrar sesión de hoy</p>
           <div style={{ display: 'flex', gap: 6, marginBottom: 4, paddingLeft: 42 }}>
             <span style={{ flex: 1, fontSize: 10, color: 'var(--muted)', textAlign: 'center' }}>Peso (kg)</span>
-            <span style={{ flex: 1, fontSize: 10, color: 'var(--muted)', textAlign: 'center' }}>Reps</span>
-            <span style={{ flex: 1, fontSize: 10, color: 'var(--muted)', textAlign: 'center' }}>Iso (seg)</span>
+            {ex.tracking_type === 'time' ? (
+              <span style={{ flex: 1, fontSize: 10, color: 'var(--muted)', textAlign: 'center' }}>⏱️ Tiempo (seg)</span>
+            ) : (
+              <>
+                <span style={{ flex: 1, fontSize: 10, color: 'var(--muted)', textAlign: 'center' }}>Reps</span>
+                <span style={{ flex: 1, fontSize: 10, color: 'var(--muted)', textAlign: 'center' }}>Iso (seg)</span>
+              </>
+            )}
             <span style={{ width: 18, flexShrink: 0 }} />
           </div>
           {setWeights.map((s, i) => {
@@ -1196,17 +1203,26 @@ function ExerciseCard({ exercise: ex, onLogged, onKcalChange, weightFactor = 1, 
                 {i + 1}{isExtra ? '+' : ''}
               </span>
               <input className="input" type="number" step="0.5" min="0" max="999"
-                placeholder={lastW[i] || ex.weight_kg || '0'} value={s.weight_kg}
+                placeholder={ex.tracking_type === 'time' ? (lastW[i] || ex.weight_kg || 'opc.') : (lastW[i] || ex.weight_kg || '0')} value={s.weight_kg}
                 onChange={e => setSetWeights(w => w.map((x, j) => j === i ? { ...x, weight_kg: e.target.value } : x))}
                 style={{ flex: 1, padding: '8px 4px', textAlign: 'center', minWidth: 0 }} />
-              <input className="input" type="number" min="0"
-                placeholder={lastR[i] || ex.reps || '10'} value={s.reps_done}
-                onChange={e => setSetWeights(w => w.map((x, j) => j === i ? { ...x, reps_done: e.target.value } : x))}
-                style={{ flex: 1, padding: '8px 4px', textAlign: 'center', minWidth: 0 }} />
-              <input className="input" type="number" min="0"
-                placeholder="–" value={s.duration_secs}
-                onChange={e => setSetWeights(w => w.map((x, j) => j === i ? { ...x, duration_secs: e.target.value } : x))}
-                style={{ flex: 1, padding: '8px 4px', textAlign: 'center', minWidth: 0 }} />
+              {ex.tracking_type === 'time' ? (
+                <input className="input" type="number" min="0"
+                  placeholder={lastD[i] || ex.reps || '30'} value={s.duration_secs}
+                  onChange={e => setSetWeights(w => w.map((x, j) => j === i ? { ...x, duration_secs: e.target.value } : x))}
+                  style={{ flex: 1, padding: '8px 4px', textAlign: 'center', minWidth: 0 }} />
+              ) : (
+                <>
+                  <input className="input" type="number" min="0"
+                    placeholder={lastR[i] || ex.reps || '10'} value={s.reps_done}
+                    onChange={e => setSetWeights(w => w.map((x, j) => j === i ? { ...x, reps_done: e.target.value } : x))}
+                    style={{ flex: 1, padding: '8px 4px', textAlign: 'center', minWidth: 0 }} />
+                  <input className="input" type="number" min="0"
+                    placeholder="–" value={s.duration_secs}
+                    onChange={e => setSetWeights(w => w.map((x, j) => j === i ? { ...x, duration_secs: e.target.value } : x))}
+                    style={{ flex: 1, padding: '8px 4px', textAlign: 'center', minWidth: 0 }} />
+                </>
+              )}
               <button onClick={() => removeSet(i)} title="Quitar serie" style={{
                 width: 18, background: 'none', border: 'none', color: isExtra ? '#E05252' : 'var(--border)', cursor: 'pointer', fontSize: 16, padding: 0, flexShrink: 0,
               }}>×</button>

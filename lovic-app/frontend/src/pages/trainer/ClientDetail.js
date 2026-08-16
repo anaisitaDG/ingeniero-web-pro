@@ -20,7 +20,7 @@ function photoUrl(p, w) {
 }
 
 
-const EMPTY_EXERCISE = () => ({ _key: Math.random(), name: '', youtube_url: '', sets: 3, reps: '10', weight_kg: '' });
+const EMPTY_EXERCISE = () => ({ _key: Math.random(), name: '', youtube_url: '', sets: 3, reps: '10', weight_kg: '', tracking_type: 'reps' });
 const EMPTY_DAY = () => ({ _key: Math.random(), day_name: '', day_type: '', warmup_type: '', warmup_duration: '', cardio_type: '', cardio_duration: '', exercises: [EMPTY_EXERCISE()] });
 
 export default function ClientDetail() {
@@ -139,6 +139,7 @@ export default function ClientDetail() {
             sets: e.sets,
             reps: e.reps,
             weight_kg: e.weight_kg || '',
+            tracking_type: e.tracking_type === 'time' ? 'time' : 'reps',
             library_exercise_id: e.library_exercise_id || null,
           })),
         }));
@@ -199,6 +200,7 @@ export default function ClientDetail() {
             sets: Number(e.sets) || 3,
             reps: e.reps || '10',
             weight_kg: e.weight_kg ? Number(e.weight_kg) : null,
+            tracking_type: e.tracking_type === 'time' ? 'time' : 'reps',
             library_exercise_id: e.library_exercise_id || null,
           })),
       }));
@@ -819,6 +821,18 @@ export default function ClientDetail() {
                       style={{ marginBottom: 8 }}
                     />
 
+                    {/* Modo: por reps o por tiempo */}
+                    <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                      {[['reps', '🔢 Por reps'], ['time', '⏱️ Por tiempo']].map(([val, lbl]) => (
+                        <button key={val} type="button" onClick={() => updateExercise(di, ei, 'tracking_type', val)} style={{
+                          flex: 1, padding: '7px 4px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                          border: (ex.tracking_type || 'reps') === val ? '2px solid var(--coral)' : '1px solid var(--border)',
+                          background: (ex.tracking_type || 'reps') === val ? 'var(--coral-light)' : 'var(--card)',
+                          color: (ex.tracking_type || 'reps') === val ? 'var(--coral)' : 'var(--muted)',
+                        }}>{lbl}</button>
+                      ))}
+                    </div>
+
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
                       <div>
                         <label className="label">Series</label>
@@ -826,13 +840,13 @@ export default function ClientDetail() {
                           onChange={e => updateExercise(di, ei, 'sets', e.target.value)} />
                       </div>
                       <div>
-                        <label className="label">Reps</label>
-                        <input className="input" placeholder="10 / 8-12" value={ex.reps}
+                        <label className="label">{ex.tracking_type === 'time' ? 'Tiempo (seg)' : 'Reps'}</label>
+                        <input className="input" placeholder={ex.tracking_type === 'time' ? '30' : '10 / 8-12'} value={ex.reps}
                           onChange={e => updateExercise(di, ei, 'reps', e.target.value)} />
                       </div>
                       <div>
                         <label className="label">Peso (kg)</label>
-                        <input className="input" type="number" min="0" step="0.5" placeholder="20" value={ex.weight_kg}
+                        <input className="input" type="number" min="0" step="0.5" placeholder={ex.tracking_type === 'time' ? 'opcional' : '20'} value={ex.weight_kg}
                           onChange={e => updateExercise(di, ei, 'weight_kg', e.target.value)} />
                       </div>
                     </div>

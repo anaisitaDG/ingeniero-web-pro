@@ -166,6 +166,8 @@ const db = require('./database/db');
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
     await db.query(`ALTER TABLE workout_exercises ADD COLUMN IF NOT EXISTS library_exercise_id VARCHAR(36) DEFAULT NULL`).catch(() => {});
+    // Modo del ejercicio: 'reps' (por defecto, no cambia nada existente) o 'time' (por tiempo/segundos)
+    await db.query(`ALTER TABLE workout_exercises ADD COLUMN IF NOT EXISTS tracking_type VARCHAR(8) NOT NULL DEFAULT 'reps'`).catch(() => {});
     await db.query(`ALTER TABLE workout_plans ADD COLUMN IF NOT EXISTS duration_days INT DEFAULT NULL`).catch(() => {});
     await db.query(`ALTER TABLE workout_plans ADD COLUMN IF NOT EXISTS name VARCHAR(120) DEFAULT NULL`).catch(() => {});
     await db.query(`ALTER TABLE workout_plans ADD COLUMN IF NOT EXISTS stats_email_sent BOOLEAN DEFAULT 0`).catch(() => {});
