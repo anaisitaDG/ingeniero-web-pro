@@ -1183,6 +1183,11 @@ function ExerciseCard({ exercise: ex, onLogged, onKcalChange, weightFactor = 1, 
       {showLog && (
         <div style={{ marginTop: 12, background: 'var(--card)', borderRadius: 12, padding: 12 }}>
           <p style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>Registrar sesión de hoy</p>
+          {ex.tracking_type === 'time' && (
+            <p style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 6, background: 'var(--bg)', borderRadius: 8, padding: '6px 9px' }}>
+              💪 Las calorías ya cuentan con tu peso corporal ({Math.round(bodyWeight)} kg). El campo de peso es solo si usas peso extra (disco, mancuerna).
+            </p>
+          )}
           <div style={{ display: 'flex', gap: 6, marginBottom: 4, paddingLeft: 42 }}>
             <span style={{ flex: 1, fontSize: 10, color: 'var(--muted)', textAlign: 'center' }}>Peso (kg)</span>
             {ex.tracking_type === 'time' ? (
