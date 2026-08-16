@@ -59,9 +59,17 @@ async function computeShoppingList(userId, period = 'weekly') {
   }
 
   // Cuántas veces se come cada slot en el periodo
+  // Cada momento (semana×zona×tipo) puede tener VARIAS opciones; la clienta come UNA.
+  // Repartimos las veces del momento entre sus opciones (no se compra ×opciones).
+  const groupSize = {};
+  for (const s of slots) {
+    const g = `${s.week_no}|${s.body_zone}|${s.meal_type}`;
+    groupSize[g] = (groupSize[g] || 0) + 1;
+  }
   const slotTimes = slots.map(s => {
     const weeksMatch = weekInstances.filter(w => w === s.week_no).length;
-    return weeksMatch * (freq[s.body_zone] || 0);
+    const g = `${s.week_no}|${s.body_zone}|${s.meal_type}`;
+    return weeksMatch * (freq[s.body_zone] || 0) / (groupSize[g] || 1);
   });
 
   // Comidas únicas para la IA (dedupe por nombre+descripción)

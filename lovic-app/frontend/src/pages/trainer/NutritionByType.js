@@ -199,17 +199,18 @@ export default function NutritionByType({ clientId }) {
         const items = slotsFor(mt.value);
         return (
           <div key={mt.value} className="card" style={{ marginBottom: 12, padding: 14 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
               <p style={{ fontWeight: 700, fontSize: 14 }}>{mt.label}</p>
               <button onClick={() => openPicker(mt.value)} style={{
                 background: 'var(--coral)', color: '#fff', border: 'none', borderRadius: 8, padding: '4px 12px', fontSize: 13, fontWeight: 700, cursor: 'pointer',
-              }}>+ Agregar</button>
+              }}>+ Agregar opción</button>
             </div>
-            {items.length === 0 && <p style={{ fontSize: 13, color: 'var(--muted)', fontStyle: 'italic' }}>Sin comida — toca "Agregar" (puedes poner varias, ej. 2 meriendas)</p>}
-            {items.map(s => (
+            <p style={{ fontSize: 10.5, color: 'var(--muted)', marginBottom: 8 }}>{items.length > 1 ? `${items.length} opciones · la clienta elige una` : 'Agrega varias opciones y la clienta elige una'}</p>
+            {items.length === 0 && <p style={{ fontSize: 13, color: 'var(--muted)', fontStyle: 'italic' }}>Sin comida — toca "Agregar opción"</p>}
+            {items.map((s, oi) => (
               <div key={s._key} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '10px 0', borderTop: '1px solid var(--border)' }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontWeight: 600, fontSize: 14 }}>{s.name}</p>
+                  <p style={{ fontWeight: 600, fontSize: 14 }}>{items.length > 1 && <span style={{ color: 'var(--coral)', fontWeight: 800 }}>Opción {oi + 1}: </span>}{s.name}</p>
                   {s.description && <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>{s.description}</p>}
                   {s.calories != null && <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 3 }}>🔥 {s.calories} kcal{s.protein_g != null ? ` · P ${s.protein_g}` : ''}{s.carbs_g != null ? ` · C ${s.carbs_g}` : ''}{s.fat_g != null ? ` · G ${s.fat_g}` : ''}</p>}
                 </div>

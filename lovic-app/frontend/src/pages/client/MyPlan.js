@@ -209,6 +209,7 @@ function MealByTypeView({ legacyNutrition }) {
   const [eaten, setEaten]     = useState([]);   // keys 'plan:<id>'
   const [busy, setBusy]       = useState({});
   const [showShopping, setShowShopping] = useState(false);
+  const [optIdx, setOptIdx] = useState({}); // opción visible por momento (carrusel)
 
   useEffect(() => {
     (async () => {
@@ -270,11 +271,16 @@ function MealByTypeView({ legacyNutrition }) {
         ))}
       </div>
 
-      {/* Plan vs. realidad — cumplimiento del plan de esta zona */}
+      {/* Plan vs. realidad — cumplimiento del plan de esta zona (por momento, no por opción) */}
       {zoneSlots.length > 0 && (() => {
-        const plannedKcal = zoneSlots.reduce((s, x) => s + (Number(x.calories) || 0), 0);
-        const total = zoneSlots.length;
-        const done = zoneSlots.filter(x => eaten.includes(`plan:${x.id}`)).length;
+        const moments = BYTYPE_MOMENTS.map(m => byMoment[m.value] || []).filter(a => a.length);
+        const total = moments.length;
+        const done = moments.filter(opts => opts.some(x => eaten.includes(`plan:${x.id}`))).length;
+        // Plan de calorías = promedio de las opciones de cada momento (comes 1 por momento)
+        const plannedKcal = moments.reduce((sum, opts) => {
+          const withCal = opts.filter(x => x.calories != null);
+          return sum + (withCal.length ? withCal.reduce((s, x) => s + Number(x.calories), 0) / withCal.length : 0);
+        }, 0);
         const consumed = data.consumedToday || 0;
         const mealsPct = total ? Math.round((done / total) * 100) : 0;
         return (
@@ -300,35 +306,48 @@ function MealByTypeView({ legacyNutrition }) {
         );
       })()}
 
-      {/* Momentos */}
+      {/* Momentos — carrusel de opciones (comes una) */}
       {BYTYPE_MOMENTS.map(m => {
         const items = byMoment[m.value] || [];
         if (items.length === 0) return null;
+        const key = `${zone}-${m.value}`;
+        const eatenPos = items.findIndex(x => eaten.includes(`plan:${x.id}`));
+        const rawIdx = optIdx[key] != null ? optIdx[key] : (eatenPos >= 0 ? eatenPos : 0);
+        const pos = Math.min(Math.max(rawIdx, 0), items.length - 1);
+        const s = items[pos];
+        const isEaten = eaten.includes(`plan:${s.id}`);
+        const many = items.length > 1;
+        const go = (delta) => setOptIdx(o => ({ ...o, [key]: (pos + delta + items.length) % items.length }));
+        const arrow = (dir) => (
+          <button onClick={() => go(dir === '◀' ? -1 : 1)} style={{
+            flexShrink: 0, width: 30, borderRadius: 8, border: 'none', cursor: 'pointer',
+            background: 'var(--bg)', color: 'var(--coral)', fontSize: 14, fontWeight: 800,
+          }}>{dir}</button>
+        );
         return (
           <div key={m.value} style={{ marginBottom: 16 }}>
-            <p style={{ fontWeight: 800, fontSize: 13, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>{m.label}</p>
-            {items.map(s => {
-              const key = `plan:${s.id}`;
-              const isEaten = eaten.includes(key);
-              return (
-                <div key={s.id} className="card" style={{
-                  marginBottom: 10, padding: 14, borderLeft: `4px solid ${isEaten ? '#16a34a' : ZONE_META[zone].color}`,
-                  opacity: isEaten ? 0.8 : 1, transition: 'all .3s',
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start' }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontWeight: 700, fontSize: 15, textDecoration: isEaten ? 'line-through' : 'none' }}>{s.name}</p>
-                      {s.description && <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: 3 }}>{s.description}</p>}
-                      {s.calories != null && <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 5 }}>🔥 {s.calories} kcal{s.protein_g != null ? ` · P ${s.protein_g}g` : ''}{s.carbs_g != null ? ` · C ${s.carbs_g}g` : ''}{s.fat_g != null ? ` · G ${s.fat_g}g` : ''}</p>}
-                    </div>
-                    <button onClick={() => toggleEat(s)} disabled={busy[s.id]} style={{
-                      flexShrink: 0, padding: '8px 12px', borderRadius: 10, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12.5,
-                      background: isEaten ? '#16a34a' : 'var(--coral-light)', color: isEaten ? '#fff' : 'var(--coral)',
-                    }}>{busy[s.id] ? '…' : (isEaten ? '✓ Comido' : 'Ya comí')}</button>
-                  </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <p style={{ fontWeight: 800, fontSize: 13, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 1 }}>{m.label}</p>
+              {many && <span style={{ fontSize: 11, color: 'var(--coral)', fontWeight: 700 }}>Opción {pos + 1} de {items.length}</span>}
+            </div>
+            <div className="card" style={{ padding: 14, borderLeft: `4px solid ${isEaten ? '#16a34a' : ZONE_META[zone].color}`, opacity: isEaten ? 0.85 : 1, transition: 'all .3s' }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                {many && arrow('◀')}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontWeight: 700, fontSize: 15, textDecoration: isEaten ? 'line-through' : 'none' }}>{s.name}</p>
+                  {s.description && <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: 3 }}>{s.description}</p>}
+                  {s.calories != null && <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 5 }}>🔥 {s.calories} kcal{s.protein_g != null ? ` · P ${s.protein_g}g` : ''}{s.carbs_g != null ? ` · C ${s.carbs_g}g` : ''}{s.fat_g != null ? ` · G ${s.fat_g}g` : ''}</p>}
+                  <button onClick={() => toggleEat(s)} disabled={busy[s.id]} style={{
+                    marginTop: 10, padding: '8px 14px', borderRadius: 10, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12.5,
+                    background: isEaten ? '#16a34a' : 'var(--coral-light)', color: isEaten ? '#fff' : 'var(--coral)',
+                  }}>{busy[s.id] ? '…' : (isEaten ? '✓ Esta comí' : 'Ya comí esta')}</button>
                 </div>
-              );
-            })}
+                {many && arrow('▶')}
+              </div>
+              {many && eatenPos < 0 && (
+                <p style={{ fontSize: 11, color: 'var(--muted)', textAlign: 'center', marginTop: 8 }}>◀ ▶ Desliza y elige la que vas a comer</p>
+              )}
+            </div>
           </div>
         );
       })}
