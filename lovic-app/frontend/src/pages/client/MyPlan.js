@@ -811,14 +811,20 @@ function ActivityBlock({ emoji, label, options, kcalTable, defaultRate, defaultD
   );
 }
 
-// kcal from real logged sets: weight(kg) × reps × sets × 0.1 (aprox)
+// kcal de fuerza basadas en el ESFUERZO (reps/segundos) escaladas por el peso corporal,
+// no en el peso externo. Así los ejercicios con el propio peso y las isometrías SÍ cuentan,
+// y el peso levantado solo suma un bono pequeño (no dispara el total).
+// factor = peso_corporal / 65 → recuperamos el peso real: 65 × factor.
 function calcStrengthKcal(setWeights, factor = 1) {
+  const bodyweight = 65 * factor;
   return Math.round((setWeights || []).reduce((sum, s) => {
-    const w = parseFloat(s.weight_kg) || 0;
+    const w = parseFloat(s.weight_kg) || 0;         // peso externo (opcional)
     const r = parseFloat(s.reps_done) || 0;
-    const d = parseFloat(s.duration_secs) || 0;   // isometría: ~1 rep ≈ 3 seg de sostén
-    return sum + w * r * 0.1 + w * (d / 3) * 0.1;
-  }, 0) * factor);
+    const d = parseFloat(s.duration_secs) || 0;     // isometría: 3 seg de sostén ≈ 1 rep
+    const effReps = r + d / 3;
+    // ~1% del peso corporal por rep efectiva + bono chico por el peso externo
+    return sum + effReps * (bodyweight * 0.01 + w * 0.004);
+  }, 0));
 }
 
 function parseDate(d) {
