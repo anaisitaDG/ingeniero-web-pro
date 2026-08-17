@@ -7,7 +7,7 @@ import Avatar from '../../components/Avatar';
 import NutritionByType from './NutritionByType';
 import NutritionAdherence from './NutritionAdherence';
 
-const API_BASE = process.env.REACT_APP_API_URL || '';
+const API_BASE = process.env.REACT_APP_API_URL || '/api';
 function fmtDate(str, opts = { day: 'numeric', month: 'short' }) {
   if (!str) return '';
   const [y, m, d] = str.slice(0, 10).split('-').map(Number);

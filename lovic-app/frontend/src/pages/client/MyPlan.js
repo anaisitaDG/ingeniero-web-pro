@@ -210,6 +210,9 @@ function MealByTypeView({ legacyNutrition }) {
   const [busy, setBusy]       = useState({});
   const [showShopping, setShowShopping] = useState(false);
   const [optIdx, setOptIdx] = useState({}); // opción visible por momento (carrusel)
+  const [logged, setLogged] = useState({}); // slot_id -> { name, calories } registrado
+  const [editing, setEditing] = useState(null); // slot_id en edición ("comí algo distinto")
+  const [editText, setEditText] = useState('');
 
   useEffect(() => {
     (async () => {
@@ -223,14 +226,25 @@ function MealByTypeView({ legacyNutrition }) {
     })();
   }, []);
 
-  async function toggleEat(slot) {
+  // customText: si comió una variante, se registra y estima lo real; si no, marca/desmarca la del plan
+  async function toggleEat(slot, customText) {
     const key = `plan:${slot.id}`;
-    const isEaten = eaten.includes(key);
+    const unmark = eaten.includes(key) && !customText;
     setBusy(b => ({ ...b, [slot.id]: true }));
-    setEaten(e => isEaten ? e.filter(k => k !== key) : [...e, key]);
-    try { await api.mealPlan.eat(slot.id, !isEaten); }
-    catch (_) { setEaten(e => isEaten ? [...e, key] : e.filter(k => k !== key)); }
+    try {
+      if (unmark) {
+        await api.mealPlan.eat(slot.id, false);
+        setEaten(e => e.filter(k => k !== key));
+        setLogged(l => { const n = { ...l }; delete n[slot.id]; return n; });
+      } else {
+        const res = await api.mealPlan.eat(slot.id, true, customText || undefined);
+        setEaten(e => e.includes(key) ? e : [...e, key]);
+        if (res && res.logged) setLogged(l => ({ ...l, [slot.id]: res.logged }));
+      }
+    } catch (_) {}
     setBusy(b => ({ ...b, [slot.id]: false }));
+    setEditing(null);
+    setEditText('');
   }
 
   if (loading) return <div style={{ textAlign: 'center', padding: 48 }}><div className="spinner" style={{ borderTopColor: 'var(--coral)', borderColor: 'var(--border)', width: 28, height: 28 }} /></div>;
@@ -342,10 +356,43 @@ function MealByTypeView({ legacyNutrition }) {
                   <p style={{ fontWeight: 700, fontSize: 15, textDecoration: isEaten ? 'line-through' : 'none' }}>{s.name}</p>
                   {s.description && <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: 3 }}>{s.description}</p>}
                   {s.calories != null && <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 5 }}>🔥 {s.calories} kcal{s.protein_g != null ? ` · P ${s.protein_g}g` : ''}{s.carbs_g != null ? ` · C ${s.carbs_g}g` : ''}{s.fat_g != null ? ` · G ${s.fat_g}g` : ''}</p>}
-                  <button onClick={() => toggleEat(s)} disabled={busy[s.id]} style={{
-                    marginTop: 10, padding: '8px 14px', borderRadius: 10, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12.5,
-                    background: isEaten ? '#16a34a' : 'var(--coral-light)', color: isEaten ? '#fff' : 'var(--coral)',
-                  }}>{busy[s.id] ? '…' : (isEaten ? '✓ Esta comí' : 'Ya comí esta')}</button>
+                  {/* Lo que quedó registrado (útil cuando la comida del plan no traía calorías o comió una variante) */}
+                  {logged[s.id] && (
+                    <p style={{ fontSize: 12, color: '#16a34a', fontWeight: 700, marginTop: 5 }}>
+                      ✓ Registrado: {logged[s.id].name} · {logged[s.id].calories} kcal
+                    </p>
+                  )}
+                  {editing === s.id ? (
+                    <div style={{ marginTop: 10 }}>
+                      <input
+                        autoFocus value={editText} onChange={e => setEditText(e.target.value)}
+                        placeholder="Ej: crema de arroz con mora y coco"
+                        style={{ width: '100%', padding: '9px 11px', borderRadius: 9, border: '1px solid var(--border)', fontSize: 13, boxSizing: 'border-box' }}
+                      />
+                      <p style={{ fontSize: 10.5, color: 'var(--muted)', marginTop: 4 }}>Estimamos las calorías reales de lo que escribas.</p>
+                      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                        <button onClick={() => editText.trim() && toggleEat(s, editText.trim())} disabled={busy[s.id] || !editText.trim()} style={{
+                          flex: 1, padding: '8px 14px', borderRadius: 10, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12.5,
+                          background: '#16a34a', color: '#fff', opacity: (busy[s.id] || !editText.trim()) ? 0.6 : 1,
+                        }}>{busy[s.id] ? 'Calculando…' : 'Guardar lo que comí'}</button>
+                        <button onClick={() => { setEditing(null); setEditText(''); }} disabled={busy[s.id]} style={{
+                          padding: '8px 14px', borderRadius: 10, border: '1px solid var(--border)', cursor: 'pointer', fontWeight: 700, fontSize: 12.5,
+                          background: 'var(--card)', color: 'var(--muted)',
+                        }}>Cancelar</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginTop: 10 }}>
+                      <button onClick={() => toggleEat(s)} disabled={busy[s.id]} style={{
+                        padding: '8px 14px', borderRadius: 10, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12.5,
+                        background: isEaten ? '#16a34a' : 'var(--coral-light)', color: isEaten ? '#fff' : 'var(--coral)',
+                      }}>{busy[s.id] ? '…' : (isEaten ? '✓ Esta comí' : 'Ya comí esta')}</button>
+                      <button onClick={() => { setEditing(s.id); setEditText(s.description ? `${s.name}, ${s.description}` : s.name); }} disabled={busy[s.id]} style={{
+                        padding: '8px 12px', borderRadius: 10, border: '1px solid var(--border)', cursor: 'pointer', fontWeight: 600, fontSize: 12,
+                        background: 'transparent', color: 'var(--muted)',
+                      }}>✏️ Comí algo distinto</button>
+                    </div>
+                  )}
                 </div>
                 {many && arrow('▶', canNext)}
               </div>

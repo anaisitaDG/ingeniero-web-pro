@@ -8,7 +8,7 @@ const ANGLES = [
   { key: 'perfil',  label: 'Perfil',  icon: '↔️'  },
 ];
 
-const BASE = process.env.REACT_APP_API_URL || '';
+const BASE = process.env.REACT_APP_API_URL || '/api';
 
 function imgUrl(path, w) {
   if (!path) return null;

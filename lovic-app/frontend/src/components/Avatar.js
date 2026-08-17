@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 
-const BASE = process.env.REACT_APP_API_URL || '';
+const BASE = process.env.REACT_APP_API_URL || '/api';
 
 function initials(name) {
   return (name || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase() || '?';

@@ -1,4 +1,4 @@
-const BASE = process.env.REACT_APP_API_URL || '';
+const BASE = process.env.REACT_APP_API_URL || '/api';
 
 function getToken() {
   return localStorage.getItem('lovic_token');
@@ -156,7 +156,7 @@ export const api = {
     complete: (meal_type, date, done)  => request('/meal-plan/complete', { method: 'POST', body: JSON.stringify({ meal_type, date, done }) }),
     byType:   ()                       => request('/meal-plan/by-type'),
     shoppingList: (period)             => request(`/meal-plan/shopping-list?period=${period || 'weekly'}`),
-    eat:      (slot_id, done)          => request('/meal-plan/eat', { method: 'POST', body: JSON.stringify({ slot_id, done, date: new Date().toLocaleDateString('en-CA') }) }),
+    eat:      (slot_id, done, custom_text) => request('/meal-plan/eat', { method: 'POST', body: JSON.stringify({ slot_id, done, custom_text, date: new Date().toLocaleDateString('en-CA') }) }),
   },
   trainer: {
     clients:       ()     => request('/trainer/clients'),

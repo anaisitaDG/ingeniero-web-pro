@@ -4,7 +4,8 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM = process.env.EMAIL_FROM || 'Lovic Athletica <noreply@lovicgym.com>';
 
 async function sendMagicLink(email, name, token, type = 'access') {
-  const url = `${process.env.APP_URL}/auth/verify?token=${token}`;
+  // /api/ para que nginx lo enrute al backend (las rutas de la API viven bajo /api)
+  const url = `${process.env.APP_URL}/api/auth/verify?token=${token}`;
 
   const subjects = {
     access:     '🔑 Tu enlace de acceso — Lovic Athletica Gym',

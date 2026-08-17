@@ -2,6 +2,7 @@ const express = require('express');
 const router  = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const db      = require('../database/db');
+const { parseFood } = require('../services/ai');
 const { requireAuth } = require('../middleware/auth');
 
 router.use(requireAuth);
@@ -136,11 +137,13 @@ router.get('/shopping-list', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// POST /meal-plan/eat — marca una comida del plan como consumida y suma sus calorías al día
+// POST /meal-plan/eat — marca una comida del plan como consumida y suma sus calorías al día.
+// Acepta custom_text: si la clienta comió una variante ("crema de arroz con mora"),
+// se estiman las calorías reales con IA en vez de las del plan.
 router.post('/eat', async (req, res) => {
   try {
     const uid = req.user.id;
-    const { slot_id, done } = req.body;
+    const { slot_id, done, custom_text } = req.body;
     const today = req.body.date || colombiaToday();
     const key = `plan:${slot_id}`;
 
@@ -152,21 +155,37 @@ router.post('/eat', async (req, res) => {
     const [[slot]] = await db.query('SELECT * FROM client_meal_slots WHERE id=? AND client_id=?', [slot_id, uid]);
     if (!slot) return res.status(404).json({ error: 'Comida no encontrada' });
 
-    // Evita duplicar si ya está registrada hoy
-    const [[exists]] = await db.query(
-      'SELECT id FROM food_logs WHERE user_id=? AND logged_at=? AND input_text=? LIMIT 1', [uid, today, key]
-    );
-    if (exists) return res.json({ ok: true });
-
     const MAP = { desayuno: 'breakfast', almuerzo: 'lunch', merienda: 'snack', cena: 'dinner' };
+    const mealType = MAP[slot.meal_type] || 'snack';
+
+    // Nombre + macros a registrar
+    let name = slot.name;
+    let cal = slot.calories, p = slot.protein_g, c = slot.carbs_g, f = slot.fat_g, fib = null;
+    const wantText = (custom_text && String(custom_text).trim()) ? String(custom_text).trim() : null;
+
+    // Estimamos con IA si: (a) comió una variante, o (b) la comida del plan no tiene calorías
+    if (wantText || cal == null) {
+      const textToParse = wantText || `${slot.name}${slot.description ? '. ' + slot.description : ''}`;
+      try {
+        const parsed = await parseFood(textToParse);
+        cal = Math.round(parsed.total_calories) || 0;
+        p   = parsed.protein_g != null ? Math.round(parsed.protein_g) : null;
+        c   = parsed.carbs_g   != null ? Math.round(parsed.carbs_g)   : null;
+        f   = parsed.fat_g     != null ? Math.round(parsed.fat_g)     : null;
+        fib = parsed.fiber_g   != null ? Math.round(parsed.fiber_g)   : null;
+        if (wantText) name = wantText; // registramos lo que REALMENTE comió
+      } catch (_) { cal = cal || 0; } // si la IA falla, seguimos con lo del plan
+    }
+
+    // Upsert: borramos el registro anterior del plan y volvemos a insertar (permite editar/ajustar)
+    await db.query('DELETE FROM food_logs WHERE user_id=? AND logged_at=? AND input_text=?', [uid, today, key]);
     await db.query(
-      `INSERT INTO food_logs (id, user_id, input_text, parsed_items, calories, protein_g, carbs_g, fat_g, meal_type, logged_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [uuidv4(), uid, key, JSON.stringify([{ name: slot.name }]),
-       slot.calories || 0, slot.protein_g || null, slot.carbs_g || null, slot.fat_g || null,
-       MAP[slot.meal_type] || 'snack', today]
+      `INSERT INTO food_logs (id, user_id, input_text, parsed_items, calories, protein_g, carbs_g, fat_g, fiber_g, meal_type, logged_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [uuidv4(), uid, key, JSON.stringify([{ name, quantity: '', calories: cal || 0 }]),
+       cal || 0, p, c, f, fib, mealType, today]
     );
-    res.json({ ok: true });
+    res.json({ ok: true, logged: { name, calories: cal || 0, protein_g: p, carbs_g: c, fat_g: f, fiber_g: fib } });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
