@@ -36,7 +36,7 @@ export default function NutritionAdherence({ clientId }) {
         </div>
       )}
       {noData && (
-        <div className="empty-state"><div className="icon">🍽️</div><p>Esta clienta aún no ha registrado comidas.</p></div>
+        <div className="empty-state"><div className="icon">🍽️</div><p>Este cliente aún no ha registrado comidas.</p></div>
       )}
 
       {!noData && (

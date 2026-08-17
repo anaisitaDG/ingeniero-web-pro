@@ -69,7 +69,7 @@ export default function LoginPage() {
           </div>
         ) : (
           <>
-            <h1 style={styles.title}>Bienvenida 👋</h1>
+            <h1 style={styles.title}>¡Hola! 👋</h1>
 
             {/* Tabs */}
             <div style={{ display: 'flex', background: 'var(--surface)', borderRadius: 12, padding: 4, marginBottom: 24, gap: 4 }}>
@@ -108,7 +108,7 @@ export default function LoginPage() {
                   {loading ? <span className="spinner" /> : 'Entrar'}
                 </button>
                 <p style={{ textAlign: 'center', marginTop: 16, fontSize: 13, color: 'var(--muted)' }}>
-                  ¿Eres clienta nueva o no recuerdas tu contraseña?{' '}
+                  ¿Primera vez aquí o no recuerdas tu contraseña?{' '}
                   <button type="button" onClick={() => { setMode('magic'); setError(''); }}
                     style={{ color: 'var(--coral)', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer', fontSize: 13 }}>
                     Accede con tu correo →

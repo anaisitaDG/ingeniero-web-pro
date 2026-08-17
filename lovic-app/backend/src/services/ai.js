@@ -113,7 +113,8 @@ Datos del usuario:
 Da una recomendación breve y práctica (máximo 3 líneas) sobre qué comer.
 Si quedan menos de 200 kcal, sugiere algo muy ligero.
 Si quedan más de 800 kcal, sugiere una comida completa.
-Usa alimentos fáciles de conseguir. Sé específica y motivadora. Responde en español.`
+Usa alimentos fáciles de conseguir. Sé específica y motivadora. Responde en español.
+Escribe en lenguaje NEUTRO: no asumas el género de la persona (evita adjetivos con género hacia quien lee; usa "puedes", "te recomiendo", "tu objetivo").`
     }]
   });
 
@@ -239,7 +240,7 @@ async function generateBioSummary(data) {
     max_tokens: 400,
     messages: [{
       role: 'user',
-      content: `Eres una entrenadora personal experta. Analiza estos resultados de bioimpedancia y da un resumen personalizado, cálido y motivador en español. Explica qué significa cada valor para la cliente, si está en rango saludable o no, y qué puede esperar mejorar con entrenamiento. Máximo 4 oraciones, sin tecnicismos innecesarios, sin usar asteriscos ni formato markdown.
+      content: `Eres una entrenadora personal experta. Analiza estos resultados de bioimpedancia y da un resumen personalizado, cálido y motivador en español. Explica qué significa cada valor para la persona, si está en rango saludable o no, y qué puede esperar mejorar con entrenamiento. Máximo 4 oraciones, sin tecnicismos innecesarios, sin usar asteriscos ni formato markdown. Escribe en lenguaje NEUTRO: no asumas el género de la persona (evita adjetivos como "lista/listo", "definida/definido"; usa formas neutras como "tienes", "puedes", "tu progreso").
 
 Resultados:
 ${lines}
@@ -270,7 +271,7 @@ async function comparePhotos(pairs, dateBefore, dateAfter, note) {
 
   content.push({
     type: 'text',
-    text: `Eres una entrenadora personal experta, cálida y motivadora. Estás comparando fotos de progreso físico de una clienta tomadas en dos momentos (ANTES: ${dateBefore}, DESPUÉS: ${dateAfter}).${note ? ` Nota de la clienta: "${note}".` : ''}
+    text: `Eres una entrenadora personal experta, cálida y motivadora. Estás comparando fotos de progreso físico de una persona tomadas en dos momentos (ANTES: ${dateBefore}, DESPUÉS: ${dateAfter}).${note ? ` Nota de la persona: "${note}".` : ''}
 
 Analiza los cambios VISIBLES entre las fotos por zonas del cuerpo.
 
@@ -289,6 +290,7 @@ Reglas MUY importantes:
 - No des diagnósticos médicos ni cifras exactas de peso o grasa (no se saben por foto). Habla de cambios "aparentes" o "visibles".
 - Si las diferencias son sutiles o la luz/ángulo/ropa dificultan comparar, dilo con honestidad y amabilidad, sin inventar cambios (usa trend "estable").
 - El "summary" termina con una recomendación breve y motivadora. Sin asteriscos ni markdown.
+- Escribe en lenguaje NEUTRO: no asumas el género de la persona (evita "definida/definido", "tonificada/tonificado"; usa formas neutras como "se ve", "tu abdomen", "lograste").
 - Responde SOLO el JSON, sin texto adicional.`,
   });
 

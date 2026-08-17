@@ -74,7 +74,7 @@ export default function BillingPanel() {
           <p style={{ fontSize: 24, fontWeight: 800, color: 'var(--coral)' }}>$ {totalMonthly.toLocaleString('es-CO')}</p>
         </div>
         <div className="card" style={{ textAlign: 'center' }}>
-          <p style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600, marginBottom: 6 }}>CLIENTAS</p>
+          <p style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600, marginBottom: 6 }}>CLIENTES</p>
           <p style={{ fontSize: 24, fontWeight: 800 }}>{clients.length}</p>
         </div>
         <div className="card" style={{ textAlign: 'center' }}>
@@ -110,7 +110,7 @@ export default function BillingPanel() {
 
       {/* Client list with inline edit */}
       <div className="card">
-        <p style={{ fontWeight: 700, marginBottom: 14 }}>Todas las clientas</p>
+        <p style={{ fontWeight: 700, marginBottom: 14 }}>Todos los clientes</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
           {clients.map(c => {
             const isEditing = editing === c.id;

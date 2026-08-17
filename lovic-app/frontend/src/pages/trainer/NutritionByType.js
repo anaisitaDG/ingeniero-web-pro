@@ -205,7 +205,7 @@ export default function NutritionByType({ clientId }) {
                 background: 'var(--coral)', color: '#fff', border: 'none', borderRadius: 8, padding: '4px 12px', fontSize: 13, fontWeight: 700, cursor: 'pointer',
               }}>+ Agregar opción</button>
             </div>
-            <p style={{ fontSize: 10.5, color: 'var(--muted)', marginBottom: 8 }}>{items.length > 1 ? `${items.length} opciones · la clienta elige una` : 'Agrega varias opciones y la clienta elige una'}</p>
+            <p style={{ fontSize: 10.5, color: 'var(--muted)', marginBottom: 8 }}>{items.length > 1 ? `${items.length} opciones · el cliente elige una` : 'Agrega varias opciones y el cliente elige una'}</p>
             {items.length === 0 && <p style={{ fontSize: 13, color: 'var(--muted)', fontStyle: 'italic' }}>Sin comida — toca "Agregar opción"</p>}
             {items.map((s, oi) => (
               <div key={s._key} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '10px 0', borderTop: '1px solid var(--border)' }}>

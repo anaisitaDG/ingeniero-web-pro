@@ -245,7 +245,7 @@ export default function ClientDetail() {
   async function newMonthlyWorkout() {
     const days = buildDays();
     if (days.length === 0) { setSaveMsg('❌ Arma primero la rutina nueva (al menos un día con ejercicios)'); setTimeout(() => setSaveMsg(''), 3500); return; }
-    const ok = window.confirm('Se archivará la rutina actual (queda en el historial, no se borra) y esta pasará a ser la rutina activa de la clienta.\n\n¿Crear la nueva rutina?');
+    const ok = window.confirm('Se archivará la rutina actual (queda en el historial, no se borra) y esta pasará a ser la rutina activa del cliente.\n\n¿Crear la nueva rutina?');
     if (!ok) return;
     setSavingWorkout(true);
     try {
@@ -318,7 +318,7 @@ export default function ClientDetail() {
       if (res.error) throw new Error(res.error);
       setSaveMsg('✅ Recordatorio enviado');
     } catch (e) {
-      setSaveMsg('❌ ' + (e.message === 'El cliente no tiene notificaciones activas' ? 'La cliente no tiene notificaciones activadas en su dispositivo' : e.message));
+      setSaveMsg('❌ ' + (e.message === 'El cliente no tiene notificaciones activas' ? 'El cliente no tiene notificaciones activadas en su dispositivo' : e.message));
     }
     setTimeout(() => setSaveMsg(''), 4000);
     setSendingPush(false);
@@ -713,7 +713,7 @@ export default function ClientDetail() {
                 {durationDays && startDate && (() => {
                   const end = new Date(startDate);
                   end.setDate(end.getDate() + Number(durationDays));
-                  return <p style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 8 }}>La clienta verá un plan de <strong>{durationDays} días</strong> · vence el <strong>{end.toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' })}</strong></p>;
+                  return <p style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 8 }}>El cliente verá un plan de <strong>{durationDays} días</strong> · vence el <strong>{end.toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' })}</strong></p>;
                 })()}
               </div>
             </div>
@@ -760,7 +760,7 @@ export default function ClientDetail() {
                 </div>
 
                 {!collapsed && (<>
-                {/* Tipo de día — define qué nutrición ve la clienta */}
+                {/* Tipo de día — define qué nutrición ve la cliente */}
                 <div style={{ marginBottom: 14 }}>
                   <label className="label" style={{ marginBottom: 6 }}>🍽️ Tipo de día (para la nutrición)</label>
                   <div style={{ display: 'flex', gap: 6 }}>
@@ -907,7 +907,7 @@ export default function ClientDetail() {
             {workoutPlans.filter(p => !p.is_active).length > 0 && (
               <div className="card" style={{ marginTop: 16 }}>
                 <p style={{ fontWeight: 700, marginBottom: 4 }}>🗂️ Rutinas anteriores</p>
-                <p style={{ fontSize: 11.5, color: 'var(--muted)', marginBottom: 10 }}>Solo tú las ves. La clienta conserva su historial de entrenamientos.</p>
+                <p style={{ fontSize: 11.5, color: 'var(--muted)', marginBottom: 10 }}>Solo tú las ves. El cliente conserva su historial de entrenamientos.</p>
                 {(() => {
                   // Agrupar las rutinas archivadas por mes/año
                   const archived = workoutPlans.filter(p => !p.is_active)
@@ -953,7 +953,7 @@ export default function ClientDetail() {
             {/* Generar rutina con IA */}
             <div className="card" style={{ marginTop: 16, background: 'var(--gold-light)', border: '1.5px solid var(--gold)' }}>
               <p style={{ fontWeight: 700, marginBottom: 8, color: 'var(--gold)' }}>✨ Generar rutina con IA</p>
-              <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>La IA creará un plan basado en el perfil y objetivos de la cliente. Puedes darle instrucciones adicionales.</p>
+              <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>La IA creará un plan basado en el perfil y objetivos del cliente. Puedes darle instrucciones adicionales.</p>
               <textarea className="input" rows={2} placeholder="Instrucciones adicionales (opcional)... Ej: enfocada en piernas, sin sentadilla por rodilla"
                 value={routinePrompt} onChange={e => setRoutinePrompt(e.target.value)} style={{ marginBottom: 10, resize: 'vertical' }} />
               <button className="btn-primary" onClick={genRoutine} disabled={genRoutineLoading} style={{ width: '100%', justifyContent: 'center', background: 'var(--gold)' }}>
@@ -1073,7 +1073,7 @@ export default function ClientDetail() {
             </button>
           </div>
           {(!bioimpedance || bioimpedance.length === 0) ? (
-            <div className="empty-state"><div className="icon">📊</div><p>La cliente aún no tiene registros de bioimpedancia</p></div>
+            <div className="empty-state"><div className="icon">📊</div><p>El cliente aún no tiene registros de bioimpedancia</p></div>
           ) : (
             <>
               <BioCharts data={bioimpedance} />
@@ -1434,7 +1434,7 @@ export default function ClientDetail() {
           {!workoutLogs ? (
             <div style={{ textAlign: 'center', padding: 48 }}><div className="spinner" style={{ borderTopColor: 'var(--coral)', borderColor: 'var(--border)', width: 28, height: 28 }} /></div>
           ) : !workoutLogs.sessions?.length ? (
-            <div className="empty-state"><div className="icon">🏋️</div><p>La cliente aún no ha registrado ningún ejercicio</p></div>
+            <div className="empty-state"><div className="icon">🏋️</div><p>El cliente aún no ha registrado ningún ejercicio</p></div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {/* Stats */}
@@ -1477,7 +1477,7 @@ export default function ClientDetail() {
       {tab === 'notas' && (
         <div className="card">
           <p style={{ fontWeight: 700, marginBottom: 12 }}>📓 Notas privadas</p>
-          <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>Solo tú puedes ver estas notas. La cliente no tiene acceso.</p>
+          <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>Solo tú puedes ver estas notas. El cliente no tiene acceso.</p>
           <textarea
             className="input"
             rows={14}

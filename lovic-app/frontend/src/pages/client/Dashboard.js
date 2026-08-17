@@ -666,7 +666,7 @@ function SleepInput({ value, onChange }) {
 }
 
 const MOODS = [
-  { value: 'tired',   emoji: '😴', label: 'Cansada' },
+  { value: 'tired',   emoji: '😴', label: 'Sin energía' },
   { value: 'normal',  emoji: '😐', label: 'Normal' },
   { value: 'good',    emoji: '⚡', label: 'Con energía' },
 ];

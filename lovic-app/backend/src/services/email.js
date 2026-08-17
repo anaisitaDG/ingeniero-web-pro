@@ -76,11 +76,11 @@ async function sendWelcome(email, name) {
   await resend.emails.send({
     from: FROM,
     to: email,
-    subject: '¡Bienvenida a Lovic Athletica Gym! ✨',
+    subject: '¡Te damos la bienvenida a Lovic Athletica Gym! ✨',
     html: `
       <div style="font-family:'Helvetica Neue',sans-serif;max-width:520px;margin:0 auto">
         <div style="background:linear-gradient(135deg,#FF6B6B,#FF8E53);padding:2.5rem;text-align:center;border-radius:12px 12px 0 0">
-          <h1 style="color:#fff;margin:0">¡Bienvenida, ${name}!</h1>
+          <h1 style="color:#fff;margin:0">¡Hola, ${name}!</h1>
         </div>
         <div style="background:#fff;padding:2rem;border-radius:0 0 12px 12px">
           <p style="color:#555;line-height:1.7">Tu valoración ha sido recibida. Lorena revisará tu perfil y en breve tendrás tu plan personalizado listo.</p>
@@ -96,7 +96,7 @@ async function sendWelcomeWithInstructions(email, name, phone) {
   await resend.emails.send({
     from: FROM,
     to: email,
-    subject: '¡Bienvenida a Lovic Athletica Gym! ✨',
+    subject: '¡Te damos la bienvenida a Lovic Athletica Gym! ✨',
     html: `
       <div style="font-family:'Helvetica Neue',sans-serif;max-width:540px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
 
@@ -108,7 +108,7 @@ async function sendWelcomeWithInstructions(email, name, phone) {
 
         <div style="padding:2rem">
           <!-- Bienvenida -->
-          <h2 style="color:#1A1A1A;margin:0 0 .75rem">¡Bienvenida, ${name}! 🎉</h2>
+          <h2 style="color:#1A1A1A;margin:0 0 .75rem">¡Hola, ${name}! 🎉</h2>
           <p style="color:#555;line-height:1.7;margin:0 0 1.5rem">
             Tu valoración ha sido recibida. Lorena ya está revisando tu perfil para diseñar tu plan de entrenamiento y nutrición completamente personalizado. En breve te avisará cuando esté listo. ¡Este es tu primer paso hacia la transformación! 💪
           </p>
@@ -189,7 +189,7 @@ async function sendWeeklySummary(trainerEmail, trainerName, clients) {
   await resend.emails.send({
     from: FROM,
     to: trainerEmail,
-    subject: `📊 Resumen semanal de tus clientas — ${weekLabel}`,
+    subject: `📊 Resumen semanal de tus clientes — ${weekLabel}`,
     html: `
       <div style="font-family:'Helvetica Neue',sans-serif;max-width:620px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
         <div style="background:linear-gradient(135deg,#FF6B6B,#FF8E53);padding:2rem;text-align:center">
@@ -197,14 +197,14 @@ async function sendWeeklySummary(trainerEmail, trainerName, clients) {
           <p style="color:rgba(255,255,255,.85);margin:.5rem 0 0;font-size:.9rem">${weekLabel}</p>
         </div>
         <div style="padding:2rem">
-          <p style="color:#555;margin:0 0 1.5rem">Hola ${trainerName}, aquí el resumen de tus clientas esta semana:</p>
+          <p style="color:#555;margin:0 0 1.5rem">Hola ${trainerName}, aquí el resumen de tus clientes esta semana:</p>
 
           ${activeClients.length > 0 ? `
-          <h3 style="color:#1A1A1A;margin:0 0 1rem;font-size:1rem">✅ Activas esta semana (${activeClients.length})</h3>
+          <h3 style="color:#1A1A1A;margin:0 0 1rem;font-size:1rem">✅ Activos esta semana (${activeClients.length})</h3>
           <table style="width:100%;border-collapse:collapse;margin-bottom:1.5rem">
             <thead>
               <tr style="border-bottom:2px solid #f0f0f0">
-                <th style="padding:8px 0;text-align:left;color:#999;font-size:12px;font-weight:600">CLIENTA</th>
+                <th style="padding:8px 0;text-align:left;color:#999;font-size:12px;font-weight:600">CLIENTE</th>
                 <th style="padding:8px;text-align:center;color:#999;font-size:12px;font-weight:600">ENTRENOS</th>
                 <th style="padding:8px;text-align:center;color:#999;font-size:12px;font-weight:600">RACHA</th>
                 <th style="padding:8px;text-align:center;color:#999;font-size:12px;font-weight:600">ÚLTIMO ENTRENO</th>
@@ -220,7 +220,7 @@ async function sendWeeklySummary(trainerEmail, trainerName, clients) {
           </div>` : ''}
 
           <div style="background:#f8f8f8;border-radius:8px;padding:1rem;text-align:center">
-            <p style="color:#555;margin:0;font-size:13px">Total clientas: <strong>${clients.length}</strong> · Activas: <strong>${activeClients.length}</strong> · Inactivas: <strong>${inactiveClients.length}</strong></p>
+            <p style="color:#555;margin:0;font-size:13px">Total clientes: <strong>${clients.length}</strong> · Activos: <strong>${activeClients.length}</strong> · Inactivos: <strong>${inactiveClients.length}</strong></p>
           </div>
 
           <p style="color:#999;font-size:12px;margin:1.5rem 0 0;text-align:center">
@@ -257,7 +257,7 @@ async function sendRenewalReminder(clientEmail, clientName, daysLeft, trainerEma
   });
 }
 
-// ── Aviso a la entrenadora: nuevas medidas de una clienta ─────────────────────
+// ── Aviso a la entrenadora: nuevas medidas de una cliente ─────────────────────
 const MEASURE_FIELDS = [
   { key: 'weight_kg',  label: 'Peso',    unit: 'kg', better: 'down' },
   { key: 'waist_cm',   label: 'Cintura', unit: 'cm', better: 'down' },
@@ -319,7 +319,7 @@ async function sendMeasurementUpdate(trainerEmail, trainerName, clientName, clie
     <div style="font-family:-apple-system,Helvetica,Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)">
       <div style="background:linear-gradient(135deg,#FF6B6B,#FF8E53);padding:28px;text-align:center">
         <h1 style="color:#fff;margin:0;font-size:20px;letter-spacing:.06em;font-weight:800">LOVIC</h1>
-        <p style="color:rgba(255,255,255,.9);margin:4px 0 0;font-size:12px;letter-spacing:.12em">NUEVAS MEDIDAS DE UNA CLIENTA</p>
+        <p style="color:rgba(255,255,255,.9);margin:4px 0 0;font-size:12px;letter-spacing:.12em">NUEVAS MEDIDAS DE UN CLIENTE</p>
       </div>
       <div style="padding:26px 28px 30px">
         <table cellpadding="0" cellspacing="0" style="width:100%;margin-bottom:22px"><tr>
@@ -341,9 +341,9 @@ async function sendMeasurementUpdate(trainerEmail, trainerName, clientName, clie
           </tr></thead>
           <tbody>${rows.join('')}</tbody>
         </table>
-        ${current.notes ? `<p style="font-size:13px;color:#666;margin-top:14px"><b>Nota de la clienta:</b> ${current.notes}</p>` : ''}
+        ${current.notes ? `<p style="font-size:13px;color:#666;margin-top:14px"><b>Nota del cliente:</b> ${current.notes}</p>` : ''}
         <a href="${link}" style="display:block;text-align:center;margin-top:24px;text-decoration:none;background:linear-gradient(135deg,#FF6B6B,#FF8E53);color:#fff;font-weight:800;padding:14px;border-radius:12px;font-size:15px">Ver perfil de ${clientName.split(' ')[0]} →</a>
-        <p style="text-align:center;color:#bbb;font-size:11px;margin-top:16px">Recibes este correo porque una clienta registró nuevas medidas en Lovic.</p>
+        <p style="text-align:center;color:#bbb;font-size:11px;margin-top:16px">Recibes este correo porque un cliente registró nuevas medidas en Lovic.</p>
       </div>
     </div>`,
   });
@@ -454,7 +454,7 @@ async function sendClientStats(trainerEmail, trainerName, clientName, clientId, 
   });
 }
 
-// ── Aviso a la entrenadora: clientas que dejaron de registrar comida ───────────
+// ── Aviso a la entrenadora: clientes que dejaron de registrar comida ───────────
 async function sendNutritionAlert(trainerEmail, trainerName, clients) {
   const appUrl = process.env.APP_URL || 'https://app.lovicgym.com';
   const rows = clients.map(c => `
@@ -465,7 +465,7 @@ async function sendNutritionAlert(trainerEmail, trainerName, clients) {
   await resend.emails.send({
     from: FROM,
     to: trainerEmail,
-    subject: `🍽️ ${clients.length} clienta${clients.length > 1 ? 's' : ''} dejó de registrar sus comidas`,
+    subject: `🍽️ ${clients.length} cliente${clients.length > 1 ? 's' : ''} dejó de registrar sus comidas`,
     html: `
     <div style="font-family:-apple-system,Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)">
       <div style="background:linear-gradient(135deg,#FF6B6B,#FF8E53);padding:26px;text-align:center">
@@ -473,7 +473,7 @@ async function sendNutritionAlert(trainerEmail, trainerName, clients) {
         <p style="color:rgba(255,255,255,.9);margin:4px 0 0;font-size:12px;letter-spacing:.12em">SEGUIMIENTO DE NUTRICIÓN</p>
       </div>
       <div style="padding:24px 26px 28px">
-        <p style="font-size:15px;color:#1A1A1A;margin:0 0 14px">Hola ${trainerName || ''}, estas clientas llevan varios días sin registrar sus comidas:</p>
+        <p style="font-size:15px;color:#1A1A1A;margin:0 0 14px">Hola ${trainerName || ''}, estos clientes llevan varios días sin registrar sus comidas:</p>
         <table style="width:100%;border-collapse:collapse">${rows}</table>
         <p style="font-size:13px;color:#666;line-height:1.6;margin:16px 0 20px">Un mensajito tuyo suele reactivarlas. Puedes ver su detalle en la app.</p>
         <a href="${appUrl}/trainer" style="display:block;text-align:center;text-decoration:none;background:linear-gradient(135deg,#FF6B6B,#FF8E53);color:#fff;font-weight:800;padding:14px;border-radius:12px;font-size:15px">Abrir el panel →</a>

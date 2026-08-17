@@ -239,7 +239,7 @@ function TableView({ clients, navigate }) {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
             <tr style={{ borderBottom: '2px solid var(--border)' }}>
-              {['Clienta', 'Objetivo', 'Estado', 'Esta semana', 'Cambio de peso', 'Último entreno'].map(h => (
+              {['Cliente', 'Objetivo', 'Estado', 'Esta semana', 'Cambio de peso', 'Último entreno'].map(h => (
                 <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, fontSize: 11, color: 'var(--muted)', whiteSpace: 'nowrap' }}>{h.toUpperCase()}</th>
               ))}
             </tr>
