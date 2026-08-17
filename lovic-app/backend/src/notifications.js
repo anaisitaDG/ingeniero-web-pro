@@ -164,11 +164,9 @@ function startCronJobs() {
       const [rows] = await db.query(
         `SELECT ps.user_id, ps.subscription,
                 (SELECT COUNT(DISTINCT meal_type) FROM food_logs WHERE user_id=ps.user_id AND logged_at=?) AS today_meals,
-                (SELECT ROUND(AVG(mc)) FROM (
-                   SELECT COUNT(DISTINCT meal_type) mc FROM food_logs
-                   WHERE user_id=ps.user_id AND logged_at >= DATE_SUB(?, INTERVAL 14 DAY) AND logged_at < ?
-                   GROUP BY logged_at
-                 ) t) AS typical_meals
+                (SELECT ROUND(COUNT(DISTINCT CONCAT(logged_at,'|',meal_type)) / NULLIF(COUNT(DISTINCT logged_at),0))
+                   FROM food_logs
+                   WHERE user_id=ps.user_id AND logged_at >= DATE_SUB(?, INTERVAL 14 DAY) AND logged_at < ?) AS typical_meals
          FROM push_subscriptions ps
          JOIN users u ON u.id = ps.user_id AND u.role = 'client'`, [today, today, today]);
 
