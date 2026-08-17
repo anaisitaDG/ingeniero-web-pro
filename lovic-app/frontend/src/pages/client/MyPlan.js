@@ -367,7 +367,7 @@ function MealByTypeView({ legacyNutrition }) {
                       <input
                         autoFocus value={editText} onChange={e => setEditText(e.target.value)}
                         placeholder="Ej: crema de arroz con mora y coco"
-                        style={{ width: '100%', padding: '9px 11px', borderRadius: 9, border: '1px solid var(--border)', fontSize: 13, boxSizing: 'border-box' }}
+                        style={{ width: '100%', padding: '9px 11px', borderRadius: 9, border: '1px solid var(--border)', fontSize: 16, boxSizing: 'border-box' }}
                       />
                       <p style={{ fontSize: 10.5, color: 'var(--muted)', marginTop: 4 }}>Estimamos las calorías reales de lo que escribas.</p>
                       <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
