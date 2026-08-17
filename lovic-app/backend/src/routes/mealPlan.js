@@ -161,28 +161,35 @@ router.post('/eat', async (req, res) => {
     // Nombre + macros a registrar
     let name = slot.name;
     let cal = slot.calories, p = slot.protein_g, c = slot.carbs_g, f = slot.fat_g, fib = null;
+    let items = null; // desglose por ingrediente (igual que las comidas registradas a mano)
     const wantText = (custom_text && String(custom_text).trim()) ? String(custom_text).trim() : null;
 
-    // Estimamos con IA si: (a) comió una variante, o (b) la comida del plan no tiene calorías
-    if (wantText || cal == null) {
-      const textToParse = wantText || `${slot.name}${slot.description ? '. ' + slot.description : ''}`;
-      try {
-        const parsed = await parseFood(textToParse);
+    // Siempre pasamos la comida por la IA para obtener el desglose por ingrediente.
+    // Las calorías/macros del plan (si Lorena las puso) mandan; solo estimamos cuando faltan o comió variante.
+    const textToParse = wantText || `${slot.name}${slot.description ? '. ' + slot.description : ''}`;
+    try {
+      const parsed = await parseFood(textToParse);
+      if (Array.isArray(parsed.items) && parsed.items.length) items = parsed.items;
+      if (wantText || cal == null) {
         cal = Math.round(parsed.total_calories) || 0;
         p   = parsed.protein_g != null ? Math.round(parsed.protein_g) : null;
         c   = parsed.carbs_g   != null ? Math.round(parsed.carbs_g)   : null;
         f   = parsed.fat_g     != null ? Math.round(parsed.fat_g)     : null;
         fib = parsed.fiber_g   != null ? Math.round(parsed.fiber_g)   : null;
         if (wantText) name = wantText; // registramos lo que REALMENTE comió
-      } catch (_) { cal = cal || 0; } // si la IA falla, seguimos con lo del plan
-    }
+      }
+    } catch (_) { cal = cal || 0; } // si la IA falla, seguimos con lo del plan
+
+    // parsed_items: 1er ítem = cabecera con el nombre completo + total; el resto = desglose por ingrediente.
+    // (FoodLogger usa la cabecera como título y muestra el desglose debajo, igual que las comidas a mano.)
+    const finalItems = [{ name, quantity: '', calories: cal || 0 }, ...(items || [])];
 
     // Upsert: borramos el registro anterior del plan y volvemos a insertar (permite editar/ajustar)
     await db.query('DELETE FROM food_logs WHERE user_id=? AND logged_at=? AND input_text=?', [uid, today, key]);
     await db.query(
       `INSERT INTO food_logs (id, user_id, input_text, parsed_items, calories, protein_g, carbs_g, fat_g, fiber_g, meal_type, logged_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [uuidv4(), uid, key, JSON.stringify([{ name, quantity: '', calories: cal || 0 }]),
+      [uuidv4(), uid, key, JSON.stringify(finalItems),
        cal || 0, p, c, f, fib, mealType, today]
     );
     res.json({ ok: true, logged: { name, calories: cal || 0, protein_g: p, carbs_g: c, fat_g: f, fiber_g: fib } });

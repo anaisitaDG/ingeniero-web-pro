@@ -589,6 +589,8 @@ function LogCard({ log, onDelete }) {
   const displayText = fromPlan
     ? (items[0]?.name || 'Comida del plan')
     : log.input_text;
+  // En las del plan el 1er ítem es la cabecera (nombre completo); el desglose es el resto
+  const breakdown = fromPlan ? items.slice(1) : items;
 
   return (
     <div className="card" style={{ padding: 16 }}>
@@ -607,13 +609,13 @@ function LogCard({ log, onDelete }) {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 6, marginLeft: 8 }}>
-          {items.length > 0 && <button onClick={() => setOpen(!open)} className="btn-ghost" style={{ padding: '4px 8px', fontSize: 12 }}>{open ? '▲' : '▼'}</button>}
+          {breakdown.length > 0 && <button onClick={() => setOpen(!open)} className="btn-ghost" style={{ padding: '4px 8px', fontSize: 12 }}>{open ? '▲' : '▼'}</button>}
           <button onClick={onDelete} className="btn-ghost" style={{ padding: '4px 8px', fontSize: 16, color: '#E05252' }}>×</button>
         </div>
       </div>
-      {open && items.length > 0 && (
+      {open && breakdown.length > 0 && (
         <div style={{ marginTop: 10, borderTop: '1px solid var(--border)', paddingTop: 10 }}>
-          {items.map((item, i) => (
+          {breakdown.map((item, i) => (
             <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '3px 0', color: 'var(--muted)' }}>
               <span>{item.name} <span style={{ color: 'var(--text)' }}>{item.quantity}</span></span>
               <span style={{ fontWeight: 600 }}>{item.calories} kcal</span>
