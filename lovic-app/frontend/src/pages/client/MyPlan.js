@@ -269,6 +269,41 @@ function MealByTypeView({ legacyNutrition }) {
 
   return (
     <div>
+      {/* Indicaciones & Suplementación — primero de todo (misma lista todos los días, agrupada por momento) */}
+      {data.supplements && data.supplements.length > 0 && (() => {
+        const groups = [];
+        data.supplements.forEach(s => {
+          const last = groups[groups.length - 1];
+          if (last && last.moment === s.moment) last.items.push(s);
+          else groups.push({ moment: s.moment, items: [s] });
+        });
+        return (
+          <div style={{ marginBottom: 20 }}>
+            <p style={{ fontWeight: 800, fontSize: 15, marginBottom: 12 }}>📌 Indicaciones & Suplementación</p>
+            {groups.map((g, gi) => (
+              <div key={gi} className="card" style={{ padding: '12px 14px', marginBottom: 10 }}>
+                <p style={{ fontSize: 13, fontWeight: 800, color: 'var(--coral)', marginBottom: g.items.length ? 8 : 0 }}>{g.moment}</p>
+                {g.items.map((it, ii) => {
+                  const taken = suppTaken.includes(it.id);
+                  return (
+                    <div key={ii} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderTop: ii ? '1px solid var(--border)' : 'none' }}>
+                      <button onClick={() => toggleSupp(it.id)} aria-label="marcar tomado" style={{
+                        flexShrink: 0, width: 24, height: 24, borderRadius: 7, cursor: 'pointer',
+                        border: taken ? 'none' : '2px solid var(--border)',
+                        background: taken ? '#16a34a' : 'transparent', color: '#fff', fontSize: 14, fontWeight: 800,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
+                      }}>{taken ? '✓' : ''}</button>
+                      <span style={{ flex: 1, fontSize: 14, fontWeight: 600, textDecoration: taken ? 'line-through' : 'none', opacity: taken ? 0.6 : 1 }}>{it.item}</span>
+                      {it.dose && <span style={{ fontSize: 13, color: 'var(--muted)', textAlign: 'right', flexShrink: 0 }}>{it.dose}</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
       {/* Contexto: qué entrenó hoy + semana */}
       {(data.today_day_type || (data.mode === 'rotativo' && data.week_no)) && (
         <div className="card" style={{ marginBottom: 14, padding: '12px 14px', background: 'var(--coral-light)', border: 'none' }}>
@@ -415,41 +450,6 @@ function MealByTypeView({ legacyNutrition }) {
       {zoneSlots.length === 0 && (
         <div className="empty-state"><div className="icon">🍽️</div><p>No hay comidas para {ZONE_META[zone].label} esta semana.</p></div>
       )}
-
-      {/* Indicaciones & Suplementación (misma lista todos los días, agrupada por momento) */}
-      {data.supplements && data.supplements.length > 0 && (() => {
-        const groups = [];
-        data.supplements.forEach(s => {
-          const last = groups[groups.length - 1];
-          if (last && last.moment === s.moment) last.items.push(s);
-          else groups.push({ moment: s.moment, items: [s] });
-        });
-        return (
-          <div style={{ marginTop: 22, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
-            <p style={{ fontWeight: 800, fontSize: 15, marginBottom: 12 }}>📌 Indicaciones & Suplementación</p>
-            {groups.map((g, gi) => (
-              <div key={gi} className="card" style={{ padding: '12px 14px', marginBottom: 10 }}>
-                <p style={{ fontSize: 13, fontWeight: 800, color: 'var(--coral)', marginBottom: g.items.length ? 8 : 0 }}>{g.moment}</p>
-                {g.items.map((it, ii) => {
-                  const taken = suppTaken.includes(it.id);
-                  return (
-                    <div key={ii} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderTop: ii ? '1px solid var(--border)' : 'none' }}>
-                      <button onClick={() => toggleSupp(it.id)} aria-label="marcar tomado" style={{
-                        flexShrink: 0, width: 24, height: 24, borderRadius: 7, cursor: 'pointer',
-                        border: taken ? 'none' : '2px solid var(--border)',
-                        background: taken ? '#16a34a' : 'transparent', color: '#fff', fontSize: 14, fontWeight: 800,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
-                      }}>{taken ? '✓' : ''}</button>
-                      <span style={{ flex: 1, fontSize: 14, fontWeight: 600, textDecoration: taken ? 'line-through' : 'none', opacity: taken ? 0.6 : 1 }}>{it.item}</span>
-                      {it.dose && <span style={{ fontSize: 13, color: 'var(--muted)', textAlign: 'right', flexShrink: 0 }}>{it.dose}</span>}
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
-          </div>
-        );
-      })()}
 
       {/* Lista de mercado */}
       <div style={{ marginTop: 20, borderTop: '1px solid var(--border)', paddingTop: 16 }}>

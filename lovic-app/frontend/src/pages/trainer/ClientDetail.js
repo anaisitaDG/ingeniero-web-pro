@@ -1019,8 +1019,8 @@ export default function ClientDetail() {
 
             {nutritionSubTab === 'planner' && (
               <>
-                <NutritionByType clientId={id} />
                 <SupplementsEditor clientId={id} />
+                <NutritionByType clientId={id} />
               </>
             )}
 
