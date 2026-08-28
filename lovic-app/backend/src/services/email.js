@@ -482,28 +482,62 @@ async function sendNutritionAlert(trainerEmail, trainerName, clients) {
   });
 }
 
-// ── Aviso a Lorena: clientes con plan por vencer (para preparar la rutina nueva) ─
-async function sendTrainerPlanExpiryDigest(trainerEmail, trainerName, clients, daysLeft = 7) {
+// ── Aviso a Lorena: planes por vencer + datos del ciclo para armar el próximo ─
+async function sendTrainerPlanExpiryDigest(trainerEmail, trainerName, clients, daysLeft = 3) {
   if (!trainerEmail || !clients?.length) return;
-  const rows = clients.map(c => {
-    const end = c.start_date && c.duration_days
-      ? new Date(new Date(c.start_date).getTime() + c.duration_days * 86400000).toLocaleDateString('es', { day: 'numeric', month: 'long' })
-      : '';
-    return `<tr><td style="padding:8px 0;border-bottom:1px solid #eee;font-weight:700;color:#1A1A1A">${c.name}</td><td style="padding:8px 0;border-bottom:1px solid #eee;color:#FF6B6B;text-align:right">vence el ${end}</td></tr>`;
-  }).join('');
+
+  const card = (c) => {
+    const wTxt = c.weightDelta == null ? '—'
+      : `${c.weightDelta > 0 ? '+' : ''}${c.weightDelta} kg`;
+    const wColor = c.weightDelta == null ? '#999' : (c.weightDelta < 0 ? '#16a34a' : '#dc2626');
+    const cardioTxt = c.cardioSessions
+      ? `${c.cardioAvg} min/día · ${c.cardioSessions} ${c.cardioSessions === 1 ? 'día' : 'días'}`
+      : 'sin cardio registrado';
+    const extrasTxt = c.extras && c.extras.length
+      ? c.extras.map(e => `${e.name}${e.times > 1 ? ` (${e.times}×)` : ''}`).join(', ')
+      : 'ninguno';
+    return `
+      <div style="border:1px solid #eee;border-radius:12px;padding:16px;margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
+          <span style="font-weight:800;font-size:1.05rem;color:#1A1A1A">${c.name}</span>
+          <span style="color:#FF6B6B;font-weight:700;font-size:.85rem">vence el ${c.endDate}</span>
+        </div>
+        <table style="width:100%;border-collapse:collapse;margin-top:10px;font-size:.9rem">
+          <tr>
+            <td style="padding:4px 0;color:#888">🏋️ Entrenó</td>
+            <td style="padding:4px 0;text-align:right;font-weight:700;color:#1A1A1A">${c.daysTrained} días</td>
+          </tr>
+          <tr>
+            <td style="padding:4px 0;color:#888">🏃 Cardio</td>
+            <td style="padding:4px 0;text-align:right;font-weight:700;color:#1A1A1A">${cardioTxt}</td>
+          </tr>
+          <tr>
+            <td style="padding:4px 0;color:#888">⚖️ Cambio de peso</td>
+            <td style="padding:4px 0;text-align:right;font-weight:700;color:${wColor}">${wTxt}</td>
+          </tr>
+        </table>
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid #f0f0f0">
+          <p style="margin:0 0 4px;color:#888;font-size:.82rem">➕ Ejercicios que agregó por su cuenta:</p>
+          <p style="margin:0;color:#1A1A1A;font-size:.9rem;line-height:1.5">${extrasTxt}</p>
+        </div>
+      </div>`;
+  };
+
   await resend.emails.send({
     from: FROM,
     to: trainerEmail,
-    subject: `⏰ ${clients.length} cliente${clients.length > 1 ? 's' : ''} necesita${clients.length > 1 ? 'n' : ''} rutina nueva en ${daysLeft} días`,
+    subject: `⏰ Prepara ${clients.length === 1 ? 'la rutina' : clients.length + ' rutinas'} — vence${clients.length > 1 ? 'n' : ''} en ${daysLeft} días`,
     html: `
-      <div style="font-family:'Helvetica Neue',sans-serif;max-width:520px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
+      <div style="font-family:'Helvetica Neue',sans-serif;max-width:560px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
         <div style="background:linear-gradient(135deg,#FF6B6B,#FF8E53);padding:2rem;text-align:center">
           <h1 style="color:#fff;margin:0;font-size:1.3rem">⏰ Planes por vencer</h1>
+          <p style="color:rgba(255,255,255,.9);margin:.35rem 0 0;font-size:.85rem">En ${daysLeft} días · con lo que necesitas para armar el siguiente</p>
         </div>
-        <div style="padding:2rem">
-          <p style="color:#555;line-height:1.7;margin:0 0 1rem">Hola ${trainerName || ''}, estos planes vencen en ${daysLeft} días. Es buen momento para preparar la rutina nueva:</p>
-          <table style="width:100%;border-collapse:collapse">${rows}</table>
-          <a href="${process.env.APP_URL}/trainer" style="display:inline-block;margin-top:1.5rem;background:#FF6B6B;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700">Ir al panel →</a>
+        <div style="padding:1.75rem">
+          <p style="color:#555;line-height:1.6;margin:0 0 1.25rem">Hola ${trainerName || ''}, resumen del ciclo de ${clients.length === 1 ? 'esta persona' : 'estas personas'} para preparar su nueva rutina:</p>
+          ${clients.map(card).join('')}
+          <a href="${process.env.APP_URL}/trainer" style="display:inline-block;margin-top:.5rem;background:#FF6B6B;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700">Ver detalle en el panel →</a>
+          <p style="color:#aaa;font-size:.78rem;margin:1.25rem 0 0">Tip: en el panel, pestaña Registros → "Cierre de ciclo" tienes la progresión por ejercicio.</p>
         </div>
       </div>
     `,

@@ -457,10 +457,40 @@ async function sendRenewalRemindersJob() {
     for (const c of expiring) {
       await sendRenewalReminder(c.email, c.name, 7, trainer.email, trainer.name).catch(e => console.error('[renewal]', e.message));
     }
-    // Aviso a Lorena para que prepare la rutina nueva a tiempo
-    if (expiring.length) {
+
+    // ── Aviso a Lorena 3 días antes, con datos para armar el próximo plan ──
+    const in3 = new Date(today); in3.setDate(in3.getDate() + 3);
+    const in3str = in3.toISOString().slice(0, 10);
+    const [expiring3] = await db.query(
+      `SELECT u.id, u.name, wp.start_date, wp.duration_days, wp.created_at
+       FROM workout_plans wp JOIN users u ON u.id = wp.user_id
+       WHERE wp.is_active = TRUE AND wp.start_date IS NOT NULL AND wp.duration_days IS NOT NULL
+         AND DATE_ADD(wp.start_date, INTERVAL wp.duration_days DAY) = ?`, [in3str]);
+    if (expiring3.length) {
       const { sendTrainerPlanExpiryDigest } = require('./services/email');
-      await sendTrainerPlanExpiryDigest(trainer.email, trainer.name, expiring, 7).catch(e => console.error('[expiry-digest]', e.message));
+      const digest = [];
+      for (const c of expiring3) {
+        const since = (c.start_date ? new Date(c.start_date) : new Date(c.created_at)).toISOString().slice(0, 10);
+        const endStr = new Date(new Date(c.start_date).getTime() + c.duration_days * 86400000).toLocaleDateString('es', { day: 'numeric', month: 'long' });
+        const [[dt]] = await db.query(
+          `SELECT COUNT(DISTINCT tracked_date) n FROM daily_tracking WHERE user_id=? AND workout_done=1 AND tracked_date >= ?`, [c.id, since]);
+        const [extras] = await db.query(
+          `SELECT name, COUNT(DISTINCT session_date) times FROM session_extra_exercises
+           WHERE user_id=? AND session_date >= ? GROUP BY name ORDER BY times DESC LIMIT 15`, [c.id, since]);
+        const [[cardio]] = await db.query(
+          `SELECT COUNT(DISTINCT session_date) sessions, COALESCE(SUM(duration_mins),0) mins
+           FROM workout_activity_logs WHERE user_id=? AND type IN ('cardio','cardio_inicio') AND session_date >= ?`, [c.id, since]);
+        const cardioAvg = cardio.sessions ? Math.round(cardio.mins / cardio.sessions) : 0;
+        const [[wS]] = await db.query(`SELECT weight_kg w FROM measurements WHERE user_id=? AND logged_at <= ? ORDER BY logged_at DESC LIMIT 1`, [c.id, since + ' 23:59:59']);
+        const [[wN]] = await db.query(`SELECT weight_kg w FROM measurements WHERE user_id=? ORDER BY logged_at DESC LIMIT 1`, [c.id]);
+        const weightDelta = (wS && wN) ? +(Number(wN.w) - Number(wS.w)).toFixed(1) : null;
+        digest.push({
+          name: c.name, endDate: endStr, daysTrained: dt.n || 0,
+          extras: extras.map(e => ({ name: e.name, times: e.times })),
+          cardioAvg, cardioSessions: cardio.sessions || 0, weightDelta,
+        });
+      }
+      await sendTrainerPlanExpiryDigest(trainer.email, trainer.name, digest, 3).catch(e => console.error('[expiry-digest]', e.message));
     }
 
     // Payment renewals in exactly 7 days
