@@ -2083,8 +2083,9 @@ function SessionCard({ session, prevSession, defaultOpen = false }) {
   );
 }
 
-// Indicaciones & Suplementación — una lista por persona, momentos libres.
+// Indicaciones & Suplementación — una lista por persona. Momentos: menú común + "Otro…" (híbrido).
 const _suppInp = { padding: '10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 16, width: '100%', boxSizing: 'border-box' };
+const SUPP_MOMENTS = ['En ayunas', 'Antes de Cardio', 'Antes de Entreno', 'Durante el Entreno', 'Post-Entreno', 'Con el desayuno', 'Con el almuerzo', 'Con la cena', 'Antes de dormir'];
 function SupplementsEditor({ clientId }) {
   const [rows, setRows]       = useState([]);
   const [loading, setLoading] = useState(true);
@@ -2093,7 +2094,8 @@ function SupplementsEditor({ clientId }) {
 
   useEffect(() => {
     api.trainer.getSupplements(clientId)
-      .then(r => setRows(r.supplements || []))
+      // _custom: true si el momento no está en la lista común (se escribió a mano)
+      .then(r => setRows((r.supplements || []).map(s => ({ ...s, _custom: !!s.moment && !SUPP_MOMENTS.includes(s.moment) }))))
       .catch(() => setRows([]))
       .finally(() => setLoading(false));
   }, [clientId]);
@@ -2141,7 +2143,21 @@ function SupplementsEditor({ clientId }) {
               <button onClick={() => removeRow(i)} style={{ border: 'none', background: 'transparent', color: '#E05252', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>× Quitar</button>
             </div>
           </div>
-          <input value={r.moment || ''} onChange={e => update(i, 'moment', e.target.value)} placeholder="Momento (ej. Antes de Cardio)" style={_suppInp} />
+          <select
+            value={r._custom ? '__other__' : (r.moment || '')}
+            onChange={e => {
+              if (e.target.value === '__other__') setRows(rs => rs.map((x, j) => (j === i ? { ...x, moment: '', _custom: true } : x)));
+              else setRows(rs => rs.map((x, j) => (j === i ? { ...x, moment: e.target.value, _custom: false } : x)));
+            }}
+            style={_suppInp}
+          >
+            <option value="">— Elige el momento —</option>
+            {SUPP_MOMENTS.map(m => <option key={m} value={m}>{m}</option>)}
+            <option value="__other__">Otro… (escribir)</option>
+          </select>
+          {r._custom && (
+            <input value={r.moment || ''} onChange={e => update(i, 'moment', e.target.value)} autoFocus placeholder="Escribe el momento (ej. Post-Cardio en ayunas)" style={_suppInp} />
+          )}
           <input value={r.item || ''} onChange={e => update(i, 'item', e.target.value)} placeholder="Suplemento / alimento (ej. Cafeína + Yohimbine)" style={_suppInp} />
           <input value={r.dose || ''} onChange={e => update(i, 'dose', e.target.value)} placeholder="Dosis / detalle (ej. 200 mg)" style={_suppInp} />
         </div>
