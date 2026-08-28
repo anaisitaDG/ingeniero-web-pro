@@ -322,6 +322,18 @@ const db = require('./database/db');
         INDEX idx_client (client_id, week_no, body_zone)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
+    // Indicaciones & suplementación: una lista por clienta (momento libre, item, dosis).
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS client_supplements (
+        id          VARCHAR(36) PRIMARY KEY,
+        client_id   VARCHAR(36) NOT NULL,
+        moment      VARCHAR(120) NOT NULL,          -- momento libre: 'Antes de Cardio', 'Post-Entreno', 'En ayunas'...
+        item        VARCHAR(200) NOT NULL,          -- suplemento o alimento
+        dose        VARCHAR(200) DEFAULT NULL,      -- dosis / detalle
+        sort_order  SMALLINT DEFAULT 0,
+        INDEX idx_client (client_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
   } catch (e) {
     console.error('Migration error:', e.message);
   }

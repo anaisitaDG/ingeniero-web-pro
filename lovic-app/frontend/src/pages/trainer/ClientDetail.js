@@ -1018,7 +1018,10 @@ export default function ClientDetail() {
             </div>
 
             {nutritionSubTab === 'planner' && (
-              <NutritionByType clientId={id} />
+              <>
+                <NutritionByType clientId={id} />
+                <SupplementsEditor clientId={id} />
+              </>
             )}
 
             {nutritionSubTab === 'adherence' && (
@@ -2076,6 +2079,79 @@ function SessionCard({ session, prevSession, defaultOpen = false }) {
           );
         })}
       </div>}
+    </div>
+  );
+}
+
+// Indicaciones & Suplementación — una lista por persona, momentos libres.
+const _suppInp = { padding: '10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 16, width: '100%', boxSizing: 'border-box' };
+function SupplementsEditor({ clientId }) {
+  const [rows, setRows]       = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving]   = useState(false);
+  const [msg, setMsg]         = useState('');
+
+  useEffect(() => {
+    api.trainer.getSupplements(clientId)
+      .then(r => setRows(r.supplements || []))
+      .catch(() => setRows([]))
+      .finally(() => setLoading(false));
+  }, [clientId]);
+
+  const update    = (i, field, val) => setRows(rs => rs.map((r, j) => (j === i ? { ...r, [field]: val } : r)));
+  const addRow    = () => setRows(rs => [...rs, { moment: '', item: '', dose: '' }]);
+  const removeRow = (i) => setRows(rs => rs.filter((_, j) => j !== i));
+  const move      = (i, dir) => setRows(rs => {
+    const j = i + dir; if (j < 0 || j >= rs.length) return rs;
+    const n = [...rs]; [n[i], n[j]] = [n[j], n[i]]; return n;
+  });
+
+  async function save() {
+    setSaving(true); setMsg('');
+    try {
+      const clean = rows.filter(r => (r.moment || '').trim() && (r.item || '').trim());
+      await api.trainer.saveSupplements(clientId, clean);
+      setRows(clean);
+      setMsg('✅ Guardado');
+    } catch (e) { setMsg('❌ ' + e.message); }
+    setSaving(false);
+    setTimeout(() => setMsg(''), 2500);
+  }
+
+  if (loading) return null;
+
+  return (
+    <div className="card" style={{ marginTop: 18, padding: 16 }}>
+      <p style={{ fontWeight: 800, fontSize: 15, marginBottom: 4 }}>📌 Indicaciones & Suplementación</p>
+      <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 14 }}>
+        Una lista para esta persona — igual todos los días. Los momentos son libres (ej. "Antes de Cardio", "Post-Entreno", "En ayunas").
+      </p>
+
+      {rows.length === 0 && (
+        <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 12 }}>Aún no hay indicaciones. Agrega la primera fila.</p>
+      )}
+
+      {rows.map((r, i) => (
+        <div key={i} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 10, marginBottom: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)' }}>#{i + 1}</span>
+            <div style={{ display: 'flex', gap: 4 }}>
+              <button onClick={() => move(i, -1)} disabled={i === 0} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 14, opacity: i === 0 ? 0.3 : 1 }}>▲</button>
+              <button onClick={() => move(i, 1)} disabled={i === rows.length - 1} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 14, opacity: i === rows.length - 1 ? 0.3 : 1 }}>▼</button>
+              <button onClick={() => removeRow(i)} style={{ border: 'none', background: 'transparent', color: '#E05252', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>× Quitar</button>
+            </div>
+          </div>
+          <input value={r.moment || ''} onChange={e => update(i, 'moment', e.target.value)} placeholder="Momento (ej. Antes de Cardio)" style={_suppInp} />
+          <input value={r.item || ''} onChange={e => update(i, 'item', e.target.value)} placeholder="Suplemento / alimento (ej. Cafeína + Yohimbine)" style={_suppInp} />
+          <input value={r.dose || ''} onChange={e => update(i, 'dose', e.target.value)} placeholder="Dosis / detalle (ej. 200 mg)" style={_suppInp} />
+        </div>
+      ))}
+
+      <div style={{ display: 'flex', gap: 10, marginTop: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+        <button onClick={addRow} style={{ padding: '9px 14px', borderRadius: 9, border: '1px dashed var(--coral)', background: 'var(--coral-light)', color: 'var(--coral)', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>+ Agregar fila</button>
+        <button onClick={save} disabled={saving} style={{ padding: '9px 18px', borderRadius: 9, border: 'none', background: 'var(--coral)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{saving ? 'Guardando…' : 'Guardar suplementación'}</button>
+        {msg && <span style={{ fontSize: 13, fontWeight: 700 }}>{msg}</span>}
+      </div>
     </div>
   );
 }

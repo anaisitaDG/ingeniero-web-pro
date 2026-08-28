@@ -1110,7 +1110,39 @@ router.put('/clients/:id/meal-slots', async (req, res) => {
   } finally { conn.release(); }
 });
 
-// GET /trainer/billing — panel de ingresos
+// GET /trainer/clients/:id/supplements — indicaciones y suplementación de la clienta
+router.get('/clients/:id/supplements', async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      'SELECT id, moment, item, dose FROM client_supplements WHERE client_id=? ORDER BY sort_order, id', [req.params.id]);
+    res.json({ supplements: rows });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// PUT /trainer/clients/:id/supplements — reemplaza TODA la lista de suplementación
+router.put('/clients/:id/supplements', async (req, res) => {
+  const uid = req.params.id;
+  const { supplements } = req.body;
+  if (!Array.isArray(supplements)) return res.status(400).json({ error: 'supplements requerido' });
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+    await conn.query('DELETE FROM client_supplements WHERE client_id=?', [uid]);
+    let i = 0;
+    for (const s of supplements) {
+      if (!s.moment?.trim() || !s.item?.trim()) continue;
+      await conn.query(
+        'INSERT INTO client_supplements (id, client_id, moment, item, dose, sort_order) VALUES (?,?,?,?,?,?)',
+        [uuidv4(), uid, s.moment.trim().slice(0, 120), s.item.trim().slice(0, 200), ((s.dose || '').trim().slice(0, 200)) || null, i++]
+      );
+    }
+    await conn.commit();
+    res.json({ ok: true });
+  } catch (e) {
+    await conn.rollback();
+    res.status(500).json({ error: e.message });
+  } finally { conn.release(); }
+});
 router.get('/billing', requireTrainer, async (req, res) => {
   try {
     const [clients] = await db.query(

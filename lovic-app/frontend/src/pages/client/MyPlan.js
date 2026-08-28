@@ -407,6 +407,32 @@ function MealByTypeView({ legacyNutrition }) {
         <div className="empty-state"><div className="icon">🍽️</div><p>No hay comidas para {ZONE_META[zone].label} esta semana.</p></div>
       )}
 
+      {/* Indicaciones & Suplementación (misma lista todos los días, agrupada por momento) */}
+      {data.supplements && data.supplements.length > 0 && (() => {
+        const groups = [];
+        data.supplements.forEach(s => {
+          const last = groups[groups.length - 1];
+          if (last && last.moment === s.moment) last.items.push(s);
+          else groups.push({ moment: s.moment, items: [s] });
+        });
+        return (
+          <div style={{ marginTop: 22, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+            <p style={{ fontWeight: 800, fontSize: 15, marginBottom: 12 }}>📌 Indicaciones & Suplementación</p>
+            {groups.map((g, gi) => (
+              <div key={gi} className="card" style={{ padding: '12px 14px', marginBottom: 10 }}>
+                <p style={{ fontSize: 13, fontWeight: 800, color: 'var(--coral)', marginBottom: g.items.length ? 8 : 0 }}>{g.moment}</p>
+                {g.items.map((it, ii) => (
+                  <div key={ii} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '4px 0', borderTop: ii ? '1px solid var(--border)' : 'none' }}>
+                    <span style={{ fontSize: 14, fontWeight: 600 }}>{it.item}</span>
+                    {it.dose && <span style={{ fontSize: 13, color: 'var(--muted)', textAlign: 'right', flexShrink: 0 }}>{it.dose}</span>}
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
       {/* Lista de mercado */}
       <div style={{ marginTop: 20, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
         {!showShopping ? (

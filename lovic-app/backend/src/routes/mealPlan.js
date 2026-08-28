@@ -123,7 +123,12 @@ router.get('/by-type', async (req, res) => {
       'SELECT COALESCE(SUM(calories),0) AS c FROM food_logs WHERE user_id=? AND logged_at=?', [uid, today]
     );
 
-    res.json({ mode, week_no, today_day_type, auto_zone, slots, eatenKeys, today, consumedToday: Number(cons.c) });
+    // Indicaciones & suplementación (una lista por clienta, igual todos los días)
+    const [supplements] = await db.query(
+      'SELECT moment, item, dose FROM client_supplements WHERE client_id=? ORDER BY sort_order, id', [uid]
+    );
+
+    res.json({ mode, week_no, today_day_type, auto_zone, slots, eatenKeys, today, consumedToday: Number(cons.c), supplements });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
