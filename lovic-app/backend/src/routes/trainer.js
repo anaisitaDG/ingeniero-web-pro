@@ -764,6 +764,131 @@ router.get('/clients/:id/workout-logs', async (req, res) => {
   }
 });
 
+// GET /trainer/clients/:id/cycle-summary — cierre de ciclo del plan activo (para armar el siguiente)
+router.get('/clients/:id/cycle-summary', async (req, res) => {
+  try {
+    const uid = req.params.id;
+    const [[plan]] = await db.query(
+      'SELECT id, name, start_date, duration_days, created_at FROM workout_plans WHERE user_id=? AND is_active=TRUE ORDER BY created_at DESC LIMIT 1', [uid]);
+    if (!plan) return res.json({ hasPlan: false });
+
+    const since = (plan.start_date ? new Date(plan.start_date) : new Date(plan.created_at)).toISOString().slice(0, 10);
+    const today = new Date(Date.now() - 5 * 3600 * 1000).toISOString().slice(0, 10);
+    const weeksElapsed = Math.max(1, Math.round((new Date(today) - new Date(since)) / (7 * 86400000)));
+
+    // Ejercicios planeados del ciclo
+    const [planned] = await db.query(
+      `SELECT we.id, we.name, we.sets, we.reps, we.tracking_type, wd.day_name, wd.day_order, we.exercise_order
+       FROM workout_exercises we JOIN workout_days wd ON wd.id = we.day_id
+       WHERE wd.plan_id=? ORDER BY wd.day_order, we.exercise_order`, [plan.id]);
+
+    // Todos los sets registrados del ciclo
+    const [logs] = await db.query(
+      `SELECT wl.exercise_id, DATE_FORMAT(wl.logged_date,'%Y-%m-%d') AS d, wl.weight_kg, wl.reps_done, wl.duration_secs
+       FROM workout_logs wl JOIN workout_exercises we ON we.id = wl.exercise_id
+       JOIN workout_days wd ON wd.id = we.day_id
+       WHERE wl.user_id=? AND wd.plan_id=? AND wl.logged_date >= ?
+       ORDER BY wl.logged_date ASC`, [uid, plan.id, since]);
+
+    const byEx = {};
+    for (const l of logs) { (byEx[l.exercise_id] = byEx[l.exercise_id] || []).push(l); }
+
+    const parseReps = (s) => {
+      const nums = String(s || '').match(/\d+/g);
+      if (!nums) return null;
+      const n = nums.map(Number);
+      return { min: Math.min(...n), max: Math.max(...n) };
+    };
+    // set representativo de un día: el de mayor peso (o mayor duración si es por tiempo)
+    const topOfDay = (sets, isTime) => sets.reduce((best, s) => {
+      const v = isTime ? (Number(s.duration_secs) || 0) : (Number(s.weight_kg) || 0);
+      const bv = isTime ? (Number(best.duration_secs) || 0) : (Number(best.weight_kg) || 0);
+      return v > bv ? s : best;
+    }, sets[0]);
+
+    const exercises = [];
+    const neverDone = [];
+    for (const p of planned) {
+      const rows = byEx[p.id] || [];
+      if (rows.length === 0) { neverDone.push({ name: p.name, day_name: p.day_name }); continue; }
+      const isTime = p.tracking_type === 'time';
+      const dates = [...new Set(rows.map(r => r.d))].sort();
+      const firstSets = rows.filter(r => r.d === dates[0]);
+      const lastSets = rows.filter(r => r.d === dates[dates.length - 1]);
+      const ft = topOfDay(firstSets, isTime), lt = topOfDay(lastSets, isTime);
+      const firstV = isTime ? Number(ft.duration_secs) || 0 : Number(ft.weight_kg) || 0;
+      const lastV = isTime ? Number(lt.duration_secs) || 0 : Number(lt.weight_kg) || 0;
+      const maxV = Math.max(...rows.map(r => isTime ? Number(r.duration_secs) || 0 : Number(r.weight_kg) || 0));
+      const repsArr = rows.map(r => Number(r.reps_done)).filter(n => !isNaN(n) && n > 0);
+      const avgReps = repsArr.length ? Math.round(repsArr.reduce((a, b) => a + b, 0) / repsArr.length) : null;
+      const target = parseReps(p.reps);
+      // Señal de reps: sube peso si hace bastante más que el objetivo; bájalo si hace menos
+      let repsSignal = 'ok';
+      if (!isTime && avgReps != null && target) {
+        if (avgReps >= target.max + 2) repsSignal = 'subir';
+        else if (avgReps <= target.min - 2) repsSignal = 'bajar';
+      }
+      const diff = lastV - firstV;
+      const trend = diff > 0.5 ? 'up' : (diff < -0.5 ? 'down' : 'flat');
+      exercises.push({
+        name: p.name, day_name: p.day_name, tracking_type: p.tracking_type,
+        sessions: dates.length, first: firstV, last: lastV, max: maxV,
+        first_reps: Number(ft.reps_done) || null, last_reps: Number(lt.reps_done) || null,
+        avg_reps: avgReps, target, reps_signal: repsSignal, trend,
+      });
+    }
+
+    // Cardio del ciclo
+    const [[cardio]] = await db.query(
+      `SELECT COUNT(DISTINCT session_date) sessions, COALESCE(SUM(duration_mins),0) mins
+       FROM workout_activity_logs WHERE user_id=? AND type IN ('cardio','cardio_inicio') AND session_date >= ?`, [uid, since]);
+    const [[plannedCardio]] = await db.query(
+      `SELECT COUNT(*) n FROM workout_days WHERE plan_id=? AND cardio_duration IS NOT NULL AND cardio_duration > 0`, [plan.id]);
+
+    // Ejercicios extra que agregó el cliente
+    const [extras] = await db.query(
+      `SELECT name, COUNT(DISTINCT session_date) times FROM session_extra_exercises
+       WHERE user_id=? AND session_date >= ? GROUP BY name ORDER BY times DESC LIMIT 30`, [uid, since]);
+
+    // Adherencia por día de la rutina
+    const [byDay] = await db.query(
+      `SELECT wd.day_name, wd.day_order, COUNT(DISTINCT wl.logged_date) done
+       FROM workout_days wd
+       LEFT JOIN workout_exercises we ON we.day_id = wd.id
+       LEFT JOIN workout_logs wl ON wl.exercise_id = we.id AND wl.user_id=? AND wl.logged_date >= ?
+       WHERE wd.plan_id=? GROUP BY wd.id, wd.day_name, wd.day_order ORDER BY wd.day_order`, [uid, since, plan.id]);
+
+    // Esfuerzo vs resultado
+    const [[dt]] = await db.query(
+      `SELECT COUNT(DISTINCT tracked_date) n FROM daily_tracking WHERE user_id=? AND workout_done=1 AND tracked_date >= ?`, [uid, since]);
+    const daysTrained = Math.max(dt.n || 0, new Set(logs.map(l => l.d)).size);
+    const daysPerWeek = byDay.length;
+    const expectedDays = daysPerWeek * weeksElapsed;
+    const [[wStart]] = await db.query(
+      `SELECT weight_kg FROM measurements WHERE user_id=? AND logged_at <= ? ORDER BY logged_at DESC LIMIT 1`, [uid, since + ' 23:59:59']);
+    const [[wFirstAfter]] = await db.query(
+      `SELECT weight_kg FROM measurements WHERE user_id=? AND logged_at >= ? ORDER BY logged_at ASC LIMIT 1`, [uid, since]);
+    const [[wNow]] = await db.query(
+      `SELECT weight_kg FROM measurements WHERE user_id=? ORDER BY logged_at DESC LIMIT 1`, [uid]);
+    const weightStart = wStart ? Number(wStart.weight_kg) : (wFirstAfter ? Number(wFirstAfter.weight_kg) : null);
+    const weightNow = wNow ? Number(wNow.weight_kg) : null;
+    const weightDelta = (weightStart != null && weightNow != null) ? +(weightNow - weightStart).toFixed(1) : null;
+
+    res.json({
+      hasPlan: true,
+      plan: { name: plan.name, since, weeksElapsed, daysPerWeek },
+      exercises, neverDone,
+      cardio: { sessions: cardio.sessions || 0, mins: cardio.mins || 0, planned_days: plannedCardio.n || 0 },
+      extras,
+      byDay,
+      effort: { daysTrained, expectedDays, weightStart, weightNow, weightDelta },
+    });
+  } catch (err) {
+    console.error('cycle-summary error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET/PUT /trainer/clients/:id/notes — notas privadas del entrenador
 router.get('/clients/:id/notes', async (req, res) => {
   try {

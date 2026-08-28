@@ -87,6 +87,8 @@ export default function ClientDetail() {
   const [adherenceDetail, setAdherence] = useState(null);
   const [lightbox, setLightbox]         = useState(null);
   const [workoutLogs, setWorkoutLogs]   = useState(null);
+  const [logsView, setLogsView]         = useState('ciclo');
+  const [cycleSummary, setCycleSummary] = useState(null);
   const [notes, setNotes]               = useState('');
   const [savingNotes, setSavingNotes]   = useState(false);
   const [billing, setBilling]           = useState({ monthly_fee: '', next_payment_date: '', notes: '' });
@@ -160,7 +162,10 @@ export default function ClientDetail() {
   useEffect(() => {
     if (tab === 'progreso') api.trainer.getProgress(id).then(setProgress).catch(console.error);
     if (tab === 'adherencia') api.trainer.getAdherence(id).then(d => setAdherence(d.days)).catch(console.error);
-    if (tab === 'logs') api.trainer.getWorkoutLogs(id).then(d => setWorkoutLogs(d)).catch(console.error);
+    if (tab === 'logs') {
+      api.trainer.getWorkoutLogs(id).then(d => setWorkoutLogs(d)).catch(console.error);
+      api.trainer.getCycleSummary(id).then(d => setCycleSummary(d)).catch(console.error);
+    }
     if (tab === 'notas') api.trainer.getNotes(id).then(d => setNotes(d.notes || '')).catch(console.error);
     if (tab === 'facturacion') api.trainer.getBilling().then(res => {
       const c = (res.clients || []).find(c => String(c.id) === String(id));
@@ -1434,7 +1439,18 @@ export default function ClientDetail() {
       {/* LOGS DE EJERCICIOS */}
       {tab === 'logs' && (
         <div>
-          {!workoutLogs ? (
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+            {[{ k: 'ciclo', l: '📅 Cierre de ciclo' }, { k: 'diario', l: '📖 Diario' }].map(t => (
+              <button key={t.k} onClick={() => setLogsView(t.k)} style={{
+                flex: 1, padding: '10px', borderRadius: 10, border: 'none', cursor: 'pointer', fontWeight: 800, fontSize: 13,
+                background: logsView === t.k ? 'var(--coral)' : 'var(--card)', color: logsView === t.k ? '#fff' : 'var(--muted)',
+                boxShadow: logsView === t.k ? '0 1px 4px rgba(0,0,0,0.1)' : 'none',
+              }}>{t.l}</button>
+            ))}
+          </div>
+          {logsView === 'ciclo' ? (
+            <CycleSummaryView data={cycleSummary} />
+          ) : !workoutLogs ? (
             <div style={{ textAlign: 'center', padding: 48 }}><div className="spinner" style={{ borderTopColor: 'var(--coral)', borderColor: 'var(--border)', width: 28, height: 28 }} /></div>
           ) : !workoutLogs.sessions?.length ? (
             <div className="empty-state"><div className="icon">🏋️</div><p>El cliente aún no ha registrado ningún ejercicio</p></div>
@@ -2167,6 +2183,121 @@ function SupplementsEditor({ clientId }) {
         <button onClick={addRow} style={{ padding: '9px 14px', borderRadius: 9, border: '1px dashed var(--coral)', background: 'var(--coral-light)', color: 'var(--coral)', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>+ Agregar fila</button>
         <button onClick={save} disabled={saving} style={{ padding: '9px 18px', borderRadius: 9, border: 'none', background: 'var(--coral)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{saving ? 'Guardando…' : 'Guardar suplementación'}</button>
         {msg && <span style={{ fontSize: 13, fontWeight: 700 }}>{msg}</span>}
+      </div>
+    </div>
+  );
+}
+
+// ── Cierre de ciclo: síntesis del plan activo para armar el siguiente ─────────
+function CycleSummaryView({ data }) {
+  if (!data) return <div style={{ textAlign: 'center', padding: 48 }}><div className="spinner" style={{ borderTopColor: 'var(--coral)', borderColor: 'var(--border)', width: 28, height: 28 }} /></div>;
+  if (!data.hasPlan) return <div className="empty-state"><div className="icon">📅</div><p>El cliente no tiene un plan activo para resumir.</p></div>;
+
+  const { plan, exercises, neverDone, cardio, extras, byDay, effort } = data;
+  const fmt = (v, isTime) => isTime ? `${v}s` : `${v}kg`;
+  const TREND = {
+    up:   { icon: '🟢', label: 'Subió',   color: '#16a34a' },
+    flat: { icon: '🟡', label: 'Igual',   color: '#ca8a04' },
+    down: { icon: '🔴', label: 'Bajó',    color: '#dc2626' },
+  };
+  const adhPct = effort.expectedDays ? Math.min(100, Math.round((effort.daysTrained / effort.expectedDays) * 100)) : null;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ background: 'var(--coral-light)', borderRadius: 12, padding: '12px 14px' }}>
+        <p style={{ fontWeight: 800, fontSize: 14, color: 'var(--coral)' }}>{plan.name || 'Plan actual'}</p>
+        <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>{plan.weeksElapsed} semana{plan.weeksElapsed > 1 ? 's' : ''} · {plan.daysPerWeek} días/semana · desde {plan.since}</p>
+      </div>
+
+      {/* Esfuerzo vs resultado */}
+      <div className="card" style={{ padding: 14 }}>
+        <p style={{ fontWeight: 800, fontSize: 14, marginBottom: 10 }}>🥵 Esfuerzo vs. resultado</p>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 120, textAlign: 'center', background: '#6366f112', borderRadius: 12, padding: '10px' }}>
+            <p style={{ fontSize: 20, fontWeight: 900, color: '#6366f1', lineHeight: 1 }}>{effort.daysTrained}</p>
+            <p style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 3 }}>días entrenados{effort.expectedDays ? ` de ~${effort.expectedDays}` : ''}{adhPct != null ? ` (${adhPct}%)` : ''}</p>
+          </div>
+          <div style={{ flex: 1, minWidth: 120, textAlign: 'center', background: '#16a34a12', borderRadius: 12, padding: '10px' }}>
+            <p style={{ fontSize: 20, fontWeight: 900, color: effort.weightDelta == null ? 'var(--muted)' : (effort.weightDelta < 0 ? '#16a34a' : '#dc2626'), lineHeight: 1 }}>
+              {effort.weightDelta == null ? '—' : `${effort.weightDelta > 0 ? '+' : ''}${effort.weightDelta} kg`}
+            </p>
+            <p style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 3 }}>{effort.weightStart != null && effort.weightNow != null ? `${effort.weightStart} → ${effort.weightNow} kg` : 'cambio de peso'}</p>
+          </div>
+        </div>
+        {adhPct != null && adhPct >= 75 && effort.weightDelta != null && Math.abs(effort.weightDelta) < 0.5 && (
+          <p style={{ fontSize: 12, color: '#8B6914', background: '#FFF8E8', borderRadius: 8, padding: '8px 10px', marginTop: 10 }}>
+            💡 Entrenó juicioso pero el peso casi no se movió. Si el objetivo era bajar/subir, revisa la nutrición antes que la rutina.
+          </p>
+        )}
+      </div>
+
+      {/* Progresión por ejercicio */}
+      <div className="card" style={{ padding: 14 }}>
+        <p style={{ fontWeight: 800, fontSize: 14, marginBottom: 4 }}>📈 Progresión por ejercicio</p>
+        <p style={{ fontSize: 11.5, color: 'var(--muted)', marginBottom: 12 }}>1ª → última carga del ciclo. La señal de reps sugiere si ajustar el peso.</p>
+        {exercises.length === 0 ? (
+          <p style={{ fontSize: 13, color: 'var(--muted)' }}>Sin ejercicios registrados en este ciclo.</p>
+        ) : exercises.map((e, i) => {
+          const isTime = e.tracking_type === 'time';
+          const tr = TREND[e.trend] || TREND.flat;
+          return (
+            <div key={i} style={{ padding: '9px 0', borderTop: i ? '1px solid var(--border)' : 'none' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ fontWeight: 700, fontSize: 13.5 }}>{e.name}</p>
+                  <p style={{ fontSize: 11, color: 'var(--muted)' }}>{e.day_name} · {e.sessions} sesion{e.sessions === 1 ? '' : 'es'}</p>
+                </div>
+                <span style={{ fontSize: 11.5, fontWeight: 800, color: tr.color, flexShrink: 0 }}>{tr.icon} {tr.label}</span>
+              </div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 6, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 12.5, color: 'var(--text)' }}>
+                  {isTime ? `${e.first}s → ${e.last}s` : `${fmt(e.first)}×${e.first_reps || '—'} → ${fmt(e.last)}×${e.last_reps || '—'}`}
+                  <span style={{ color: 'var(--muted)' }}>  ·  máx {fmt(e.max, isTime)}</span>
+                </span>
+                {e.reps_signal === 'subir' && <span style={{ fontSize: 11, fontWeight: 800, color: '#16a34a', background: '#dcfce7', borderRadius: 20, padding: '2px 8px' }}>⬆️ Súbele peso (hace {e.avg_reps} reps)</span>}
+                {e.reps_signal === 'bajar' && <span style={{ fontSize: 11, fontWeight: 800, color: '#dc2626', background: '#fee2e2', borderRadius: 20, padding: '2px 8px' }}>⬇️ Bájale peso (hace {e.avg_reps} reps)</span>}
+              </div>
+            </div>
+          );
+        })}
+        {neverDone.length > 0 && (
+          <div style={{ marginTop: 12, borderTop: '1px solid var(--border)', paddingTop: 10 }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', marginBottom: 6 }}>⚪ No registró nunca ({neverDone.length}) — ¿los quitas o no le gustaron?</p>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {neverDone.map((n, i) => <span key={i} style={{ fontSize: 11.5, color: 'var(--muted)', background: 'var(--bg)', borderRadius: 20, padding: '3px 9px' }}>{n.name}</span>)}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Adherencia por día */}
+      {byDay.length > 0 && (
+        <div className="card" style={{ padding: 14 }}>
+          <p style={{ fontWeight: 800, fontSize: 14, marginBottom: 10 }}>📆 Cumplimiento por día</p>
+          {byDay.map((d, i) => (
+            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '5px 0' }}>
+              <span style={{ fontWeight: 600 }}>{d.day_name}</span>
+              <span style={{ color: d.done > 0 ? 'var(--text)' : '#dc2626', fontWeight: 700 }}>{d.done > 0 ? `${d.done}×` : 'nunca'}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Cardio + extras */}
+      <div className="card" style={{ padding: 14 }}>
+        <p style={{ fontWeight: 800, fontSize: 14, marginBottom: 10 }}>🏃 Cardio y extras</p>
+        <p style={{ fontSize: 13, marginBottom: extras.length ? 10 : 0 }}>
+          Cardio: <strong>{cardio.sessions}</strong> sesion{cardio.sessions === 1 ? '' : 'es'} · <strong>{cardio.mins}</strong> min en total
+          {cardio.planned_days > 0 ? <span style={{ color: 'var(--muted)' }}>  (plan: {cardio.planned_days} día{cardio.planned_days === 1 ? '' : 's'} con cardio)</span> : ''}
+        </p>
+        {extras.length > 0 && (
+          <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10 }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', marginBottom: 6 }}>Ejercicios que agregó el cliente (quizá le gustan):</p>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {extras.map((x, i) => <span key={i} style={{ fontSize: 11.5, fontWeight: 600, background: 'var(--coral-light)', color: 'var(--coral)', borderRadius: 20, padding: '3px 9px' }}>{x.name} · {x.times}×</span>)}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

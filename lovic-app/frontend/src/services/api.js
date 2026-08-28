@@ -184,6 +184,7 @@ export const api = {
     testEmail:       ()           => request('/trainer/test-email', { method: 'POST' }),
     getAdherence:  (id) => request(`/trainer/clients/${id}/adherence-detail`),
     getWorkoutLogs:(id) => request(`/trainer/clients/${id}/workout-logs`),
+    getCycleSummary:(id) => request(`/trainer/clients/${id}/cycle-summary`),
     getNotes:      (id) => request(`/trainer/clients/${id}/notes`),
     saveNotes:     (id, notes) => request(`/trainer/clients/${id}/notes`, { method: 'PUT', body: JSON.stringify({ notes }) }),
     deleteClient:  (id)         => request(`/trainer/clients/${id}`, { method: 'DELETE' }),
