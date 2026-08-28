@@ -213,6 +213,7 @@ function MealByTypeView({ legacyNutrition }) {
   const [logged, setLogged] = useState({}); // slot_id -> { name, calories } registrado
   const [editing, setEditing] = useState(null); // slot_id en edición ("comí algo distinto")
   const [editText, setEditText] = useState('');
+  const [suppTaken, setSuppTaken] = useState([]); // ids de suplementos tomados hoy
 
   useEffect(() => {
     (async () => {
@@ -221,10 +222,18 @@ function MealByTypeView({ legacyNutrition }) {
         setData(res);
         setZone(res.auto_zone || 'superior');
         setEaten(res.eatenKeys || []);
+        setSuppTaken(res.supplementsTaken || []);
       } catch (_) { setData({ slots: [] }); }
       setLoading(false);
     })();
   }, []);
+
+  async function toggleSupp(id) {
+    const taken = suppTaken.includes(id);
+    setSuppTaken(t => taken ? t.filter(x => x !== id) : [...t, id]); // optimista
+    try { await api.mealPlan.supplementTaken(id, !taken); }
+    catch (_) { setSuppTaken(t => taken ? [...t, id] : t.filter(x => x !== id)); }
+  }
 
   // customText: si comió una variante, se registra y estima lo real; si no, marca/desmarca la del plan
   async function toggleEat(slot, customText) {
@@ -421,12 +430,21 @@ function MealByTypeView({ legacyNutrition }) {
             {groups.map((g, gi) => (
               <div key={gi} className="card" style={{ padding: '12px 14px', marginBottom: 10 }}>
                 <p style={{ fontSize: 13, fontWeight: 800, color: 'var(--coral)', marginBottom: g.items.length ? 8 : 0 }}>{g.moment}</p>
-                {g.items.map((it, ii) => (
-                  <div key={ii} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '4px 0', borderTop: ii ? '1px solid var(--border)' : 'none' }}>
-                    <span style={{ fontSize: 14, fontWeight: 600 }}>{it.item}</span>
-                    {it.dose && <span style={{ fontSize: 13, color: 'var(--muted)', textAlign: 'right', flexShrink: 0 }}>{it.dose}</span>}
-                  </div>
-                ))}
+                {g.items.map((it, ii) => {
+                  const taken = suppTaken.includes(it.id);
+                  return (
+                    <div key={ii} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderTop: ii ? '1px solid var(--border)' : 'none' }}>
+                      <button onClick={() => toggleSupp(it.id)} aria-label="marcar tomado" style={{
+                        flexShrink: 0, width: 24, height: 24, borderRadius: 7, cursor: 'pointer',
+                        border: taken ? 'none' : '2px solid var(--border)',
+                        background: taken ? '#16a34a' : 'transparent', color: '#fff', fontSize: 14, fontWeight: 800,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
+                      }}>{taken ? '✓' : ''}</button>
+                      <span style={{ flex: 1, fontSize: 14, fontWeight: 600, textDecoration: taken ? 'line-through' : 'none', opacity: taken ? 0.6 : 1 }}>{it.item}</span>
+                      {it.dose && <span style={{ fontSize: 13, color: 'var(--muted)', textAlign: 'right', flexShrink: 0 }}>{it.dose}</span>}
+                    </div>
+                  );
+                })}
               </div>
             ))}
           </div>

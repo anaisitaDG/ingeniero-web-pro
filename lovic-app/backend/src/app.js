@@ -334,6 +334,17 @@ const db = require('./database/db');
         INDEX idx_client (client_id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
+    // Registro diario: qué suplemento marcó la clienta como tomado y en qué fecha.
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS supplement_logs (
+        id            VARCHAR(36) PRIMARY KEY,
+        client_id     VARCHAR(36) NOT NULL,
+        supplement_id VARCHAR(36) NOT NULL,
+        logged_date   DATE NOT NULL,
+        UNIQUE KEY uniq_supp_day (supplement_id, logged_date),
+        INDEX idx_client_day (client_id, logged_date)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
   } catch (e) {
     console.error('Migration error:', e.message);
   }

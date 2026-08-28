@@ -157,6 +157,7 @@ export const api = {
     byType:   ()                       => request('/meal-plan/by-type'),
     shoppingList: (period)             => request(`/meal-plan/shopping-list?period=${period || 'weekly'}`),
     eat:      (slot_id, done, custom_text) => request('/meal-plan/eat', { method: 'POST', body: JSON.stringify({ slot_id, done, custom_text, date: new Date().toLocaleDateString('en-CA') }) }),
+    supplementTaken: (supplement_id, done) => request('/meal-plan/supplement-taken', { method: 'POST', body: JSON.stringify({ supplement_id, done, date: new Date().toLocaleDateString('en-CA') }) }),
   },
   trainer: {
     clients:       ()     => request('/trainer/clients'),
