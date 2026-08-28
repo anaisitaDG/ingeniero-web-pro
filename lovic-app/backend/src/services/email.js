@@ -482,4 +482,32 @@ async function sendNutritionAlert(trainerEmail, trainerName, clients) {
   });
 }
 
-module.exports = { sendMagicLink, sendWelcome, sendWelcomeWithInstructions, notifyTrainerOnboarding, sendWeeklySummary, sendRenewalReminder, sendMeasurementUpdate, sendProgressPhotoUpdate, sendClientStats, sendNutritionAlert };
+// ── Aviso a Lorena: clientes con plan por vencer (para preparar la rutina nueva) ─
+async function sendTrainerPlanExpiryDigest(trainerEmail, trainerName, clients, daysLeft = 7) {
+  if (!trainerEmail || !clients?.length) return;
+  const rows = clients.map(c => {
+    const end = c.start_date && c.duration_days
+      ? new Date(new Date(c.start_date).getTime() + c.duration_days * 86400000).toLocaleDateString('es', { day: 'numeric', month: 'long' })
+      : '';
+    return `<tr><td style="padding:8px 0;border-bottom:1px solid #eee;font-weight:700;color:#1A1A1A">${c.name}</td><td style="padding:8px 0;border-bottom:1px solid #eee;color:#FF6B6B;text-align:right">vence el ${end}</td></tr>`;
+  }).join('');
+  await resend.emails.send({
+    from: FROM,
+    to: trainerEmail,
+    subject: `⏰ ${clients.length} cliente${clients.length > 1 ? 's' : ''} necesita${clients.length > 1 ? 'n' : ''} rutina nueva en ${daysLeft} días`,
+    html: `
+      <div style="font-family:'Helvetica Neue',sans-serif;max-width:520px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
+        <div style="background:linear-gradient(135deg,#FF6B6B,#FF8E53);padding:2rem;text-align:center">
+          <h1 style="color:#fff;margin:0;font-size:1.3rem">⏰ Planes por vencer</h1>
+        </div>
+        <div style="padding:2rem">
+          <p style="color:#555;line-height:1.7;margin:0 0 1rem">Hola ${trainerName || ''}, estos planes vencen en ${daysLeft} días. Es buen momento para preparar la rutina nueva:</p>
+          <table style="width:100%;border-collapse:collapse">${rows}</table>
+          <a href="${process.env.APP_URL}/trainer" style="display:inline-block;margin-top:1.5rem;background:#FF6B6B;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700">Ir al panel →</a>
+        </div>
+      </div>
+    `,
+  });
+}
+
+module.exports = { sendMagicLink, sendWelcome, sendWelcomeWithInstructions, notifyTrainerOnboarding, sendWeeklySummary, sendRenewalReminder, sendMeasurementUpdate, sendProgressPhotoUpdate, sendClientStats, sendNutritionAlert, sendTrainerPlanExpiryDigest };

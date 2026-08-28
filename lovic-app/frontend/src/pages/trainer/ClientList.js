@@ -28,6 +28,44 @@ function weightDiff(initial, current) {
   return diff;
 }
 
+// ── Radar: convierte los datos del cliente en señales de acción ───────────────
+function daysAgo(dateStr) { if (!dateStr) return null; return Math.floor((Date.now() - new Date(dateStr)) / 86400000); }
+function daysUntil(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr); d.setHours(0, 0, 0, 0);
+  const t = new Date(); t.setHours(0, 0, 0, 0);
+  return Math.round((d - t) / 86400000);
+}
+function planEnd(c) {
+  if (!c.plan_start || !c.plan_duration) return null;
+  const d = new Date(c.plan_start); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + Number(c.plan_duration));
+  return d;
+}
+// Umbrales: plan ≤5d, pago ≤3d, inactividad ≥5d, sin medidas ≥21d, peso estancado <0.4kg
+function computeAlerts(c) {
+  const a = [];
+  const end = planEnd(c);
+  if (end) {
+    const dl = daysUntil(end);
+    if (dl < 0)       a.push({ label: `Plan vencido hace ${-dl}d`, sev: 'red', order: 1 });
+    else if (dl <= 5) a.push({ label: dl === 0 ? 'Plan vence hoy' : `Plan vence en ${dl}d`, sev: 'amber', order: 1 });
+  }
+  const pd = daysUntil(c.next_payment_date);
+  if (pd != null) {
+    if (pd < 0)       a.push({ label: `Pago atrasado ${-pd}d`, sev: 'red', order: 2 });
+    else if (pd <= 3) a.push({ label: pd === 0 ? 'Pago hoy' : `Pago en ${pd}d`, sev: 'amber', order: 2 });
+  }
+  const st = daysAgo(c.last_trained);
+  if (st != null && st >= 5) a.push({ label: `${st}d sin entrenar`, sev: st >= 10 ? 'red' : 'amber', order: 3 });
+  if (c.current_weight_kg != null && c.prev_weight_kg != null &&
+      Math.abs(Number(c.current_weight_kg) - Number(c.prev_weight_kg)) < 0.4) {
+    a.push({ label: 'Peso estancado', sev: 'amber', order: 4 });
+  }
+  const md = daysAgo(c.last_measurement);
+  if (md != null && md >= 21) a.push({ label: `Sin medidas ${md}d`, sev: 'amber', order: 5 });
+  return a.sort((x, y) => (x.sev === y.sev ? x.order - y.order : (x.sev === 'red' ? -1 : 1)));
+}
+
 function WeightChange({ initial, current }) {
   const diff = weightDiff(initial, current);
   if (diff === null) return null;
@@ -132,6 +170,37 @@ export default function ClientList() {
           {summaryMsg}
         </div>
       )}
+
+      {/* Radar: quién necesita acción esta semana */}
+      {!loading && clients.length > 0 && (() => {
+        const flagged = clients.map(c => ({ c, alerts: computeAlerts(c) })).filter(x => x.alerts.length);
+        flagged.sort((a, b) => (a.alerts.some(x => x.sev === 'red') ? 0 : 1) - (b.alerts.some(x => x.sev === 'red') ? 0 : 1));
+        if (flagged.length === 0) {
+          return (
+            <div className="card" style={{ marginBottom: 20, padding: '12px 16px', background: '#dcfce7', border: 'none' }}>
+              <span style={{ fontWeight: 700, color: '#15803d', fontSize: 14 }}>✅ Todo al día — nadie necesita acción urgente</span>
+            </div>
+          );
+        }
+        return (
+          <div className="card" style={{ marginBottom: 20, padding: 16, borderLeft: '4px solid var(--coral)' }}>
+            <p style={{ fontWeight: 800, fontSize: 15, marginBottom: 6 }}>⚠️ Necesitan tu atención ({flagged.length})</p>
+            {flagged.map(({ c, alerts }, i) => (
+              <div key={c.id} onClick={() => navigate(`/trainer/clients/${c.id}`)}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderTop: i ? '1px solid var(--border)' : 'none', cursor: 'pointer' }}>
+                <span style={{ fontWeight: 700, fontSize: 14, flexShrink: 0 }}>{c.name}</span>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', flex: 1, justifyContent: 'flex-end' }}>
+                  {alerts.map((a, j) => (
+                    <span key={j} style={{ fontSize: 11.5, fontWeight: 700, padding: '3px 9px', borderRadius: 20,
+                      background: a.sev === 'red' ? '#fee2e2' : '#fef9c3', color: a.sev === 'red' ? '#dc2626' : '#ca8a04' }}>{a.label}</span>
+                  ))}
+                </div>
+                <span style={{ color: 'var(--muted)', fontSize: 16, flexShrink: 0 }}>›</span>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
 
       {/* Invite form */}
       {showInvite && (

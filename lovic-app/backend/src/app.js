@@ -457,6 +457,11 @@ async function sendRenewalRemindersJob() {
     for (const c of expiring) {
       await sendRenewalReminder(c.email, c.name, 7, trainer.email, trainer.name).catch(e => console.error('[renewal]', e.message));
     }
+    // Aviso a Lorena para que prepare la rutina nueva a tiempo
+    if (expiring.length) {
+      const { sendTrainerPlanExpiryDigest } = require('./services/email');
+      await sendTrainerPlanExpiryDigest(trainer.email, trainer.name, expiring, 7).catch(e => console.error('[expiry-digest]', e.message));
+    }
 
     // Payment renewals in exactly 7 days
     const [payments] = await db.query(

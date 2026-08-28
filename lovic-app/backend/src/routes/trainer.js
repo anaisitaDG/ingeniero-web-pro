@@ -26,7 +26,11 @@ router.get('/clients', async (req, res) => {
          (SELECT logged_at FROM measurements WHERE user_id=u.id ORDER BY logged_at DESC LIMIT 1) AS last_measurement,
          (SELECT MAX(tracked_date) FROM daily_tracking WHERE user_id=u.id AND workout_done=1) AS last_trained,
          (SELECT COUNT(*) FROM daily_tracking WHERE user_id=u.id AND workout_done=1 AND tracked_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)) AS workouts_this_week,
-         (SELECT MAX(logged_at) FROM food_logs WHERE user_id=u.id) AS last_food_log
+         (SELECT MAX(logged_at) FROM food_logs WHERE user_id=u.id) AS last_food_log,
+         (SELECT weight_kg FROM measurements WHERE user_id=u.id ORDER BY logged_at DESC LIMIT 1 OFFSET 1) AS prev_weight_kg,
+         (SELECT wp.start_date FROM workout_plans wp WHERE wp.user_id=u.id AND wp.is_active=TRUE ORDER BY wp.created_at DESC LIMIT 1) AS plan_start,
+         (SELECT wp.duration_days FROM workout_plans wp WHERE wp.user_id=u.id AND wp.is_active=TRUE ORDER BY wp.created_at DESC LIMIT 1) AS plan_duration,
+         (SELECT cb.next_payment_date FROM client_billing cb WHERE cb.client_id=u.id LIMIT 1) AS next_payment_date
        FROM users u
        LEFT JOIN questionnaire_data q ON q.user_id = u.id
        WHERE u.role = 'client'
