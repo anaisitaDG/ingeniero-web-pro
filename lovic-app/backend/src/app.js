@@ -360,7 +360,20 @@ app.use(cors({
   credentials: true,
 }));
 
-app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 200, standardHeaders: true }));
+// Detrás de nginx: confiar en 1 proxy para leer la IP real (si no, TODAS las clientas
+// cuentan como una sola IP y comparten el límite → 429 masivo).
+app.set('trust proxy', 1);
+app.use(rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 600,                                   // por usuario real, no global
+  standardHeaders: true,
+  legacyHeaders: false,
+  // nginx manda la IP real en X-Real-IP; con eso limitamos por persona, no por el proxy
+  keyGenerator: (req) => req.headers['x-real-ip'] || req.ip,
+  // Las imágenes/miniaturas NO deben gastar el cupo de la API
+  skip: (req) => req.path.startsWith('/progress-photos') || req.path.startsWith('/uploads'),
+  validate: false,
+}));
 app.use(express.json());
 app.use('/uploads', express.static(path.resolve(uploadPath)));
 // Imágenes servidas por una URL SIN extensión de imagen (el nombre va como ?f=),

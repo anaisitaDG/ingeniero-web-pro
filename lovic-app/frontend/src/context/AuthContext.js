@@ -20,10 +20,21 @@ export function AuthProvider({ children }) {
       return;
     }
 
-    api.auth.me()
-      .then(d => setUser(d.user))
-      .catch(() => setUser(null))
-      .finally(() => setLoading(false));
+    // Un error transitorio (429/red/5xx) NO debe cerrar sesión: reintentamos antes de rendirnos.
+    // Un 401 real ya redirige a /login desde api.js.
+    (async () => {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const d = await api.auth.me();
+          setUser(d.user);
+          break;
+        } catch (_) {
+          if (attempt === 2) { setUser(null); break; }
+          await new Promise(r => setTimeout(r, 800 * (attempt + 1)));
+        }
+      }
+      setLoading(false);
+    })();
   }, []);
 
   function logout() {
