@@ -29,7 +29,7 @@ router.post('/avatar', avatarUpload.single('avatar'), async (req, res) => {
     const url = 'uploads/' + req.file.filename;
     await db.query('UPDATE users SET avatar_url=? WHERE id=?', [url, req.user.id]);
     res.json({ avatar_url: url });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // DELETE /profile/avatar — quita la foto personalizada (vuelve a Gravatar/iniciales)
@@ -37,7 +37,7 @@ router.delete('/avatar', async (req, res) => {
   try {
     await db.query('UPDATE users SET avatar_url=NULL WHERE id=?', [req.user.id]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // PUT /profile
@@ -101,7 +101,7 @@ router.post('/push-test', async (req, res) => {
       url: '/',
     });
     res.json({ ok: true, sent: subs.length });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // DELETE /profile/push-subscribe

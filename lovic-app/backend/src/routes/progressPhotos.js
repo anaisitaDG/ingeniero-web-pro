@@ -120,7 +120,7 @@ router.post('/register', upload.fields([
 
     // Aviso a la entrenadora (solo si quien sube es la propia clienta), en segundo plano
     if (req.user.role === 'client') notifyTrainerPhotos(targetUserId, registerId);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // GET /progress-photos — list all registers grouped with their photos
@@ -152,7 +152,7 @@ router.get('/', async (req, res) => {
     }));
 
     res.json({ registers: result });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // DELETE /progress-photos/register/:id
@@ -166,7 +166,7 @@ router.delete('/register/:id', async (req, res) => {
     res.json({ message: 'Registro eliminado' });
   } catch (e) {
     await conn.rollback();
-    res.status(500).json({ error: e.message });
+    res.serverError(e);
   } finally {
     conn.release();
   }
@@ -274,7 +274,7 @@ router.post('/compare', async (req, res) => {
       bioBefore: closestBio(dateBefore),
       bioAfter:  closestBio(dateAfter),
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // Legacy single upload kept for backwards compatibility
@@ -294,7 +294,7 @@ router.post('/upload', upload.single('photo'), async (req, res) => {
     );
 
     res.json({ message: 'Foto guardada', path: req.file.path });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 module.exports = router;

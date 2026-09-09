@@ -80,7 +80,7 @@ router.get('/', async (req, res) => {
       'SELECT * FROM bioimpedance WHERE user_id=? ORDER BY logged_at DESC LIMIT 10', [uid]
     );
     res.json({ bioimpedance: rows });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // DELETE /bioimpedance/:id
@@ -93,7 +93,7 @@ router.delete('/:id', async (req, res) => {
     }
     await db.query('DELETE FROM bioimpedance WHERE id=?', [req.params.id]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 module.exports = router;

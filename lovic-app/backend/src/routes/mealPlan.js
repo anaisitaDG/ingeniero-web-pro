@@ -37,7 +37,7 @@ router.get('/', async (req, res) => {
     const completed = completions.map(r => r.meal_type);
 
     res.json({ meals, completed, today, dow });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // GET /meal-plan/week — full week plan
@@ -55,7 +55,7 @@ router.get('/week', async (req, res) => {
       plan[day.day_of_week] = items;
     }
     res.json({ plan });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 
@@ -134,7 +134,7 @@ router.get('/by-type', async (req, res) => {
     const supplementsTaken = suppTaken.map(r => r.supplement_id);
 
     res.json({ mode, week_no, today_day_type, auto_zone, slots, eatenKeys, today, consumedToday: Number(cons.c), supplements, supplementsTaken });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // GET /meal-plan/shopping-list?period=weekly|biweekly|monthly
@@ -144,7 +144,7 @@ router.get('/shopping-list', async (req, res) => {
     const period = ['weekly', 'biweekly', 'monthly'].includes(req.query.period) ? req.query.period : 'weekly';
     const out = await computeShoppingList(req.user.id, period);
     res.json(out);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // POST /meal-plan/eat — marca una comida del plan como consumida y suma sus calorías al día.
@@ -203,7 +203,7 @@ router.post('/eat', async (req, res) => {
        cal || 0, p, c, f, fib, mealType, today]
     );
     res.json({ ok: true, logged: { name, calories: cal || 0, protein_g: p, carbs_g: c, fat_g: f, fiber_g: fib } });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // POST /meal-plan/supplement-taken — marca/desmarca un suplemento como tomado hoy
@@ -226,7 +226,7 @@ router.post('/supplement-taken', async (req, res) => {
       );
     }
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // POST /meal-plan/complete
@@ -249,7 +249,7 @@ router.post('/complete', async (req, res) => {
       );
     }
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 module.exports = router;

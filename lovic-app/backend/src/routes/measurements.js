@@ -57,7 +57,7 @@ router.post('/', async (req, res) => {
 
     // Aviso a la entrenadora (solo si quien registra es una clienta), en segundo plano
     if (req.user.role === 'client') notifyTrainerMeasurements(req.user);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // GET /measurements
@@ -69,7 +69,7 @@ router.get('/', async (req, res) => {
       [req.user.id, limit]
     );
     res.json({ measurements: rows });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 module.exports = router;

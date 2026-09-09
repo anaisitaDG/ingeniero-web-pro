@@ -39,7 +39,7 @@ router.get('/clients', async (req, res) => {
     );
     for (const c of clients) c.gravatar_url = gravatarUrl(c.email);
     res.json({ clients });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // GET /trainer/clients/:id
@@ -79,7 +79,7 @@ router.get('/clients/:id', async (req, res) => {
     res.json({ user: safeUser, questionnaire, measurements, bioimpedance, routine, nutrition_plan: nutrition, adherence: adherence[0] });
   } catch (e) {
     console.error('[GET /clients/:id] ERROR:', e.message);
-    res.status(500).json({ error: e.message });
+    res.serverError(e);
   }
 });
 
@@ -92,7 +92,7 @@ router.post('/suggest-day-name', async (req, res) => {
     if (names.length === 0) return res.status(400).json({ error: 'Sin ejercicios' });
     const name = await suggestDayName(names);
     res.json({ name });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // POST /trainer/test-email — envía a la entrenadora un correo de muestra (para ver el diseño)
@@ -104,7 +104,7 @@ router.post('/test-email', async (req, res) => {
       weightNow: 62.4, weightDelta: -1.2, avgWater: 6.5, avgCalories: 1580,
     });
     res.json({ ok: true, sentTo: req.user.email });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // GET /trainer/clients/:id/shopping-list?period=... — lista de mercado de la clienta
@@ -114,7 +114,7 @@ router.get('/clients/:id/shopping-list', async (req, res) => {
     const period = ['weekly', 'biweekly', 'monthly'].includes(req.query.period) ? req.query.period : 'weekly';
     const out = await computeShoppingList(req.params.id, period);
     res.json(out);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // GET /trainer/clients/:id/nutrition-adherence — constancia + qué comió (para Lorena)
@@ -176,7 +176,7 @@ router.get('/clients/:id/nutrition-adherence', async (req, res) => {
       last7: { daysLogged, daysInTarget, avgCalories: daysLogged ? Math.round(sumC / daysLogged) : null, avgProtein: daysLogged ? Math.round(sumP / daysLogged) : null, proteinDaysMet },
       lastLog, daysSinceLog, recentDays, insights, correlation,
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // GET /trainer/clients/:id/workout — obtiene plan estructurado
@@ -208,7 +208,7 @@ router.get('/clients/:id/workout', async (req, res) => {
       day.exercises = exercises;
     }
     res.json({ plan: { ...plan, days } });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // PUT /trainer/clients/:id/workout — guarda plan estructurado completo
@@ -308,7 +308,7 @@ router.put('/clients/:id/workout', async (req, res) => {
   } catch (e) {
     await conn.rollback();
     console.error('[PUT /workout]', e.message);
-    res.status(500).json({ error: e.message });
+    res.serverError(e);
   } finally {
     conn.release();
   }
@@ -364,7 +364,7 @@ router.post('/clients/:id/workout/new', async (req, res) => {
   } catch (e) {
     await conn.rollback();
     console.error('[POST /workout/new]', e.message);
-    res.status(500).json({ error: e.message });
+    res.serverError(e);
   } finally {
     conn.release();
   }
@@ -380,7 +380,7 @@ router.get('/clients/:id/workout/plans', async (req, res) => {
       [req.params.id]
     );
     res.json({ plans });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // GET /trainer/clients/:id/workout/plans/:planId/summary — resultados del mes de esa rutina
@@ -460,7 +460,7 @@ router.get('/clients/:id/workout/plans/:planId/summary', async (req, res) => {
       weightSeries,
       loadProgress,
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // GET /trainer/clients/:id/workout/plans/:planId — detalle de una rutina (para verla)
@@ -474,7 +474,7 @@ router.get('/clients/:id/workout/plans/:planId', async (req, res) => {
       day.exercises = exercises;
     }
     res.json({ plan: { ...plan, days } });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // PUT /trainer/clients/:id/routine — guarda rutina manual
@@ -490,7 +490,7 @@ router.put('/clients/:id/routine', async (req, res) => {
       [uuidv4(), uid, content.trim()]
     );
     res.json({ routine: content.trim() });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // PUT /trainer/clients/:id/nutrition — guarda plan nutricional manual
@@ -515,7 +515,7 @@ router.put('/clients/:id/nutrition', async (req, res) => {
     res.json({ nutrition_plan: { content: content.trim(), plan: content.trim() } });
   } catch (e) {
     console.error('[nutrition PUT] ERROR:', e.message);
-    res.status(500).json({ error: e.message });
+    res.serverError(e);
   }
 });
 
@@ -537,7 +537,7 @@ router.post('/clients/:id/routine', async (req, res) => {
     );
 
     res.json({ routine: content });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // POST /trainer/clients/:id/nutrition — genera plan nutricional con IA
@@ -565,7 +565,7 @@ router.post('/clients/:id/nutrition', async (req, res) => {
   }
 
   res.json({ nutrition_plan: content });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // PUT /trainer/clients/:id/targets — actualiza metas de calorías y macros
@@ -585,7 +585,7 @@ router.put('/clients/:id/targets', async (req, res) => {
       [calorie_target || null, protein_target_g || null, carbs_target_g || null, fat_target_g || null, uid]
     );
     res.json({ message: 'Metas actualizadas' });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // POST /trainer/clients/:id/invite — envía magic link de acceso (plan listo)
@@ -605,7 +605,7 @@ router.post('/clients/:id/invite', async (req, res) => {
       throw emailErr;
     }
     res.json({ message: 'Invitación enviada' });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // GET /trainer/clients/:id/progress — fotos + historial de medidas
@@ -636,7 +636,7 @@ router.get('/clients/:id/progress', async (req, res) => {
       photos = registers.map(r => ({ ...r, photos: byRegister[r.id] || {} }));
     }
     res.json({ measurements, photos });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // GET /trainer/clients/:id/adherence-detail — día a día últimos 60 días
@@ -649,7 +649,7 @@ router.get('/clients/:id/adherence-detail', async (req, res) => {
        ORDER BY tracked_date DESC`, [uid]
     );
     res.json({ days: rows });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // GET /trainer/clients/:id/workout-logs — sesiones agrupadas por fecha + resumen
@@ -760,7 +760,7 @@ router.get('/clients/:id/workout-logs', async (req, res) => {
   res.json({ sessions, summary: { streak, days_this_month: daysThisMonth, total_sessions: sessions.length } });
   } catch (err) {
     console.error('workout-logs error:', err);
-    res.status(500).json({ error: err.message });
+    res.serverError(err);
   }
 });
 
@@ -885,7 +885,7 @@ router.get('/clients/:id/cycle-summary', async (req, res) => {
     });
   } catch (err) {
     console.error('cycle-summary error:', err);
-    res.status(500).json({ error: err.message });
+    res.serverError(err);
   }
 });
 
@@ -895,7 +895,7 @@ router.get('/clients/:id/notes', async (req, res) => {
     const [[user]] = await db.query('SELECT trainer_notes FROM users WHERE id=? AND role="client"', [req.params.id]);
     if (!user) return res.status(404).json({ error: 'Cliente no encontrado' });
     res.json({ notes: user.trainer_notes || '' });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 router.put('/clients/:id/notes', async (req, res) => {
@@ -905,7 +905,7 @@ router.put('/clients/:id/notes', async (req, res) => {
     if (!client) return res.status(404).json({ error: 'Cliente no encontrado' });
     await db.query('UPDATE users SET trainer_notes=? WHERE id=?', [notes || '', req.params.id]);
     res.json({ message: 'Notas guardadas' });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // POST /trainer/invite-new — crea cliente nuevo y envía valoración/onboarding
@@ -934,7 +934,7 @@ router.post('/invite-new', async (req, res) => {
       throw emailErr;
     }
     res.json({ message: 'Valoración enviada', userId });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // POST /trainer/weekly-summary — envía resumen manualmente
@@ -966,7 +966,7 @@ router.post('/weekly-summary', async (req, res) => {
     }));
     await sendWeeklySummary(trainer.email, trainer.name, clientStats);
     res.json({ ok: true, sent_to: trainer.email });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // ── Meal Planner ──────────────────────────────────────────────────────────────
@@ -986,7 +986,7 @@ router.get('/clients/:id/meal-plan', async (req, res) => {
       result[day.day_of_week] = items;
     }
     res.json({ plan: result });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // PUT /trainer/clients/:id/meal-plan
@@ -1026,7 +1026,7 @@ router.put('/clients/:id/meal-plan', async (req, res) => {
     res.json({ ok: true });
   } catch (e) {
     await conn.rollback();
-    res.status(500).json({ error: e.message });
+    res.serverError(e);
   } finally {
     conn.release();
   }
@@ -1049,7 +1049,7 @@ router.get('/library', async (req, res) => {
       ex.variations = vars;
     }
     res.json({ exercises });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // POST /trainer/library
@@ -1065,7 +1065,7 @@ router.post('/library', async (req, res) => {
       [id, trainerId, name.trim(), muscle_group || null, youtube_url || null, notes || null, zone]
     );
     res.json({ id, name, muscle_group, youtube_url, notes, body_zone: zone, variations: [] });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // PUT /trainer/library/:id
@@ -1080,7 +1080,7 @@ router.put('/library/:id', async (req, res) => {
     );
     if (result.affectedRows === 0) return res.status(404).json({ error: 'Ejercicio no encontrado' });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // DELETE /trainer/library/variations/:varId  — must come before /library/:id
@@ -1094,7 +1094,7 @@ router.delete('/library/variations/:varId', async (req, res) => {
       [req.params.varId, trainerId]
     );
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // POST /trainer/library/:id/variations
@@ -1112,7 +1112,7 @@ router.post('/library/:id/variations', async (req, res) => {
       [id, req.params.id, name.trim(), youtube_url || null, notes || null]
     );
     res.json({ id, exercise_id: req.params.id, name, youtube_url, notes });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // DELETE /trainer/library/:id
@@ -1127,7 +1127,7 @@ router.delete('/library/:id', async (req, res) => {
     res.json({ ok: true });
   } catch (e) {
     await conn.rollback();
-    res.status(500).json({ error: e.message });
+    res.serverError(e);
   } finally {
     conn.release();
   }
@@ -1144,7 +1144,7 @@ router.get('/meal-library', async (req, res) => {
       'SELECT * FROM meal_library WHERE trainer_id=? ORDER BY meal_type, name', [req.user.id]
     );
     res.json({ meals });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // POST /trainer/meal-library
@@ -1162,7 +1162,7 @@ router.post('/meal-library', async (req, res) => {
        numOrNull(calories), numOrNull(protein_g), numOrNull(carbs_g), numOrNull(fat_g)]
     );
     res.json({ id });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // PUT /trainer/meal-library/:id
@@ -1179,7 +1179,7 @@ router.put('/meal-library/:id', async (req, res) => {
     );
     if (r.affectedRows === 0) return res.status(404).json({ error: 'Comida no encontrada' });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // DELETE /trainer/meal-library/:id
@@ -1187,7 +1187,7 @@ router.delete('/meal-library/:id', async (req, res) => {
   try {
     await db.query('DELETE FROM meal_library WHERE id=? AND trainer_id=?', [req.params.id, req.user.id]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // ===== Asignación de nutrición por clienta (modo + slots por semana × zona × momento) =====
@@ -1200,7 +1200,7 @@ router.get('/clients/:id/nutrition-config', async (req, res) => {
       'SELECT * FROM client_meal_slots WHERE client_id=? ORDER BY week_no, body_zone, meal_type, sort_order', [uid]
     );
     res.json({ nutrition_mode: u?.nutrition_mode || 'simple', slots });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // PUT /trainer/clients/:id/nutrition-mode
@@ -1209,7 +1209,7 @@ router.put('/clients/:id/nutrition-mode', async (req, res) => {
     const mode = ['simple', 'rotativo'].includes(req.body.mode) ? req.body.mode : 'simple';
     await db.query('UPDATE users SET nutrition_mode=? WHERE id=?', [mode, req.params.id]);
     res.json({ ok: true, nutrition_mode: mode });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // PUT /trainer/clients/:id/meal-slots — reemplaza TODOS los slots de la clienta
@@ -1235,7 +1235,7 @@ router.put('/clients/:id/meal-slots', async (req, res) => {
     res.json({ ok: true });
   } catch (e) {
     await conn.rollback();
-    res.status(500).json({ error: e.message });
+    res.serverError(e);
   } finally { conn.release(); }
 });
 
@@ -1245,7 +1245,7 @@ router.get('/clients/:id/supplements', async (req, res) => {
     const [rows] = await db.query(
       'SELECT id, moment, item, dose FROM client_supplements WHERE client_id=? ORDER BY sort_order, id', [req.params.id]);
     res.json({ supplements: rows });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // PUT /trainer/clients/:id/supplements — reemplaza TODA la lista de suplementación
@@ -1269,7 +1269,7 @@ router.put('/clients/:id/supplements', async (req, res) => {
     res.json({ ok: true });
   } catch (e) {
     await conn.rollback();
-    res.status(500).json({ error: e.message });
+    res.serverError(e);
   } finally { conn.release(); }
 });
 router.get('/billing', requireTrainer, async (req, res) => {
@@ -1285,7 +1285,7 @@ router.get('/billing', requireTrainer, async (req, res) => {
        ORDER BY u.name`
     );
     res.json({ clients });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // PUT /trainer/billing/:clientId — actualizar facturación de cliente
@@ -1299,7 +1299,7 @@ router.put('/billing/:clientId', requireTrainer, async (req, res) => {
       [uuidv4(), req.params.clientId, monthly_fee || 0, next_payment_date || null, notes || '']
     );
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // DELETE /trainer/clients/:id
@@ -1329,7 +1329,7 @@ router.delete('/clients/:id', requireTrainer, async (req, res) => {
     res.json({ ok: true });
   } catch (e) {
     await conn.rollback();
-    res.status(500).json({ error: e.message });
+    res.serverError(e);
   } finally { conn.release(); }
 });
 

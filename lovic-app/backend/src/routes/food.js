@@ -65,7 +65,7 @@ router.post('/log-parsed', async (req, res) => {
     res.json({
       daily: { target: req.user.calorie_target || 2000, consumed: total, remaining: Math.max((req.user.calorie_target || 2000) - total, 0) },
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // POST /food/log
@@ -143,7 +143,7 @@ router.post('/log', async (req, res) => {
       },
     },
   });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // GET /food/today
@@ -176,7 +176,7 @@ router.get('/today', async (req, res) => {
       daily: { target, consumed: total, remaining, macros },
       status: deficitStatus(total, target),
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // Estado calórico basado en reglas (sin IA)
@@ -213,7 +213,7 @@ router.get('/history', async (req, res) => {
       (itemsByDay[d] = itemsByDay[d] || []).push(it);
     }
     res.json({ history: rows, itemsByDay, target: req.user.calorie_target, protein_target: req.user.protein_target_g || null });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // GET /food/adherence — resumen de constancia nutricional (últimos 7 y 30 días)
@@ -267,7 +267,7 @@ router.get('/adherence', async (req, res) => {
     }
 
     res.json({ calorieTarget: target, proteinTarget: pTarget, last7: window(7), last30: window(30), streak });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // GET /food/insights — patrones de comportamiento + correlación con peso
@@ -279,7 +279,7 @@ router.get('/insights', async (req, res) => {
       proteinTarget: req.user.protein_target_g || null,
     });
     res.json(out);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // DELETE /food/log/:id
@@ -287,7 +287,7 @@ router.delete('/log/:id', async (req, res) => {
   try {
     await db.query('DELETE FROM food_logs WHERE id = ? AND user_id = ?', [req.params.id, req.user.id]);
     res.json({ message: 'Registro eliminado' });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 module.exports = router;

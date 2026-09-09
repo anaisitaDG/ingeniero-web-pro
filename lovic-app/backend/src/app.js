@@ -9,6 +9,14 @@ const fs          = require('fs');
 
 const app = express();
 
+// Guard de arranque: sin JWT_SECRET no se puede firmar/verificar sesiones de forma segura.
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 16) {
+  console.error('❌ FATAL: falta JWT_SECRET (o es muy corto) en el .env. El login no funcionaría de forma segura. Abortando.');
+  process.exit(1);
+}
+// Visibilidad: cuánto dura la sesión (si ves "30" a secas, son 30 SEGUNDOS → pon "30d").
+console.log(`🔐 JWT expira en: ${process.env.JWT_EXPIRES_IN || '60d (default)'}`);
+
 // Uploads dir
 const uploadPath = process.env.UPLOAD_PATH || 'uploads/';
 if (!fs.existsSync(uploadPath)) fs.mkdirSync(uploadPath, { recursive: true });
@@ -375,6 +383,14 @@ app.use(rateLimit({
   validate: false,
 }));
 app.use(express.json());
+// Helper: registra el error real en el servidor pero NO lo filtra al cliente.
+app.use((req, res, next) => {
+  res.serverError = (e) => {
+    console.error(`[${req.method} ${req.path}]`, e?.message || e);
+    if (!res.headersSent) res.status(500).json({ error: 'Error interno del servidor' });
+  };
+  next();
+});
 app.use('/uploads', express.static(path.resolve(uploadPath)));
 // Imágenes servidas por una URL SIN extensión de imagen (el nombre va como ?f=),
 // para que la regla de nginx que atrapa *.jpg no la intercepte. Pública, para <img>.
@@ -703,9 +719,9 @@ async function sendWeeklySummaryJob() {
 
 // Error handler
 app.use((err, req, res, next) => {
-  console.error(err);
+  console.error(`[${req.method} ${req.path}]`, err);
   if (err.code === 'LIMIT_FILE_SIZE') return res.status(413).json({ error: 'Imagen demasiado grande (máx 10MB)' });
-  res.status(500).json({ error: err.message || 'Error interno' });
+  if (!res.headersSent) res.status(500).json({ error: 'Error interno del servidor' });
 });
 
 const PORT = process.env.PORT || 4000;

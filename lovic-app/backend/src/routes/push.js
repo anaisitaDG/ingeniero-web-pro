@@ -55,7 +55,7 @@ router.post('/send', auth, async (req, res) => {
     const sent = results.filter(r => r.status === 'fulfilled').length;
     res.json({ ok: true, sent });
   } catch (e) {
-    res.status(500).json({ error: e.message || 'Error enviando notificación' });
+    res.serverError(e);
   }
 });
 
@@ -84,7 +84,7 @@ router.post('/test', auth, async (req, res) => {
     }
     res.json({ ok: true, sent });
   } catch (e) {
-    res.status(500).json({ error: e.message || 'Error enviando notificación' });
+    res.serverError(e);
   }
 });
 

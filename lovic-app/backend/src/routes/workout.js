@@ -39,7 +39,7 @@ router.get('/plan', async (req, res) => {
       day.exercises = exercises;
     }
     res.json({ plan: { ...plan, days } });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // POST /workout/complete — cliente marca rutina del día como completada
@@ -54,7 +54,7 @@ router.post('/complete', async (req, res) => {
       [uuidv4(), uid, today]
     );
     res.json({ message: 'Rutina marcada como completada' });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // GET /workout/today-done — check si ya completó rutina hoy
@@ -67,7 +67,7 @@ router.get('/today-done', async (req, res) => {
       [uid, today]
     );
     res.json({ done: !!(row?.workout_done) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // POST /workout/complete-day — marca/desmarca un día específico
@@ -106,7 +106,7 @@ router.post('/complete-day', async (req, res) => {
       }
     }
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // GET /workout/completed-days — días completados (más reciente por día)
@@ -120,7 +120,7 @@ router.get('/completed-days', async (req, res) => {
       [uid]
     );
     res.json({ completed: rows });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 
@@ -182,7 +182,7 @@ router.post('/log', async (req, res) => {
       );
     }
     res.json({ message: 'Registrado' });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // GET /workout/history/:exerciseId — historial de un ejercicio
@@ -206,7 +206,7 @@ router.get('/history/:exerciseId', async (req, res) => {
       byDate[d].push({ set_number: row.set_number, weight_kg: row.weight_kg, reps_done: row.reps_done, set_type: row.set_type, duration_secs: row.duration_secs });
     }
     res.json({ history: grouped });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // POST /workout/activity — guarda calentamiento o cardio de una sesión
@@ -222,7 +222,7 @@ router.post('/activity', async (req, res) => {
       [uuidv4(), uid, day_id, session_date, type, activity_name, duration_mins || null]
     );
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // DELETE /workout/activity — borra el calentamiento/cardio de un día para una fecha
@@ -237,7 +237,7 @@ router.delete('/activity', async (req, res) => {
       [uid, day_id, type, session_date]
     );
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // GET /workout/activity/:dayId — trae actividades de las últimas sesiones de un día
@@ -249,7 +249,7 @@ router.get('/activity/:dayId', async (req, res) => {
       [uid, req.params.dayId]
     );
     res.json({ activities: rows });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // POST /workout/free — guardar sesión de entrenamiento libre
@@ -275,7 +275,7 @@ router.post('/free', async (req, res) => {
     );
 
     res.json({ ok: true, id });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // GET /workout/free — historial de entrenamientos libres
@@ -287,7 +287,7 @@ router.get('/free', async (req, res) => {
       [uid]
     );
     res.json({ sessions: rows });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // ── Ejercicios extra agregados en el día (solo para esa sesión) ───────────────
@@ -318,7 +318,7 @@ router.post('/extra-exercise', async (req, res) => {
       [id, uid, day_id, session_date, String(name).trim(), JSON.stringify(cleanSets)]
     );
     res.json({ ok: true, id });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // GET /workout/extra-exercises/:dayId?date= — ejercicios extra de un día en una fecha
@@ -332,7 +332,7 @@ router.get('/extra-exercises/:dayId', async (req, res) => {
     );
     const exercises = rows.map(r => ({ id: r.id, name: r.name, session_date: r.session_date, sets: (() => { try { return JSON.parse(r.sets) || []; } catch { return []; } })() }));
     res.json({ exercises });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 // DELETE /workout/extra-exercise/:id
@@ -340,7 +340,7 @@ router.delete('/extra-exercise/:id', async (req, res) => {
   try {
     await db.query('DELETE FROM session_extra_exercises WHERE id=? AND user_id=?', [req.params.id, req.user.id]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.serverError(e); }
 });
 
 module.exports = router;
