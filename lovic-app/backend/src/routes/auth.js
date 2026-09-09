@@ -134,7 +134,7 @@ router.get('/verify', async (req, res) => {
 
     const [[tokenUser]] = await db.query('SELECT role FROM users WHERE id=?', [link.user_id]);
     const jwt_token = jwt.sign({ sub: link.user_id, role: tokenUser?.role }, process.env.JWT_SECRET, {
-      expiresIn: process.env.JWT_EXPIRES_IN,
+      expiresIn: (process.env.JWT_EXPIRES_IN || '60d'),
     });
 
     res.redirect(`${process.env.APP_URL}/?token=${jwt_token}`);
@@ -156,7 +156,7 @@ router.post('/login', async (req, res) => {
   const valid = await bcrypt.compare(password, user.password_hash);
   if (!valid) return res.status(401).json({ error: 'Email o contraseña incorrectos' });
 
-  const token = jwt.sign({ sub: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN });
+  const token = jwt.sign({ sub: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: (process.env.JWT_EXPIRES_IN || '60d') });
   res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
 });
 
