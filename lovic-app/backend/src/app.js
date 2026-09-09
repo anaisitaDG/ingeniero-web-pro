@@ -415,6 +415,10 @@ const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
   standardHeaders: true,
+  // MISMO fix que el limitador global: la IP real va en X-Real-IP (nginx), no en req.ip.
+  // Sin esto, los 10 intentos se cuentan entre TODAS las personas juntas → login bloqueado para todos.
+  keyGenerator: (req) => req.headers['x-real-ip'] || req.ip,
+  validate: false,
   message: { error: 'Demasiados intentos. Espera unos minutos e inténtalo de nuevo.' },
   skipSuccessfulRequests: true, // solo cuentan los intentos fallidos
 });
