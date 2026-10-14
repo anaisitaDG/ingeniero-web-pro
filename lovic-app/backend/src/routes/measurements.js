@@ -3,9 +3,21 @@ const router  = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const db      = require('../database/db');
 const { requireAuth } = require('../middleware/auth');
+const { weightTrend } = require('../services/analytics');
 const { sendMeasurementUpdate } = require('../services/email');
 
 router.use(requireAuth);
+
+// GET /measurements/insights — tendencia de peso suavizada + ritmo (kg/semana)
+router.get('/insights', async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      'SELECT logged_at, weight_kg FROM measurements WHERE user_id=? AND weight_kg IS NOT NULL ORDER BY logged_at ASC',
+      [req.user.id]
+    );
+    res.json(weightTrend(rows));
+  } catch (e) { res.serverError(e); }
+});
 
 // Avisa a la entrenadora (en segundo plano) cuando una CLIENTA registra medidas.
 async function notifyTrainerMeasurements(user) {

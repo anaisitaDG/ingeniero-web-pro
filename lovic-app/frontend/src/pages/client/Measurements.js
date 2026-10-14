@@ -38,6 +38,7 @@ export default function Measurements() {
   const [bioDate, setBioDate]   = useState(new Date().toISOString().slice(0, 10));
   const [bioUploading, setBioUploading] = useState(false);
   const [bioDel, setBioDel]     = useState(null);
+  const [trend, setTrend]       = useState(null);
 
   useEffect(() => { load(); }, []);
 
@@ -47,6 +48,7 @@ export default function Measurements() {
       const [d, b] = await Promise.all([api.measurements.list(20), api.bioimpedance.list()]);
       setRows(d.measurements);
       setBioList(b.bioimpedance || []);
+      api.measurements.insights().then(setTrend).catch(() => setTrend(null));
     } catch { setLoadError(true); }
   }
 
@@ -109,6 +111,38 @@ export default function Measurements() {
           </button>
         ))}
       </div>
+
+      {/* Tendencia de peso (estilo MacroFactor): el progreso REAL, sin el ruido del día a día */}
+      {trend && trend.rateKgPerWeek != null && (() => {
+        const r = trend.rateKgPerWeek;
+        const down = r < 0;
+        const stable = Math.abs(r) < 0.05;
+        const color = stable ? 'var(--muted)' : (down ? '#16a34a' : '#dc2626');
+        return (
+          <div className="card" style={{ marginBottom: 20, padding: '14px 16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+              <div>
+                <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', marginBottom: 2 }}>TENDENCIA DE PESO</p>
+                <p style={{ fontSize: 24, fontWeight: 900, lineHeight: 1 }}>{trend.latestTrend} <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--muted)' }}>kg</span></p>
+                <p style={{ fontSize: 13, fontWeight: 800, color, marginTop: 4 }}>
+                  {stable ? '➡️ Estable' : (down ? '▼ Bajando' : '▲ Subiendo')} {stable ? '' : `~${Math.abs(r)} kg/sem`}
+                </p>
+              </div>
+              {trend.points && trend.points.length > 1 && (
+                <div style={{ width: 130, height: 54, flexShrink: 0 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={trend.points} margin={{ top: 6, right: 4, bottom: 2, left: 4 }}>
+                      <Line type="monotone" dataKey="raw" stroke="var(--border)" strokeWidth={1} dot={false} isAnimationActive={false} />
+                      <Line type="monotone" dataKey="trend" stroke={color} strokeWidth={2.5} dot={false} isAnimationActive={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </div>
+            <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 8 }}>La línea gruesa es tu tendencia real; la fina, tu peso de cada día. No te asustes por la báscula diaria: mira la tendencia.</p>
+          </div>
+        );
+      })()}
 
       {tab === 'current' && open && (
         <form onSubmit={handleSubmit} className="card" style={{ marginBottom: 20 }}>

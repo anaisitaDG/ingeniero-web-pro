@@ -89,6 +89,7 @@ export default function ClientDetail() {
   const [workoutLogs, setWorkoutLogs]   = useState(null);
   const [logsView, setLogsView]         = useState('ciclo');
   const [cycleSummary, setCycleSummary] = useState(null);
+  const [nutritionInsights, setNutritionInsights] = useState(null);
   const [notes, setNotes]               = useState('');
   const [savingNotes, setSavingNotes]   = useState(false);
   const [billing, setBilling]           = useState({ monthly_fee: '', next_payment_date: '', notes: '' });
@@ -167,6 +168,7 @@ export default function ClientDetail() {
       api.trainer.getCycleSummary(id).then(d => setCycleSummary(d)).catch(console.error);
     }
     if (tab === 'notas') api.trainer.getNotes(id).then(d => setNotes(d.notes || '')).catch(console.error);
+    if (tab === 'nutrition') api.trainer.getNutritionInsights(id).then(setNutritionInsights).catch(() => setNutritionInsights(null));
     if (tab === 'facturacion') api.trainer.getBilling().then(res => {
       const c = (res.clients || []).find(c => String(c.id) === String(id));
       if (c) setBilling({ monthly_fee: c.monthly_fee != null ? String(c.monthly_fee) : '', next_payment_date: c.next_payment_date ? String(c.next_payment_date).slice(0, 10) : '', notes: c.notes || '' });
@@ -1010,6 +1012,7 @@ export default function ClientDetail() {
       {tab === 'nutrition' && (() => {
         return (
           <div>
+            <NutritionInsights data={nutritionInsights} />
             {/* Sub-tab switcher */}
             <div style={{ display: 'flex', gap: 8, marginBottom: 16, background: 'var(--border)', padding: 4, borderRadius: 12 }}>
               {[['planner', '🍽️ Por tipo'], ['adherence', '📊 Cómo va'], ['text', '📝 Texto'], ['ai', '✨ IA']].map(([k, l]) => (
@@ -2299,6 +2302,71 @@ function CycleSummaryView({ data }) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// Gasto calórico real + ritmo + sugerencia de ajuste (estilo MacroFactor). La app sugiere, Lorena decide.
+const GOAL_ES = { fat_loss: 'Pérdida de grasa', muscle_gain: 'Ganancia muscular', maintenance: 'Mantenimiento', health: 'Salud general' };
+function NutritionInsights({ data }) {
+  if (!data) return null;
+  const Q = { good: { t: 'Datos confiables', c: '#16a34a' }, medium: { t: 'Datos parciales', c: '#ca8a04' }, low: { t: 'Faltan datos', c: '#dc2626' } };
+  const q = Q[data.quality] || Q.low;
+  const hasTdee = data.tdee != null;
+  const s = data.suggestion;
+  const dirMeta = {
+    up:   { bg: '#dcfce7', c: '#16a34a', icon: '⬆️' },
+    down: { bg: '#fee2e2', c: '#dc2626', icon: '⬇️' },
+    hold: { bg: '#f0f0f0', c: '#555',   icon: '✅' },
+  };
+  const dm = s ? (dirMeta[s.direction] || dirMeta.hold) : null;
+
+  return (
+    <div className="card" style={{ marginBottom: 16, padding: 16, borderLeft: '4px solid var(--gold)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
+        <p style={{ fontWeight: 800, fontSize: 15 }}>📊 Metabolismo real <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--muted)' }}>· basado en datos</span></p>
+        <span style={{ fontSize: 10.5, fontWeight: 700, color: q.c, background: `${q.c}18`, borderRadius: 20, padding: '2px 8px' }}>{q.t}</span>
+      </div>
+
+      {!hasTdee ? (
+        <p style={{ fontSize: 13, color: 'var(--muted)' }}>
+          Aún no hay suficiente para calcular su gasto real. Hace falta que registre comida con constancia (~2+ semanas) y tenga varias medidas de peso. Mientras tanto, usa tu criterio.
+        </p>
+      ) : (
+        <>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
+            <div style={{ flex: 1, minWidth: 110, textAlign: 'center', background: '#C99A1E12', borderRadius: 12, padding: '10px' }}>
+              <p style={{ fontSize: 22, fontWeight: 900, color: '#C99A1E', lineHeight: 1 }}>{data.tdee}</p>
+              <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 3 }}>gasto real (kcal/día)</p>
+            </div>
+            <div style={{ flex: 1, minWidth: 110, textAlign: 'center', background: '#6366f112', borderRadius: 12, padding: '10px' }}>
+              <p style={{ fontSize: 22, fontWeight: 900, color: '#6366f1', lineHeight: 1 }}>{data.avgIntake}</p>
+              <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 3 }}>come en promedio</p>
+            </div>
+            <div style={{ flex: 1, minWidth: 110, textAlign: 'center', background: '#16a34a12', borderRadius: 12, padding: '10px' }}>
+              <p style={{ fontSize: 22, fontWeight: 900, color: data.rateKgPerWeek < 0 ? '#16a34a' : (data.rateKgPerWeek > 0 ? '#dc2626' : 'var(--muted)'), lineHeight: 1 }}>
+                {data.rateKgPerWeek > 0 ? '+' : ''}{data.rateKgPerWeek ?? '—'}
+              </p>
+              <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 3 }}>kg/semana</p>
+            </div>
+          </div>
+
+          {s && (
+            <div style={{ background: dm.bg, borderRadius: 10, padding: '10px 12px' }}>
+              <p style={{ fontSize: 12.5, fontWeight: 700, color: dm.c }}>{dm.icon} Sugerencia ({GOAL_ES[data.goal] || data.goal})</p>
+              <p style={{ fontSize: 13, color: '#1A1A1A', marginTop: 3 }}>{s.text}</p>
+              {s.suggestedTarget != null && (
+                <p style={{ fontSize: 12.5, marginTop: 6, color: '#333' }}>
+                  Meta sugerida: <strong>{s.suggestedTarget} kcal</strong>
+                  {s.currentTarget ? <span style={{ color: 'var(--muted)' }}> · actual: {s.currentTarget} kcal</span> : ''}
+                </p>
+              )}
+              <p style={{ fontSize: 10.5, color: 'var(--muted)', marginTop: 6 }}>Es una sugerencia según sus datos reales. Tú decides el número final.</p>
+            </div>
+          )}
+          <p style={{ fontSize: 10.5, color: 'var(--muted)', marginTop: 8 }}>Calculado de lo que comió ({data.loggedDays} días registrados) vs. su tendencia de peso (~{data.windowDays} días).</p>
+        </>
+      )}
     </div>
   );
 }

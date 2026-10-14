@@ -67,6 +67,7 @@ export const api = {
   measurements: {
     list: (limit = 10) => request(`/measurements?limit=${limit}`),
     add:  (body)       => request('/measurements', { method: 'POST', body: JSON.stringify(body) }),
+    insights: ()       => request('/measurements/insights'),
   },
   bioimpedance: {
     list:   (userId)  => request(`/bioimpedance${userId ? `?user_id=${userId}` : ''}`),
@@ -185,6 +186,7 @@ export const api = {
     getAdherence:  (id) => request(`/trainer/clients/${id}/adherence-detail`),
     getWorkoutLogs:(id) => request(`/trainer/clients/${id}/workout-logs`),
     getCycleSummary:(id) => request(`/trainer/clients/${id}/cycle-summary`),
+    getNutritionInsights:(id) => request(`/trainer/clients/${id}/nutrition-insights`),
     getNotes:      (id) => request(`/trainer/clients/${id}/notes`),
     saveNotes:     (id, notes) => request(`/trainer/clients/${id}/notes`, { method: 'PUT', body: JSON.stringify({ notes }) }),
     deleteClient:  (id)         => request(`/trainer/clients/${id}`, { method: 'DELETE' }),

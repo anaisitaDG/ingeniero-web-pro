@@ -6,6 +6,7 @@ const { requireAuth } = require('../middleware/auth');
 const { generateRoutine, generateNutritionPlan, suggestDayName } = require('../services/ai');
 const { gravatarUrl } = require('../utils/gravatar');
 const { webpush } = require('./push');
+const { estimateExpenditure, suggestAdjustment } = require('../services/analytics');
 
 router.use(requireAuth);
 
@@ -887,6 +888,28 @@ router.get('/clients/:id/cycle-summary', async (req, res) => {
     console.error('cycle-summary error:', err);
     res.serverError(err);
   }
+});
+
+// GET /trainer/clients/:id/nutrition-insights — gasto real estimado + ritmo + sugerencia (estilo MacroFactor)
+router.get('/clients/:id/nutrition-insights', async (req, res) => {
+  try {
+    const uid = req.params.id;
+    const [[u]] = await db.query('SELECT fitness_goal, calorie_target FROM users WHERE id=? AND role="client"', [uid]);
+    if (!u) return res.status(404).json({ error: 'Cliente no encontrado' });
+    const [weightRows] = await db.query(
+      'SELECT logged_at, weight_kg FROM measurements WHERE user_id=? AND weight_kg IS NOT NULL ORDER BY logged_at ASC', [uid]);
+    const [intakeRows] = await db.query(
+      `SELECT DATE_FORMAT(logged_at,'%Y-%m-%d') AS date, SUM(calories) AS calories
+       FROM food_logs WHERE user_id=? AND logged_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+       GROUP BY logged_at`, [uid]);
+    const exp = estimateExpenditure(weightRows, intakeRows);
+    const bodyWeight = exp.latestTrend || (weightRows.length ? Number(weightRows[weightRows.length - 1].weight_kg) : null);
+    const suggestion = suggestAdjustment({
+      goal: u.fitness_goal, tdee: exp.tdee, currentTarget: u.calorie_target,
+      rateKgPerWeek: exp.rateKgPerWeek, bodyWeight,
+    });
+    res.json({ ...exp, goal: u.fitness_goal || 'maintenance', currentTarget: u.calorie_target || null, suggestion });
+  } catch (e) { res.serverError(e); }
 });
 
 // GET/PUT /trainer/clients/:id/notes — notas privadas del entrenador
