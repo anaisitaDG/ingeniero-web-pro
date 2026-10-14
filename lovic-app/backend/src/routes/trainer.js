@@ -646,7 +646,7 @@ router.get('/clients/:id/adherence-detail', async (req, res) => {
     const uid = req.params.id;
     const [rows] = await db.query(
       `SELECT tracked_date, workout_done, diet_followed, water_glasses
-       FROM daily_tracking WHERE user_id=? AND tracked_date >= DATE_SUB(CURDATE(), INTERVAL 60 DAY)
+       FROM daily_tracking WHERE user_id=? AND tracked_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
        ORDER BY tracked_date DESC`, [uid]
     );
     res.json({ days: rows });
@@ -900,7 +900,7 @@ router.get('/clients/:id/nutrition-insights', async (req, res) => {
       'SELECT logged_at, weight_kg FROM measurements WHERE user_id=? AND weight_kg IS NOT NULL ORDER BY logged_at ASC', [uid]);
     const [intakeRows] = await db.query(
       `SELECT DATE_FORMAT(logged_at,'%Y-%m-%d') AS date, SUM(calories) AS calories
-       FROM food_logs WHERE user_id=? AND logged_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+       FROM food_logs WHERE user_id=? AND logged_at >= DATE_SUB(CURDATE(), INTERVAL 60 DAY)
        GROUP BY logged_at`, [uid]);
     const exp = estimateExpenditure(weightRows, intakeRows);
     const bodyWeight = exp.latestTrend || (weightRows.length ? Number(weightRows[weightRows.length - 1].weight_kg) : null);

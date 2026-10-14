@@ -38,7 +38,7 @@ function weightTrend(rows, { alpha = 0.25, rateWindowDays = 28 } = {}) {
   if (win.length >= 2) {
     const t0 = new Date(win[0].date).getTime();
     const xs = win.map(p => (new Date(p.date).getTime() - t0) / 86400000); // días
-    const ys = win.map(p => p.trend);
+    const ys = win.map(p => p.raw); // peso REAL medido (no el suavizado): no se rezaga con pocas pesadas
     const n = xs.length;
     const mx = xs.reduce((a, b) => a + b, 0) / n;
     const my = ys.reduce((a, b) => a + b, 0) / n;
@@ -50,33 +50,51 @@ function weightTrend(rows, { alpha = 0.25, rateWindowDays = 28 } = {}) {
 }
 
 // (2) GASTO CALÓRICO REAL — balance energético: lo que comió vs cómo cambió su peso.
+// Se adapta a pesadas ESPACIADAS: usa el periodo real entre la primera y última pesada
+// (hasta maxDays), y promedia la ingesta de ESE mismo periodo. Devuelve `missing` para
+// decirle al usuario qué le falta ('weight' | 'intake' | null).
 // weightRows: [{logged_at, weight_kg}]; intakeRows: [{date, calories}] (totales por día).
-function estimateExpenditure(weightRows, intakeRows, { windowDays = 21 } = {}) {
-  const today = new Date(Date.now() - 5 * 3600 * 1000);
-  const startStr = new Date(today.getTime() - windowDays * 86400000).toISOString().slice(0, 10);
-
-  // Ingesta: solo días con registro real dentro de la ventana
-  const intake = (intakeRows || [])
-    .map(r => ({ date: toDateStr(r.date), cal: Number(r.calories) || 0 }))
-    .filter(r => r.date && r.date >= startStr && r.cal > 0);
-  const loggedDays = intake.length;
-  const avgIntake = loggedDays ? Math.round(intake.reduce((a, b) => a + b.cal, 0) / loggedDays) : null;
-
-  // Peso: tendencia al inicio y al final de la ventana
+function estimateExpenditure(weightRows, intakeRows, { maxDays = 56, minSpanDays = 10 } = {}) {
   const tr = weightTrend(weightRows);
-  const win = tr.points.filter(p => p.date >= startStr);
-  let tdee = null, deltaKg = null, spanDays = null, quality = 'low';
-  if (avgIntake && win.length >= 2) {
-    deltaKg = +(win[win.length - 1].trend - win[0].trend).toFixed(2);
-    spanDays = Math.max(1, Math.round((new Date(win[win.length - 1].date) - new Date(win[0].date)) / 86400000));
-    // TDEE = ingesta media - (energía ganada/perdida por día)
-    tdee = Math.round(avgIntake - (deltaKg * ENERGY_PER_KG) / spanDays);
-    // Calidad del dato: cuántos días registró comida vs la ventana, y si el peso cubre buen rango
-    const ratio = loggedDays / windowDays;
-    quality = (loggedDays >= 10 && ratio >= 0.5 && spanDays >= 10) ? 'good'
-            : (loggedDays >= 6 && spanDays >= 7) ? 'medium' : 'low';
-  }
-  return { tdee, avgIntake, deltaKg, loggedDays, windowDays, spanDays, quality, latestTrend: tr.latestTrend, rateKgPerWeek: tr.rateKgPerWeek };
+  const todayMs = Date.now() - 5 * 3600 * 1000;
+  const earliestAllowed = new Date(todayMs - maxDays * 86400000).toISOString().slice(0, 10);
+
+  const out = {
+    tdee: null, avgIntake: null, deltaKg: null, loggedDays: 0, spanDays: null,
+    windowDays: maxDays, quality: 'low', latestTrend: tr.latestTrend, rateKgPerWeek: tr.rateKgPerWeek, missing: null,
+  };
+
+  // Puntos de peso dentro del periodo máximo
+  const wpts = tr.points.filter(p => p.date >= earliestAllowed);
+
+  // Promedio de ingesta de referencia (para poder informar aunque falte peso)
+  const allIntake = (intakeRows || []).map(r => ({ date: toDateStr(r.date), cal: Number(r.calories) || 0 })).filter(r => r.date && r.cal > 0);
+  out.loggedDays = allIntake.length;
+
+  if (wpts.length < 2) { out.missing = 'weight'; return out; }
+
+  const firstDate = wpts[0].date, lastDate = wpts[wpts.length - 1].date;
+  const spanDays = Math.max(1, Math.round((new Date(lastDate) - new Date(firstDate)) / 86400000));
+  if (spanDays < minSpanDays) { out.missing = 'weight'; return out; } // pesadas muy juntas en el tiempo
+
+  const deltaKg = +(wpts[wpts.length - 1].raw - wpts[0].raw).toFixed(2); // cambio REAL medido en el periodo
+  out.deltaKg = deltaKg;
+  out.spanDays = spanDays;
+
+  // Ingesta del MISMO periodo [firstDate, lastDate]
+  const intake = allIntake.filter(r => r.date >= firstDate && r.date <= lastDate);
+  const loggedDays = intake.length;
+  out.loggedDays = loggedDays;
+  const avgIntake = loggedDays ? Math.round(intake.reduce((a, b) => a + b.cal, 0) / loggedDays) : null;
+  out.avgIntake = avgIntake;
+
+  if (!avgIntake || loggedDays < 5) { out.missing = 'intake'; return out; }
+
+  out.tdee = Math.round(avgIntake - (deltaKg * ENERGY_PER_KG) / spanDays);
+  const coverage = loggedDays / spanDays;
+  out.quality = (loggedDays >= 10 && coverage >= 0.5) ? 'good' : (loggedDays >= 5 && coverage >= 0.3) ? 'medium' : 'low';
+  if (out.quality === 'low') out.missing = 'intake';
+  return out;
 }
 
 // (3) SUGERENCIA DE AJUSTE — advisory para Lorena. Nunca aplica cambios solo.

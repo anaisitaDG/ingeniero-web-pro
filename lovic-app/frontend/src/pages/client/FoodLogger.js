@@ -261,8 +261,9 @@ export default function FoodLogger() {
             <div className="card" style={{ marginBottom: 16, padding: '14px 16px', background: 'var(--bg)', border: '1px dashed var(--border)' }}>
               <p style={{ fontSize: 13, fontWeight: 800, marginBottom: 4 }}>🔥 Tu gasto real <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--muted)' }}>· casi listo</span></p>
               <p style={{ fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.5 }}>
-                Registra tus comidas unos días más y pésate cada semana. Con eso la app calcula <strong>cuánto gasta tu cuerpo de verdad</strong> (tu metabolismo real), sin fórmulas genéricas.
-                {expend.loggedDays != null && <> Llevas <strong>{expend.loggedDays}</strong> día{expend.loggedDays === 1 ? '' : 's'} registrados.</>}
+                {expend.missing === 'weight'
+                  ? <>Ya tienes tu comida registrada 🙌. Ahora <strong>pésate en Medidas</strong> (al menos 2 veces con unos días de diferencia) para que la app calcule <strong>cuánto gasta tu cuerpo de verdad</strong>.</>
+                  : <>Sigue <strong>registrando tus comidas</strong> unos días más. Con eso (y tus pesadas) la app calcula <strong>tu metabolismo real</strong>, sin fórmulas genéricas.{expend.loggedDays != null && <> Llevas <strong>{expend.loggedDays}</strong> día{expend.loggedDays === 1 ? '' : 's'} registrados.</>}</>}
               </p>
             </div>
           ) : null}

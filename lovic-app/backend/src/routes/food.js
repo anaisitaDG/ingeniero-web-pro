@@ -19,13 +19,14 @@ router.get('/expenditure', async (req, res) => {
       'SELECT logged_at, weight_kg FROM measurements WHERE user_id=? AND weight_kg IS NOT NULL ORDER BY logged_at ASC', [uid]);
     const [intakeRows] = await db.query(
       `SELECT DATE_FORMAT(logged_at,'%Y-%m-%d') AS date, SUM(calories) AS calories
-       FROM food_logs WHERE user_id=? AND logged_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+       FROM food_logs WHERE user_id=? AND logged_at >= DATE_SUB(CURDATE(), INTERVAL 60 DAY)
        GROUP BY logged_at`, [uid]);
     const exp = estimateExpenditure(weightRows, intakeRows);
     // Solo el dato factual: gasto, promedio, ritmo, calidad. NADA de sugerencia de meta.
     res.json({
       tdee: exp.tdee, avgIntake: exp.avgIntake, rateKgPerWeek: exp.rateKgPerWeek,
-      latestTrend: exp.latestTrend, loggedDays: exp.loggedDays, windowDays: exp.windowDays, quality: exp.quality,
+      latestTrend: exp.latestTrend, loggedDays: exp.loggedDays, spanDays: exp.spanDays,
+      windowDays: exp.windowDays, quality: exp.quality, missing: exp.missing,
     });
   } catch (e) { res.serverError(e); }
 });
@@ -246,7 +247,7 @@ router.get('/adherence', async (req, res) => {
 
     const [rows] = await db.query(
       `SELECT logged_at, SUM(calories) AS c, SUM(protein_g) AS p
-       FROM food_logs WHERE user_id=? AND logged_at >= DATE_SUB(?, INTERVAL 60 DAY)
+       FROM food_logs WHERE user_id=? AND logged_at >= DATE_SUB(?, INTERVAL 30 DAY)
        GROUP BY logged_at`,
       [uid, today]
     );

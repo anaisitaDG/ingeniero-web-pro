@@ -2330,7 +2330,9 @@ function NutritionInsights({ data }) {
 
       {!hasTdee ? (
         <p style={{ fontSize: 13, color: 'var(--muted)' }}>
-          Aún no hay suficiente para calcular su gasto real. Hace falta que registre comida con constancia (~2+ semanas) y tenga varias medidas de peso. Mientras tanto, usa tu criterio.
+          {data.missing === 'weight'
+            ? 'Comida sí tiene registrada, pero faltan medidas de peso: necesita al menos 2 pesadas separadas por varios días para calcular su gasto real.'
+            : 'Aún no hay suficiente para calcular su gasto real. Hace falta que registre comida con constancia (~2 semanas) y tenga varias medidas de peso. Mientras tanto, usa tu criterio.'}
         </p>
       ) : (
         <>
