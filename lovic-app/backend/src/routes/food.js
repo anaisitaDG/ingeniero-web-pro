@@ -22,11 +22,16 @@ router.get('/expenditure', async (req, res) => {
        FROM food_logs WHERE user_id=? AND logged_at >= DATE_SUB(CURDATE(), INTERVAL 60 DAY)
        GROUP BY logged_at`, [uid]);
     const exp = estimateExpenditure(weightRows, intakeRows);
+    // Serie diaria de lo consumido (últimos ~35 días) para graficar consumido vs gasto real
+    const dailyIntake = intakeRows
+      .map(r => ({ date: String(r.date), calories: Number(r.calories) || 0 }))
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(-35);
     // Solo el dato factual: gasto, promedio, ritmo, calidad. NADA de sugerencia de meta.
     res.json({
-      tdee: exp.tdee, avgIntake: exp.avgIntake, rateKgPerWeek: exp.rateKgPerWeek,
+      tdee: exp.tdee, avgIntake: exp.avgIntake, rateKgPerWeek: exp.rateKgPerWeek, deltaKg: exp.deltaKg,
       latestTrend: exp.latestTrend, loggedDays: exp.loggedDays, spanDays: exp.spanDays,
-      windowDays: exp.windowDays, quality: exp.quality, missing: exp.missing,
+      windowDays: exp.windowDays, quality: exp.quality, missing: exp.missing, dailyIntake,
     });
   } catch (e) { res.serverError(e); }
 });

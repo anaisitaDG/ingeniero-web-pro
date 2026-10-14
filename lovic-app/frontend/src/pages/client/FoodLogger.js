@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { BarChart, Bar, Cell, XAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { api } from '../../services/api';
 
 const MEALS = [
@@ -253,6 +253,39 @@ export default function FoodLogger() {
                   </div>
                 )}
               </div>
+              {/* Balance: lo que comes vs lo que gastas → explica tu peso */}
+              {expend.avgIntake != null && (() => {
+                const net = expend.avgIntake - expend.tdee; // - = déficit (bajas), + = superávit (subes)
+                const deficit = net < 0;
+                return (
+                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #C99A1E26' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, marginBottom: 2 }}>
+                      <span>🍽️ Comes <strong>~{expend.avgIntake}</strong></span>
+                      <span>🔥 Gastas <strong>~{expend.tdee}</strong></span>
+                    </div>
+                    <p style={{ fontSize: 12.5, fontWeight: 800, color: deficit ? '#16a34a' : (net > 0 ? '#dc2626' : 'var(--muted)'), marginTop: 4 }}>
+                      {deficit ? `↓ Déficit de ~${Math.abs(net)} kcal/día → por eso bajas` : net > 0 ? `↑ Superávit de ~${net} kcal/día → por eso subes` : 'En equilibrio → peso estable'}
+                    </p>
+                    {expend.dailyIntake && expend.dailyIntake.length > 2 && (
+                      <div style={{ height: 90, marginTop: 8 }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={expend.dailyIntake} barSize={6} margin={{ top: 6, right: 4, bottom: 0, left: 4 }}>
+                            <XAxis dataKey="date" hide />
+                            <Tooltip formatter={(v) => [`${v} kcal`, 'Consumido']} labelFormatter={(l) => l} />
+                            <ReferenceLine y={expend.tdee} stroke="#C99A1E" strokeDasharray="4 3" />
+                            <Bar dataKey="calories" radius={[3, 3, 0, 0]}>
+                              {expend.dailyIntake.map((d, i) => (
+                                <Cell key={i} fill={d.calories <= expend.tdee ? '#16a34a' : '#dc2626'} />
+                              ))}
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
+                    <p style={{ fontSize: 10.5, color: 'var(--muted)', marginTop: 4 }}>Cada barra es un día. La línea punteada es tu gasto real: barras <span style={{ color: '#16a34a', fontWeight: 700 }}>verdes</span> = comiste menos (déficit), <span style={{ color: '#dc2626', fontWeight: 700 }}>rojas</span> = comiste más.</p>
+                  </div>
+                );
+              })()}
               <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 8 }}>
                 Esto es lo que tu cuerpo gasta en promedio, calculado con lo que comes y cómo cambia tu peso. Tu <strong>meta de calorías la define Lorena</strong> según tu objetivo.
               </p>
