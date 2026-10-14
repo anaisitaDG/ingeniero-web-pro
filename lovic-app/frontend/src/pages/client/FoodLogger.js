@@ -287,7 +287,7 @@ export default function FoodLogger() {
                 );
               })()}
               <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 8 }}>
-                Esto es lo que tu cuerpo gasta en promedio, calculado con lo que comes y cómo cambia tu peso. Tu <strong>meta de calorías la define Lorena</strong> según tu objetivo.
+                Esto es lo que tu cuerpo gasta en promedio, calculado con lo que comes y cómo cambia tu peso. <strong>Ya incluye tu ejercicio</strong> (no le restes las calorías del gym). Tu <strong>meta de calorías la define Lorena</strong> según tu objetivo.
               </p>
             </div>
           ) : expend ? (
