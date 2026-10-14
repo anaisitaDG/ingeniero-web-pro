@@ -545,7 +545,7 @@ export default function FoodLogger() {
             )}
 
             <div className="card" style={{ marginBottom: 16 }}>
-              <p style={{ fontWeight: 700, marginBottom: 14 }}>Calorías últimos 14 días</p>
+              <p style={{ fontWeight: 700, marginBottom: 14 }}>{expend?.tdee ? '🍽️ Comido vs. 🔥 tu gasto real' : 'Calorías últimos 14 días'}</p>
               <ResponsiveContainer width="100%" height={160}>
                 <BarChart data={history} barSize={14}>
                   <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'var(--muted)' }} axisLine={false} tickLine={false} />
@@ -554,10 +554,19 @@ export default function FoodLogger() {
                     contentStyle={{ borderRadius: 10, border: 'none', boxShadow: '0 2px 12px rgba(0,0,0,0.1)' }}
                   />
                   {history[0]?.target && <ReferenceLine y={history[0].target} stroke="#E05252" strokeDasharray="4 3" />}
-                  <Bar dataKey="kcal" fill="var(--coral)" radius={[4, 4, 0, 0]} />
+                  {expend?.tdee && <ReferenceLine y={expend.tdee} stroke="#C99A1E" strokeWidth={2} strokeDasharray="5 3" />}
+                  <Bar dataKey="kcal" fill="var(--coral)" radius={[4, 4, 0, 0]}>
+                    {expend?.tdee && history.map((d, i) => (
+                      <Cell key={i} fill={d.kcal <= expend.tdee ? '#16a34a' : '#dc2626'} />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
-              {history[0]?.target && <p style={{ fontSize: 11, color: '#E05252', marginTop: 6, textAlign: 'right' }}>— meta {history[0].target} kcal</p>}
+              <div style={{ display: 'flex', gap: 14, justifyContent: 'flex-end', flexWrap: 'wrap', marginTop: 6 }}>
+                {history[0]?.target && <span style={{ fontSize: 11, color: '#E05252' }}>— meta {history[0].target}</span>}
+                {expend?.tdee && <span style={{ fontSize: 11, color: '#C99A1E', fontWeight: 700 }}>— gasto real ~{expend.tdee}</span>}
+              </div>
+              {expend?.tdee && <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>Barras <span style={{ color: '#16a34a', fontWeight: 700 }}>verdes</span> = comiste bajo tu gasto (déficit, bajas); <span style={{ color: '#dc2626', fontWeight: 700 }}>rojas</span> = por encima (subes).</p>}
             </div>
 
             <div className="card" style={{ marginBottom: 16 }}>
