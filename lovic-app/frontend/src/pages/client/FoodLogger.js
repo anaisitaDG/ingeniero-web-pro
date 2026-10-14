@@ -237,7 +237,7 @@ export default function FoodLogger() {
       {tab === 'today' && (
         <>
           {/* Gasto calórico real (estilo MacroFactor) — dato de SU cuerpo; la meta la pone Lorena */}
-          {expend && expend.tdee != null && expend.quality !== 'low' && (
+          {expend && expend.tdee != null && expend.quality !== 'low' ? (
             <div className="card" style={{ marginBottom: 16, padding: '14px 16px', background: '#C99A1E0D', border: '1px solid #C99A1E33' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
@@ -257,7 +257,15 @@ export default function FoodLogger() {
                 Esto es lo que tu cuerpo gasta en promedio, calculado con lo que comes y cómo cambia tu peso. Tu <strong>meta de calorías la define Lorena</strong> según tu objetivo.
               </p>
             </div>
-          )}
+          ) : expend ? (
+            <div className="card" style={{ marginBottom: 16, padding: '14px 16px', background: 'var(--bg)', border: '1px dashed var(--border)' }}>
+              <p style={{ fontSize: 13, fontWeight: 800, marginBottom: 4 }}>🔥 Tu gasto real <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--muted)' }}>· casi listo</span></p>
+              <p style={{ fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.5 }}>
+                Registra tus comidas unos días más y pésate cada semana. Con eso la app calcula <strong>cuánto gasta tu cuerpo de verdad</strong> (tu metabolismo real), sin fórmulas genéricas.
+                {expend.loggedDays != null && <> Llevas <strong>{expend.loggedDays}</strong> día{expend.loggedDays === 1 ? '' : 's'} registrados.</>}
+              </p>
+            </div>
+          ) : null}
           {/* Adherencia nutricional — constancia de la semana */}
           {adherence && adherence.last7.daysLogged > 0 && (
             <div className="card" style={{ marginBottom: 16, padding: '14px 16px' }}>
