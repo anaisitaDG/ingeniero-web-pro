@@ -6,9 +6,29 @@ const fs      = require('fs');
 const multer  = require('multer');
 const db      = require('../database/db');
 const { parseFood, parseFoodImage, getFoodRecommendation } = require('../services/ai');
+const { estimateExpenditure } = require('../services/analytics');
 const { requireAuth } = require('../middleware/auth');
 
 router.use(requireAuth);
+
+// GET /food/expenditure — gasto calórico REAL del cliente (sin sugerencia; la meta la define la entrenadora)
+router.get('/expenditure', async (req, res) => {
+  try {
+    const uid = req.user.id;
+    const [weightRows] = await db.query(
+      'SELECT logged_at, weight_kg FROM measurements WHERE user_id=? AND weight_kg IS NOT NULL ORDER BY logged_at ASC', [uid]);
+    const [intakeRows] = await db.query(
+      `SELECT DATE_FORMAT(logged_at,'%Y-%m-%d') AS date, SUM(calories) AS calories
+       FROM food_logs WHERE user_id=? AND logged_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+       GROUP BY logged_at`, [uid]);
+    const exp = estimateExpenditure(weightRows, intakeRows);
+    // Solo el dato factual: gasto, promedio, ritmo, calidad. NADA de sugerencia de meta.
+    res.json({
+      tdee: exp.tdee, avgIntake: exp.avgIntake, rateKgPerWeek: exp.rateKgPerWeek,
+      latestTrend: exp.latestTrend, loggedDays: exp.loggedDays, windowDays: exp.windowDays, quality: exp.quality,
+    });
+  } catch (e) { res.serverError(e); }
+});
 
 // Fecha local en Colombia (UTC-5) como fallback cuando el cliente no la manda
 function colombiaToday() {

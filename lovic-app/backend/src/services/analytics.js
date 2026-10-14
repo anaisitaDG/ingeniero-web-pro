@@ -28,11 +28,13 @@ function weightTrend(rows, { alpha = 0.25, rateWindowDays = 28 } = {}) {
   });
   const latestTrend = points[points.length - 1].trend;
 
-  // Ritmo: regresión lineal (mínimos cuadrados) de la tendencia vs días, últimos rateWindowDays
+  // Ritmo: regresión lineal (mínimos cuadrados) de la tendencia vs días, últimos rateWindowDays.
+  // Si no hay 2+ puntos en la ventana (weigh-ins escasos), usamos todos los puntos disponibles.
   let rateKgPerWeek = null;
   const lastDate = new Date(points[points.length - 1].date);
   const windowStart = new Date(lastDate.getTime() - rateWindowDays * 86400000);
-  const win = points.filter(p => new Date(p.date) >= windowStart);
+  let win = points.filter(p => new Date(p.date) >= windowStart);
+  if (win.length < 2) win = points; // fallback: todo el histórico
   if (win.length >= 2) {
     const t0 = new Date(win[0].date).getTime();
     const xs = win.map(p => (new Date(p.date).getTime() - t0) / 86400000); // días

@@ -37,6 +37,7 @@ export default function FoodLogger() {
   const [histItems, setHistItems] = useState({});   // { 'YYYY-MM-DD': [logs] }
   const [expandedDay, setExpandedDay] = useState(null);
   const [adherence, setAdherence] = useState(null);
+  const [expend, setExpend] = useState(null);
   const [insights, setInsights] = useState(null);
   const [listening, setListening] = useState(false);
   const recognitionRef = useRef(null);
@@ -104,6 +105,7 @@ export default function FoodLogger() {
 
   useEffect(() => { fetchToday(logDate); }, [logDate]); // eslint-disable-line
   useEffect(() => { api.food.adherence().then(setAdherence).catch(() => {}); }, []);
+  useEffect(() => { api.food.expenditure().then(setExpend).catch(() => {}); }, []);
   useEffect(() => { if (tab === 'history' && !insights) api.food.insights().then(setInsights).catch(() => {}); }, [tab, insights]);
   function refreshAdherence() { api.food.adherence().then(setAdherence).catch(() => {}); }
 
@@ -234,6 +236,28 @@ export default function FoodLogger() {
 
       {tab === 'today' && (
         <>
+          {/* Gasto calórico real (estilo MacroFactor) — dato de SU cuerpo; la meta la pone Lorena */}
+          {expend && expend.tdee != null && expend.quality !== 'low' && (
+            <div className="card" style={{ marginBottom: 16, padding: '14px 16px', background: '#C99A1E0D', border: '1px solid #C99A1E33' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>🔥 TU GASTO REAL</p>
+                  <p style={{ fontSize: 22, fontWeight: 900, lineHeight: 1.1 }}>~{expend.tdee} <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)' }}>kcal/día</span></p>
+                </div>
+                {expend.rateKgPerWeek != null && (
+                  <div style={{ textAlign: 'right' }}>
+                    <p style={{ fontSize: 15, fontWeight: 800, color: expend.rateKgPerWeek < 0 ? '#16a34a' : (expend.rateKgPerWeek > 0 ? '#dc2626' : 'var(--muted)') }}>
+                      {expend.rateKgPerWeek > 0 ? '▲' : expend.rateKgPerWeek < 0 ? '▼' : '➡️'} {Math.abs(expend.rateKgPerWeek)} kg/sem
+                    </p>
+                    <p style={{ fontSize: 10.5, color: 'var(--muted)' }}>ritmo actual</p>
+                  </div>
+                )}
+              </div>
+              <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 8 }}>
+                Esto es lo que tu cuerpo gasta en promedio, calculado con lo que comes y cómo cambia tu peso. Tu <strong>meta de calorías la define Lorena</strong> según tu objetivo.
+              </p>
+            </div>
+          )}
           {/* Adherencia nutricional — constancia de la semana */}
           {adherence && adherence.last7.daysLogged > 0 && (
             <div className="card" style={{ marginBottom: 16, padding: '14px 16px' }}>
