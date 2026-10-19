@@ -975,8 +975,8 @@ router.post('/weekly-summary', async (req, res) => {
       const [[track]] = await db.query(`SELECT COUNT(*) as workout_days FROM daily_tracking WHERE user_id=? AND workout_done=1 AND tracked_date >= ?`, [c.id, weekStr]);
       const [[diet]]  = await db.query(`SELECT COUNT(*) as diet_days FROM daily_tracking WHERE user_id=? AND diet_followed=1 AND tracked_date >= ?`, [c.id, weekStr]);
       const [[lastT]] = await db.query(`SELECT MAX(tracked_date) as last_trained FROM daily_tracking WHERE user_id=? AND workout_done=1`, [c.id]);
-      const [logDays] = await db.query(`SELECT DISTINCT DATE_FORMAT(logged_date,'%Y-%m-%d') as d FROM workout_logs WHERE user_id=? ORDER BY d DESC LIMIT 60`, [c.id]);
-      const [tDays]   = await db.query(`SELECT DATE_FORMAT(tracked_date,'%Y-%m-%d') as d FROM daily_tracking WHERE user_id=? AND workout_done=1 ORDER BY d DESC LIMIT 60`, [c.id]);
+      const [logDays] = await db.query(`SELECT DISTINCT DATE_FORMAT(logged_date,'%Y-%m-%d') as d FROM workout_logs WHERE user_id=? ORDER BY d DESC LIMIT 730`, [c.id]);
+      const [tDays]   = await db.query(`SELECT DATE_FORMAT(tracked_date,'%Y-%m-%d') as d FROM daily_tracking WHERE user_id=? AND workout_done=1 ORDER BY d DESC LIMIT 730`, [c.id]);
       const allDates  = new Set([...logDays.map(r=>r.d), ...tDays.map(r=>r.d)]);
       let streak = 0, restRun = 0, expected = Date.now() - 5 * 60 * 60 * 1000;
       while (true) {

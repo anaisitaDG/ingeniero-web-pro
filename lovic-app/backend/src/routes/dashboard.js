@@ -47,16 +47,17 @@ router.get('/', async (req, res) => {
      FROM daily_tracking WHERE user_id=? AND tracked_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)`,
     [uid]);
 
-  // Streak: consecutive days with workout_done, any exercise logged, OR diet_followed
+  // Streak: consecutive days with workout_done, any exercise logged, OR diet_followed.
+  // Límite amplio (no 60): con 60 la racha se "congelaba" al pasar de ~60 días.
   const [logDays] = await db.query(
     `SELECT DISTINCT DATE_FORMAT(logged_date, '%Y-%m-%d') as d
      FROM workout_logs WHERE user_id=? AND logged_date <= ?
-     ORDER BY d DESC LIMIT 60`,
+     ORDER BY d DESC LIMIT 730`,
     [uid, today]);
   const [trackDays] = await db.query(
     `SELECT DATE_FORMAT(tracked_date, '%Y-%m-%d') as d
      FROM daily_tracking WHERE user_id=? AND (workout_done=1 OR diet_followed=1) AND tracked_date <= ?
-     ORDER BY d DESC LIMIT 60`,
+     ORDER BY d DESC LIMIT 730`,
     [uid, today]);
 
   const activeDates = new Set();
@@ -118,7 +119,7 @@ router.get('/', async (req, res) => {
   // Historial de agua (últimos 7 días) + racha de hidratación
   const [waterRows] = await db.query(
     `SELECT DATE_FORMAT(tracked_date,'%Y-%m-%d') as d, water_glasses, workout_done
-     FROM daily_tracking WHERE user_id=? AND tracked_date <= ? ORDER BY d DESC LIMIT 60`,
+     FROM daily_tracking WHERE user_id=? AND tracked_date <= ? ORDER BY d DESC LIMIT 730`,
     [uid, today]);
   const waterByDate = {};
   for (const r of waterRows) waterByDate[r.d] = { glasses: r.water_glasses || 0, goal: 8 + (r.workout_done ? 2 : 0) };
