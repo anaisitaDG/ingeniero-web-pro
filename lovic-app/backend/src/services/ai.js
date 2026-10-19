@@ -356,4 +356,52 @@ Solo el nombre, sin puntuación ni explicación.`,
   return message.content[0].text.trim().replace(/[."]/g, '');
 }
 
-module.exports = { parseFood, parseFoodImage, getFoodRecommendation, generateRoutine, generateNutritionPlan, parseBioimpedance, generateBioSummary, comparePhotos, suggestDayName, parseShoppingIngredients };
+// Genera un BORRADOR de plan por tipo de día (superior/inferior/descanso × momentos, con opciones),
+// anclado en el perfil real de la clienta. Devuelve slots estructurados para que la entrenadora cure.
+async function generateMealSlots(ctx) {
+  const lib = (ctx.library || [])
+    .map(m => `- [${m.meal_type}${m.body_zone ? '/' + m.body_zone : ''}] ${m.name}${m.calories ? ` (~${m.calories} kcal)` : ''}`)
+    .join('\n') || '(sin biblioteca cargada)';
+
+  const prompt = `Eres la asistente de nutrición de una entrenadora personal. Arma un BORRADOR de plan de comidas por TIPO DE DÍA para que ELLA lo revise y ajuste. No es la versión final.
+
+PERSONA:
+- Nombre: ${ctx.name}
+- Objetivo: ${ctx.goal}
+- Meta calórica por día: ${ctx.calorieTarget} kcal${ctx.macros ? ` (aprox. P ${ctx.macros.p}g · C ${ctx.macros.c}g · G ${ctx.macros.f}g)` : ''}
+- Comidas al día: ${ctx.mealsPerDay || '3 a 4'}
+- Alergias (JAMÁS incluir): ${ctx.allergies || 'ninguna'}
+- NO come / evitar (JAMÁS incluir): ${ctx.avoid || 'nada en particular'}
+- Le gustan: ${ctx.likes || 'variado'}
+- Lo que más registra que come: ${ctx.frequentFoods || 'sin datos aún'}
+- Tiempo para cocinar: ${ctx.cookingTime || 'normal'}
+
+BIBLIOTECA DE COMIDAS DE LA ENTRENADORA (ÚSALA cuando encaje, respetando sus nombres):
+${lib}
+
+INSTRUCCIONES:
+- Arma comidas para TRES tipos de día: "superior", "inferior" y "descanso".
+- En cada tipo de día incluye los momentos: desayuno, almuerzo, merienda, cena.
+- Da 2 opciones por momento (la clienta elige una), para dar variedad.
+- RESPETA SIEMPRE alergias y lo que no come. Prioriza lo que le gusta y lo que ya come.
+- Las 4 comidas de un mismo tipo de día (una opción de cada momento) deben sumar cerca de la meta calórica.
+- En día de descanso baja un poco los carbohidratos.
+- Usa alimentos colombianos comunes y asequibles. Porciones realistas.
+- Estima calorías y macros de cada comida.
+
+Devuelve SOLO un JSON válido (sin texto adicional) con este formato exacto:
+{"slots":[{"body_zone":"superior|inferior|descanso","meal_type":"desayuno|almuerzo|merienda|cena","name":"nombre de la comida","description":"ingredientes y porciones","calories":número,"protein_g":número,"carbs_g":número,"fat_g":número}]}`;
+
+  const message = await client.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 4096,
+    messages: [{ role: 'user', content: prompt }],
+  });
+  const text = message.content[0].text.trim();
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error('No se pudo generar el plan');
+  const parsed = JSON.parse(jsonMatch[0]);
+  return Array.isArray(parsed.slots) ? parsed.slots : [];
+}
+
+module.exports = { parseFood, parseFoodImage, getFoodRecommendation, generateRoutine, generateNutritionPlan, generateMealSlots, parseBioimpedance, generateBioSummary, comparePhotos, suggestDayName, parseShoppingIngredients };

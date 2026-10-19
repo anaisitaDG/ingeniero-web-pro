@@ -3,7 +3,7 @@ const router  = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const db      = require('../database/db');
 const { requireAuth } = require('../middleware/auth');
-const { generateRoutine, generateNutritionPlan, suggestDayName } = require('../services/ai');
+const { generateRoutine, generateNutritionPlan, suggestDayName, generateMealSlots } = require('../services/ai');
 const { gravatarUrl } = require('../utils/gravatar');
 const { webpush } = require('./push');
 const { estimateExpenditure, suggestAdjustment } = require('../services/analytics');
@@ -909,6 +909,91 @@ router.get('/clients/:id/nutrition-insights', async (req, res) => {
       rateKgPerWeek: exp.rateKgPerWeek, bodyWeight,
     });
     res.json({ ...exp, goal: u.fitness_goal || 'maintenance', currentTarget: u.calorie_target || null, suggestion });
+  } catch (e) { res.serverError(e); }
+});
+
+// POST /trainer/clients/:id/generate-meal-plan — BORRADOR de plan por tipo de día con IA (no guarda; Lorena cura)
+router.post('/clients/:id/generate-meal-plan', async (req, res) => {
+  try {
+    const uid = req.params.id;
+    const [[u]] = await db.query(
+      'SELECT name, fitness_goal, calorie_target, protein_target_g, carbs_target_g, fat_target_g FROM users WHERE id=? AND role="client"', [uid]);
+    if (!u) return res.status(404).json({ error: 'Cliente no encontrado' });
+    const [[q]] = await db.query('SELECT * FROM questionnaire_data WHERE user_id=?', [uid]);
+
+    // Meta calórica: anclada al gasto REAL si hay datos; si no, la del usuario
+    const [weightRows] = await db.query(
+      'SELECT logged_at, weight_kg FROM measurements WHERE user_id=? AND weight_kg IS NOT NULL ORDER BY logged_at ASC', [uid]);
+    const [intakeRows] = await db.query(
+      `SELECT DATE_FORMAT(logged_at,'%Y-%m-%d') AS date, SUM(calories) AS calories
+       FROM food_logs WHERE user_id=? AND logged_at >= DATE_SUB(CURDATE(), INTERVAL 60 DAY) GROUP BY logged_at`, [uid]);
+    const exp = estimateExpenditure(weightRows, intakeRows);
+    let calorieTarget = u.calorie_target || 2000;
+    if (exp.tdee) {
+      calorieTarget = u.fitness_goal === 'fat_loss' ? exp.tdee - 400
+                    : u.fitness_goal === 'muscle_gain' ? exp.tdee + 250 : exp.tdee;
+    }
+
+    // Comidas más frecuentes (lo que de verdad come)
+    const [logs] = await db.query(
+      `SELECT parsed_items FROM food_logs WHERE user_id=? AND logged_at >= DATE_SUB(CURDATE(), INTERVAL 45 DAY) LIMIT 400`, [uid]);
+    const freq = {};
+    for (const r of logs) {
+      let items = [];
+      try { items = typeof r.parsed_items === 'string' ? JSON.parse(r.parsed_items) : (r.parsed_items || []); } catch { items = []; }
+      if (Array.isArray(items)) for (const it of items) {
+        const n = String(it.name || '').trim().toLowerCase();
+        if (n && n.length < 40 && !n.startsWith('plan:')) freq[n] = (freq[n] || 0) + 1;
+      }
+    }
+    const frequentFoods = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 12).map(([n]) => n).join(', ');
+
+    // Biblioteca de comidas de la entrenadora
+    const [[trainer]] = await db.query(`SELECT id FROM users WHERE role='trainer' LIMIT 1`);
+    const [library] = trainer
+      ? await db.query('SELECT name, description, meal_type, body_zone, calories FROM meal_library WHERE trainer_id=? LIMIT 80', [trainer.id])
+      : [[]];
+
+    const parseJ = v => { try { const a = typeof v === 'string' ? JSON.parse(v) : v; return Array.isArray(a) ? a.join(', ') : (a || ''); } catch { return v || ''; } };
+    const likes = [parseJ(q?.proteins), parseJ(q?.carbs), parseJ(q?.fats)].filter(Boolean).join(' · ');
+    const goal = parseJ(q?.main_goal) || u.fitness_goal || 'mantenimiento';
+
+    const ctx = {
+      name: u.name, goal, calorieTarget: Math.round(calorieTarget),
+      macros: u.protein_target_g ? { p: u.protein_target_g, c: u.carbs_target_g, f: u.fat_target_g } : null,
+      mealsPerDay: q?.meals_per_day, cookingTime: q?.cooking_time,
+      allergies: q?.has_allergies ? q?.allergy_detail : '', avoid: q?.foods_to_avoid || '',
+      likes, frequentFoods, library,
+    };
+
+    const raw = await generateMealSlots(ctx);
+
+    // Sanitizar el borrador a slots válidos
+    const ZONES = ['superior', 'inferior', 'descanso'];
+    const order = {};
+    const slots = [];
+    for (const s of raw) {
+      if (!ZONES.includes(s.body_zone) || !MEAL_TYPES.includes(s.meal_type) || !s.name) continue;
+      const k = `${s.body_zone}|${s.meal_type}`;
+      order[k] = order[k] || 0;
+      slots.push({
+        week_no: 1, body_zone: s.body_zone, meal_type: s.meal_type,
+        name: String(s.name).slice(0, 200),
+        description: s.description ? String(s.description).slice(0, 500) : null,
+        calories: numOrNull(s.calories), protein_g: numOrNull(s.protein_g),
+        carbs_g: numOrNull(s.carbs_g), fat_g: numOrNull(s.fat_g),
+        sort_order: order[k]++,
+      });
+    }
+
+    res.json({
+      slots,
+      context: {
+        calorieTarget: ctx.calorieTarget, usedRealTdee: !!exp.tdee,
+        frequentFoods: frequentFoods || null, allergies: ctx.allergies || null,
+        avoid: ctx.avoid || null, likes: likes || null, libraryCount: library.length,
+      },
+    });
   } catch (e) { res.serverError(e); }
 });
 

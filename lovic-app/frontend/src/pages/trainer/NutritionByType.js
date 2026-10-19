@@ -29,6 +29,8 @@ export default function NutritionByType({ clientId }) {
   const [newMeal, setNewMeal]   = useState(null);    // { name, description, calories, protein_g, carbs_g, fat_g }
   const [creatingSave, setCreatingSave] = useState(false);
   const [showShopping, setShowShopping] = useState(false);
+  const [gen, setGen]         = useState(false);   // generando borrador con IA
+  const [genCtx, setGenCtx]   = useState(null);    // resumen de con qué se armó
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -124,6 +126,20 @@ export default function NutritionByType({ clientId }) {
     finally { setSaving(false); }
   }
 
+  // Genera un borrador con IA y lo carga en pantalla (NO guarda hasta que Lorena presione Guardar)
+  async function generateDraft() {
+    if (slots.length && !window.confirm('Esto reemplaza en pantalla las comidas actuales con un borrador nuevo de la IA. No se guarda hasta que presiones "Guardar nutrición". ¿Continuar?')) return;
+    setGen(true); setSaveMsg('');
+    try {
+      const res = await api.trainer.generateMealPlan(clientId);
+      setSlots((res.slots || []).map(s => ({ ...s, _key: Math.random() })));
+      setGenCtx(res.context || null);
+      setSaveMsg('✨ Borrador listo — revísalo y guarda');
+      setTimeout(() => setSaveMsg(''), 6000);
+    } catch (e) { alert(e.message); }
+    setGen(false);
+  }
+
   if (loading) return <div style={{ textAlign: 'center', padding: 40 }}><div className="spinner" style={{ borderTopColor: 'var(--coral)', borderColor: 'var(--border)', width: 28, height: 28 }} /></div>;
 
   // Comidas de biblioteca disponibles para el picker: del momento pedido, priorizando la zona actual
@@ -136,6 +152,32 @@ export default function NutritionByType({ clientId }) {
 
   return (
     <div>
+      {/* Generador con IA — arma el borrador por tipo de día; Lorena cura y guarda */}
+      <div className="card" style={{ marginBottom: 14, padding: 14, borderLeft: '4px solid var(--gold)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <div style={{ minWidth: 0 }}>
+            <p style={{ fontWeight: 800, fontSize: 14 }}>✨ Generar borrador con IA</p>
+            <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>Arma las comidas por tipo de día según el perfil y los datos de la clienta. Tú revisas, ajustas y guardas.</p>
+          </div>
+          <button onClick={generateDraft} disabled={gen} style={{
+            padding: '10px 16px', borderRadius: 10, border: 'none', cursor: gen ? 'default' : 'pointer', fontWeight: 800, fontSize: 13,
+            background: 'var(--gold)', color: '#fff', flexShrink: 0, opacity: gen ? 0.6 : 1,
+          }}>{gen ? 'Generando…' : 'Generar'}</button>
+        </div>
+        {genCtx && (
+          <div style={{ marginTop: 12, borderTop: '1px solid var(--border)', paddingTop: 10, fontSize: 12, color: 'var(--muted)', lineHeight: 1.7 }}>
+            <p style={{ fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>Se armó con:</p>
+            <div>🔥 Meta ~{genCtx.calorieTarget} kcal {genCtx.usedRealTdee ? '(gasto real)' : '(estimado)'}</div>
+            {genCtx.allergies && <div>🚫 Alergias: {genCtx.allergies}</div>}
+            {genCtx.avoid && <div>🚫 Evita: {genCtx.avoid}</div>}
+            {genCtx.frequentFoods && <div>🔁 Come seguido: {genCtx.frequentFoods}</div>}
+            {genCtx.likes && <div>👍 Le gusta: {genCtx.likes}</div>}
+            <div>📚 De tu biblioteca: {genCtx.libraryCount} comida{genCtx.libraryCount === 1 ? '' : 's'}</div>
+            <p style={{ marginTop: 8, color: 'var(--gold)', fontWeight: 700 }}>Revisa abajo, ajusta lo que quieras y presiona "Guardar nutrición".</p>
+          </div>
+        )}
+      </div>
+
       {/* Modo */}
       <div className="card" style={{ marginBottom: 14, padding: 14 }}>
         <p style={{ fontWeight: 700, fontSize: 13, marginBottom: 8 }}>Modo de nutrición</p>

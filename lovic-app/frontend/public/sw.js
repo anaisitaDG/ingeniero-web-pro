@@ -1,4 +1,4 @@
-const CACHE = 'lovic-v58';
+const CACHE = 'lovic-v59';
 
 // Toda la API vive bajo /api (nginx la enruta al backend). Nunca se cachea ni se intercepta.
 const API_PATHS = ['/api', '/uploads'];
