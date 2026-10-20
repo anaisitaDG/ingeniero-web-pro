@@ -1012,7 +1012,7 @@ router.get('/clients/:id/eats-summary', async (req, res) => {
     // Se revisa en ORDEN: lo "problemático" primero para que "papas fritas" caiga en
     // comida rápida (no en carbos) y "yogurt griego" en lácteos (no en proteína).
     const CATS = [
-      { key: 'alcohol',  label: 'Alcohol',        emoji: '🍷', words: ['vino','cerveza','aguardiente',' ron','whisky','tequila','licor','michelada','coctel','cocktail','trago'] },
+      { key: 'alcohol',  label: 'Alcohol',        emoji: '🍷', words: ['vino','cerveza','aguardiente','ron','whisky','tequila','licor','michelada','coctel','cocktail','trago','ginebra','vodka'] },
       { key: 'rapida',   label: 'Comida rápida',  emoji: '🍟', words: ['papas fritas','papa frita','pizza','hamburguesa','hot dog','perro caliente','salchipapa','empanada','nugget','alita','alitas','pollo frito','frito','fritura','salchicha','chorizo','tocineta'] },
       { key: 'golosina', label: 'Golosinas',      emoji: '🍫', words: ['chocolate','chocolatina','galleta','dulce','caramelo','helado','torta','postre','brownie','barra','crunchy','bombon','gomita','chicle','ponque','cheesecake','mecato','paquete','chips','doritos','gaseosa','refresco'] },
       { key: 'lacteo',   label: 'Lácteos',        emoji: '🥛', words: ['yogurt','yogur','leche','queso','kumis','cuajada','requeson','mantequilla'] },
@@ -1024,7 +1024,15 @@ router.get('/clients/:id/eats-summary', async (req, res) => {
     ];
     const classify = (name) => {
       const n = norm(name);
-      for (const c of CATS) if (c.words.some(w => n.includes(w.trim()) || n.includes(norm(w)))) return c.key;
+      // Palabras completas del nombre (evita que "ron" pique dentro de "chicharrón")
+      const toks = new Set(n.split(/[^a-z0-9ñ]+/).filter(Boolean));
+      const hit = (w) => {
+        w = norm(w).trim();
+        if (!w) return false;
+        if (w.includes(' ')) return n.includes(w);        // frase: "papas fritas"
+        return toks.has(w) || toks.has(w + 's') || toks.has(w + 'es'); // palabra + plural simple
+      };
+      for (const c of CATS) if (c.words.some(hit)) return c.key;
       return 'otros';
     };
 
