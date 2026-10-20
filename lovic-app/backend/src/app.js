@@ -494,11 +494,19 @@ function renderMealPlanHTML(u, slots, sups) {
     const meals = MEAL_ORDER.filter(m => byZone[z][m]).map(m => {
       const opts = byZone[z][m];
       // Opciones separadas por un "o" claro; sin sopa de macros, solo kcal discretas.
+      const macroStr = (s) => {
+        const p = [];
+        if (s.protein_g != null) p.push(`P ${Math.round(s.protein_g)}g`);
+        if (s.carbs_g != null) p.push(`C ${Math.round(s.carbs_g)}g`);
+        if (s.fat_g != null) p.push(`G ${Math.round(s.fat_g)}g`);
+        return p.join(' · ');
+      };
       const optHtml = opts.map((s, i) => `
         ${i > 0 ? '<div class="or"><span>o</span></div>' : ''}
         <div class="opt">
           <div class="opt-name">${escapeHtml(s.name)}${s.calories != null ? `<span class="kcal">${Math.round(s.calories)} kcal</span>` : ''}</div>
           ${s.description ? `<div class="opt-desc">${escapeHtml(s.description)}</div>` : ''}
+          ${macroStr(s) ? `<div class="opt-macros">${macroStr(s)}</div>` : ''}
         </div>`).join('');
       return `
         <div class="meal">
@@ -655,6 +663,8 @@ function renderMealPlanHTML(u, slots, sups) {
   .kcal{flex-shrink:0; font-size:11px; font-weight:700; color:var(--coral2);
     background:var(--soft); padding:2px 8px; border-radius:999px; font-variant-numeric:tabular-nums}
   .opt-desc{color:var(--muted); font-size:13px; margin-top:2px; line-height:1.35}
+  .opt-macros{color:#a89a92; font-size:11px; margin-top:3px; letter-spacing:.02em;
+    font-variant-numeric:tabular-nums}
   .or{display:flex; align-items:center; gap:8px; margin:9px 0 2px; color:var(--muted)}
   .or::before,.or::after{content:""; flex:1; height:1px; background:var(--line)}
   .or span{font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; color:var(--coral2)}
