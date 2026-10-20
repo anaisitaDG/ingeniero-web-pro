@@ -32,6 +32,7 @@ const db = require('./database/db');
     await db.query(`ALTER TABLE workout_days ADD COLUMN IF NOT EXISTS cardio_type VARCHAR(100) DEFAULT NULL`).catch(() => {});
     await db.query(`ALTER TABLE workout_days ADD COLUMN IF NOT EXISTS cardio_duration INT DEFAULT NULL`).catch(() => {});
     await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS trainer_notes TEXT DEFAULT NULL`).catch(() => {});
+    await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS meal_plan_note TEXT DEFAULT NULL`).catch(() => {});
     await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS protein_target_g SMALLINT DEFAULT NULL`);
     await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS carbs_target_g SMALLINT DEFAULT NULL`);
     await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS fat_target_g SMALLINT DEFAULT NULL`);
@@ -449,7 +450,7 @@ app.get('/meal-plan-print', async (req, res) => {
 
   try {
     const [[u]] = await db.query(
-      'SELECT name, calorie_target, protein_target_g, carbs_target_g, fat_target_g FROM users WHERE id=? AND role="client"', [clientId]);
+      'SELECT name, fitness_goal, calorie_target, protein_target_g, carbs_target_g, fat_target_g, meal_plan_note FROM users WHERE id=? AND role="client"', [clientId]);
     if (!u) return res.status(404).send('Clienta no encontrada.');
 
     const [slots] = await db.query(
@@ -527,9 +528,64 @@ function renderMealPlanHTML(u, slots, sups) {
   const targetLine = u.calorie_target
     ? `<div class="hero-target">🎯 Objetivo: ${Math.round(u.calorie_target)} kcal al día</div>` : '';
 
+  // ===== "¿Por qué este plan?" — explicación FIEL a los datos reales del plan =====
+  // Estima las kcal de cada tipo de día (una opción por comida = promedio de opciones)
+  // y describe el patrón real, adaptado al objetivo. Nunca afirma algo que el plan no haga.
+  const zoneKcal = {};
+  for (const z of zones) {
+    let total = 0, has = false;
+    for (const m of MEAL_ORDER) {
+      const opts = (byZone[z][m] || []).filter(s => s.calories != null);
+      if (opts.length) { total += opts.reduce((a, s) => a + Number(s.calories), 0) / opts.length; has = true; }
+    }
+    if (has) zoneKcal[z] = Math.round(total);
+  }
+  const Z = { superior: 'tren superior', inferior: 'tren inferior', descanso: 'descanso' };
+  function planRationale() {
+    const goal = u.fitness_goal;
+    const bits = [];
+    // 1) Intención según el objetivo
+    if (goal === 'fat_loss')
+      bits.push('Tu plan busca <strong>bajar grasa sin perder músculo</strong>: comes suficiente para rendir y recuperarte, con un balance pensado para que la grasa baje de forma sostenible.');
+    else if (goal === 'muscle_gain')
+      bits.push('Tu plan está pensado para <strong>ganar músculo</strong>: porciones abundantes y con buena proteína, para darle al cuerpo el material que necesita para crecer y recuperarse.');
+    else
+      bits.push('Tu plan busca <strong>mantener tu energía y tu composición</strong>, con comida equilibrada que puedas sostener en el día a día.');
+
+    // 2) Patrón real por tipo de día (solo si hay números y diferencia notable)
+    const present = Object.keys(zoneKcal);
+    if (present.length >= 2) {
+      const sorted = present.slice().sort((a, b) => zoneKcal[b] - zoneKcal[a]);
+      const hi = sorted[0], lo = sorted[sorted.length - 1];
+      const diff = zoneKcal[hi] - zoneKcal[lo];
+      const rel = diff / zoneKcal[lo];
+      if (rel > 0.05) {
+        const legNote = hi === 'inferior' ? ' Las piernas son el músculo más grande: por eso en su día comes un poco más.' : '';
+        bits.push(`Comes más en tus días de <strong>${Z[hi]}</strong> (~${zoneKcal[hi]} kcal) y menos en <strong>${Z[lo]}</strong> (~${zoneKcal[lo]} kcal), porque el cuerpo gasta y necesita reparar más cuando entrenas.${legNote}`);
+      } else {
+        bits.push('Mantienes calorías <strong>parejas todos los días</strong>, para darte una base estable y fácil de seguir.');
+      }
+    }
+
+    // 3) Cómo usar las opciones
+    bits.push('Cada comida trae <strong>opciones que suman parecido</strong>: elige la que más se te antoje o la que tengas a mano — todas cuidan tu objetivo por igual.');
+    return bits;
+  }
+  const rationaleHtml = zones.length ? `
+    <section class="day">
+      <div class="day-chip alt"><span>💡</span>¿Por qué este plan?</div>
+      <div class="why">${planRationale().map(t => `<p>${t}</p>`).join('')}</div>
+    </section>` : '';
+
+  const noteHtml = (u.meal_plan_note && u.meal_plan_note.trim()) ? `
+    <section class="day">
+      <div class="day-chip alt"><span>💌</span>Un mensaje de tu entrenadora</div>
+      <div class="note">${escapeHtml(u.meal_plan_note.trim()).replace(/\n/g, '<br>')}</div>
+    </section>` : '';
+
   const today = new Date().toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' });
 
-  const body = zones.length ? zoneSections + supsHtml
+  const body = zones.length ? zoneSections + supsHtml + rationaleHtml + noteHtml
     : `<section class="day"><p class="empty">Aún no hay un plan de comidas configurado.</p></section>`;
 
   return `<!doctype html>
@@ -599,6 +655,12 @@ function renderMealPlanHTML(u, slots, sups) {
     color:#fff; background:var(--coral2); padding:2px 8px; border-radius:999px}
   .sup-item{font-weight:700; font-size:14px}
   .sup-dose{color:var(--muted); font-size:13px}
+  .why{background:var(--card); border:1px solid var(--line); border-radius:16px;
+    padding:6px 20px; box-shadow:0 2px 8px rgba(42,42,51,.04)}
+  .why p{font-size:14px; line-height:1.55; margin:12px 0; color:#3a3a44}
+  .why strong{color:var(--ink)}
+  .note{background:var(--soft); border:1px solid var(--line); border-radius:16px;
+    padding:16px 20px; font-size:14.5px; line-height:1.6; color:#3a3a44; font-style:italic}
   .empty{color:var(--muted); text-align:center; padding:20px}
   .foot{max-width:840px; margin:26px auto 0; padding:0 24px; color:var(--muted);
     font-size:12px; text-align:center}

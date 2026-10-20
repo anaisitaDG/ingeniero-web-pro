@@ -33,6 +33,9 @@ export default function NutritionByType({ clientId }) {
   const [genCtx, setGenCtx]   = useState(null);    // resumen de con qué se armó
   const [eats, setEats]       = useState(null);    // lo que de verdad come
   const [showEats, setShowEats] = useState(false);
+  const [note, setNote]       = useState('');      // mensaje de Lorena para el PDF
+  const [noteSaving, setNoteSaving] = useState(false);
+  const [noteMsg, setNoteMsg] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -42,6 +45,7 @@ export default function NutritionByType({ clientId }) {
         api.trainer.getMealLibrary(),
       ]);
       setMode(cfg.nutrition_mode || 'simple');
+      setNote(cfg.meal_plan_note || '');
       setSlots((cfg.slots || []).map(s => ({ ...s, _key: s.id || Math.random() })));
       setLibrary(lib.meals || []);
     } catch (e) { /* ignore */ }
@@ -55,6 +59,16 @@ export default function NutritionByType({ clientId }) {
     setMode(newMode);
     if (newMode === 'simple') setWeek(1);
     try { await api.trainer.setNutritionMode(clientId, newMode); } catch { /* ignore */ }
+  }
+
+  async function saveNote() {
+    setNoteSaving(true); setNoteMsg('');
+    try {
+      await api.trainer.saveMealPlanNote(clientId, note);
+      setNoteMsg('✓ Mensaje guardado');
+      setTimeout(() => setNoteMsg(''), 2500);
+    } catch { setNoteMsg('No se pudo guardar'); }
+    finally { setNoteSaving(false); }
   }
 
   const weeks = mode === 'rotativo' ? [1, 2, 3, 4] : [1];
@@ -348,6 +362,31 @@ export default function NutritionByType({ clientId }) {
         {saving ? <><span className="spinner" /> Guardando…</> : '💾 Guardar nutrición'}
       </button>
       {saveMsg && <p style={{ textAlign: 'center', color: '#2D9B5A', fontWeight: 700, fontSize: 13, marginTop: 8 }}>{saveMsg}</p>}
+
+      {/* Mensaje de Lorena que aparece al final del PDF */}
+      {slots.length > 0 && (
+        <div style={{ marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 14 }}>
+          <p style={{ fontWeight: 800, fontSize: 13.5, marginBottom: 2 }}>💌 Mensaje para el PDF (opcional)</p>
+          <p style={{ fontSize: 11.5, color: 'var(--muted)', marginBottom: 8 }}>
+            Tu nota personal que sale al final del plan. El "¿Por qué este plan?" se genera solo con las calorías.
+          </p>
+          <textarea
+            value={note}
+            onChange={e => setNote(e.target.value)}
+            maxLength={2000}
+            rows={4}
+            placeholder="Ej: Confía en el proceso. Si un día te sales del plan, vuelve al siguiente…"
+            style={{ width: '100%', borderRadius: 10, border: '1px solid var(--border)', padding: '10px 12px', fontSize: 13.5, fontFamily: 'inherit', resize: 'vertical' }}
+          />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6 }}>
+            <button onClick={saveNote} disabled={noteSaving} style={{
+              padding: '8px 16px', borderRadius: 999, border: 'none', background: 'var(--coral)',
+              color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer',
+            }}>{noteSaving ? 'Guardando…' : 'Guardar mensaje'}</button>
+            {noteMsg && <span style={{ fontSize: 12.5, fontWeight: 700, color: '#2D9B5A' }}>{noteMsg}</span>}
+          </div>
+        </div>
+      )}
 
       {/* Exportar PDF de marca Lovic (para clientas que no usan la app) */}
       {slots.length > 0 && (

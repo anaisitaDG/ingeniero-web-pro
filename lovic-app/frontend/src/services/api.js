@@ -209,6 +209,7 @@ export const api = {
     getNutritionConfig: (id)        => request(`/trainer/clients/${id}/nutrition-config`),
     setNutritionMode:   (id, mode)  => request(`/trainer/clients/${id}/nutrition-mode`, { method: 'PUT', body: JSON.stringify({ mode }) }),
     saveMealSlots:      (id, slots) => request(`/trainer/clients/${id}/meal-slots`, { method: 'PUT', body: JSON.stringify({ slots }) }),
+    saveMealPlanNote:   (id, note)  => request(`/trainer/clients/${id}/meal-plan-note`, { method: 'PUT', body: JSON.stringify({ note }) }),
     generateMealPlan:   (id)        => request(`/trainer/clients/${id}/generate-meal-plan`, { method: 'POST' }),
     getEatsSummary:     (id)        => request(`/trainer/clients/${id}/eats-summary`),
     getSupplements:     (id)              => request(`/trainer/clients/${id}/supplements`),

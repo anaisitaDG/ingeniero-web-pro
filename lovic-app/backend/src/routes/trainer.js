@@ -1436,11 +1436,20 @@ router.delete('/meal-library/:id', async (req, res) => {
 router.get('/clients/:id/nutrition-config', async (req, res) => {
   try {
     const uid = req.params.id;
-    const [[u]] = await db.query('SELECT nutrition_mode FROM users WHERE id=?', [uid]);
+    const [[u]] = await db.query('SELECT nutrition_mode, meal_plan_note FROM users WHERE id=?', [uid]);
     const [slots] = await db.query(
       'SELECT * FROM client_meal_slots WHERE client_id=? ORDER BY week_no, body_zone, meal_type, sort_order', [uid]
     );
-    res.json({ nutrition_mode: u?.nutrition_mode || 'simple', slots });
+    res.json({ nutrition_mode: u?.nutrition_mode || 'simple', meal_plan_note: u?.meal_plan_note || '', slots });
+  } catch (e) { res.serverError(e); }
+});
+
+// PUT /trainer/clients/:id/meal-plan-note — nota/filosofía de Lorena que sale en el PDF
+router.put('/clients/:id/meal-plan-note', async (req, res) => {
+  try {
+    const note = String(req.body.note || '').slice(0, 2000);
+    await db.query('UPDATE users SET meal_plan_note=? WHERE id=? AND role="client"', [note || null, req.params.id]);
+    res.json({ ok: true });
   } catch (e) { res.serverError(e); }
 });
 
