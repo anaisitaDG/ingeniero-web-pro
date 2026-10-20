@@ -270,6 +270,15 @@ const db = require('./database/db');
     // Fibra en cada registro de comida (informativa, sin meta)
     await db.query(`ALTER TABLE food_logs ADD COLUMN IF NOT EXISTS fiber_g SMALLINT DEFAULT NULL`).catch(() => {});
 
+    // Dedupe del recordatorio de ENTRENO (dinámico: a la hora habitual de cada clienta)
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS workout_reminder_sent (
+        user_id   VARCHAR(36) NOT NULL,
+        sent_date DATE NOT NULL,
+        PRIMARY KEY (user_id, sent_date)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
     // Dedupe del recordatorio de la NOCHE (Nivel 2: por si faltó registrar alguna comida)
     await db.query(`
       CREATE TABLE IF NOT EXISTS meal_evening_sent (

@@ -190,30 +190,65 @@ function startCronJobs() {
     } catch (e) { console.error('[push] Error recordatorio noche:', e.message); }
   });
 
-  // 5pm Colombia (22:00 UTC) — motivación de tarde si no han entrenado
-  cron.schedule('0 22 * * *', async () => {
+  // Cada hora — recordatorio DINÁMICO de entreno: a la hora habitual de cada clienta.
+  // "Inteligente": mira a qué hora SUELE registrar su entreno (últimos 30 días) y avisa
+  // ~2h después de esa hora SOLO si hoy todavía no ha entrenado. Si no tiene historial
+  // suficiente (<3 días), respaldo a las 5pm Colombia. Nunca molesta si ya entrenó hoy
+  // (plan estructurado, entreno libre, o marcó "entrené" en el seguimiento diario).
+  cron.schedule('0 * * * *', async () => {
     try {
-    console.log('[push] Enviando motivación de tarde');
-    const today = colombiaToday();
-    const [rows] = await db.query(
-      `SELECT ps.user_id, ps.subscription
-       FROM push_subscriptions ps
-       LEFT JOIN daily_tracking dt ON dt.user_id = ps.user_id AND DATE(dt.tracked_date) = ?
-       WHERE COALESCE(dt.workout_done, 0) = 0`,
-      [today]
-    );
-    const msg = pick(EVENING_MSGS);
-    for (const row of rows) {
-      try {
-        await webpush.sendNotification(JSON.parse(row.subscription), JSON.stringify({ ...msg, url: '/' }));
-      } catch (err) {
-        if (err.statusCode === 410 || err.statusCode === 404) {
-          const sub = JSON.parse(row.subscription);
-          await db.query('DELETE FROM push_subscriptions WHERE endpoint=?', [sub.endpoint]);
+      const today = colombiaToday();
+      const colHour = new Date(Date.now() - 5 * 3600 * 1000).getUTCHours(); // hora actual en Colombia
+      const [rows] = await db.query(
+        `SELECT ps.user_id, ps.subscription, up.usual_hour, up.days, HOUR(NOW()) AS db_hour
+         FROM push_subscriptions ps
+         JOIN users u ON u.id = ps.user_id AND u.role = 'client'
+         LEFT JOIN (
+           SELECT user_id, AVG(wh) AS usual_hour, COUNT(*) AS days FROM (
+             SELECT user_id, HOUR(MIN(created_at)) AS wh
+             FROM workout_logs WHERE created_at >= NOW() - INTERVAL 30 DAY
+             GROUP BY user_id, logged_date
+           ) x GROUP BY user_id
+         ) up ON up.user_id = ps.user_id
+         WHERE NOT EXISTS (SELECT 1 FROM workout_logs w WHERE w.user_id = ps.user_id AND w.logged_date = ?)
+           AND NOT EXISTS (SELECT 1 FROM free_workout_logs fw WHERE fw.user_id = ps.user_id AND fw.session_date = ?)
+           AND NOT EXISTS (SELECT 1 FROM daily_tracking dt WHERE dt.user_id = ps.user_id AND DATE(dt.tracked_date) = ? AND dt.workout_done = 1)`,
+        [today, today, today]
+      );
+
+      // Agrupar por clienta (puede tener varios dispositivos)
+      const byUser = new Map();
+      for (const r of rows) {
+        if (!byUser.has(r.user_id)) byUser.set(r.user_id, { subs: [], usual_hour: r.usual_hour, days: r.days, db_hour: r.db_hour });
+        byUser.get(r.user_id).subs.push(r.subscription);
+      }
+
+      for (const [userId, u] of byUser) {
+        const hasHistory = u.days >= 3 && u.usual_hour != null;
+        // Con historial: dispara a la hora usual + 2h (mismo reloj de BD, el desfase UTC se cancela).
+        // Sin historial: respaldo a las 5pm Colombia.
+        const due = hasHistory
+          ? Number(u.db_hour) >= Math.round(Number(u.usual_hour)) + 2
+          : colHour === 17;
+        if (!due) continue;
+
+        // 1 aviso por día por clienta
+        const [ins] = await db.query('INSERT IGNORE INTO workout_reminder_sent (user_id, sent_date) VALUES (?, ?)', [userId, today]);
+        if (ins.affectedRows === 0) continue;
+
+        const msg = pick(EVENING_MSGS);
+        for (const subStr of u.subs) {
+          try {
+            await webpush.sendNotification(JSON.parse(subStr), JSON.stringify({ ...msg, url: '/plan' }));
+          } catch (err) {
+            if (err.statusCode === 410 || err.statusCode === 404) {
+              const sub = JSON.parse(subStr);
+              await db.query('DELETE FROM push_subscriptions WHERE endpoint=?', [sub.endpoint]);
+            }
+          }
         }
       }
-    }
-    } catch (e) { console.error('[push] Error tarde:', e.message); }
+    } catch (e) { console.error('[push] Error recordatorio entreno:', e.message); }
   });
 
   // 6pm Colombia (23:00 UTC) — aviso de racha en riesgo
