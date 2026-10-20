@@ -1008,6 +1008,26 @@ router.get('/clients/:id/eats-summary', async (req, res) => {
     const norm = s => String(s || '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
     const itemsOf = r => { try { const a = typeof r.parsed_items === 'string' ? JSON.parse(r.parsed_items) : (r.parsed_items || []); return Array.isArray(a) ? a : []; } catch { return []; } };
 
+    // --- Clasificador por tipo de alimento (determinista, contexto Colombia) ---
+    // Se revisa en ORDEN: lo "problemático" primero para que "papas fritas" caiga en
+    // comida rápida (no en carbos) y "yogurt griego" en lácteos (no en proteína).
+    const CATS = [
+      { key: 'alcohol',  label: 'Alcohol',        emoji: '🍷', words: ['vino','cerveza','aguardiente',' ron','whisky','tequila','licor','michelada','coctel','cocktail','trago'] },
+      { key: 'rapida',   label: 'Comida rápida',  emoji: '🍟', words: ['papas fritas','papa frita','pizza','hamburguesa','hot dog','perro caliente','salchipapa','empanada','nugget','alita','alitas','pollo frito','frito','fritura','salchicha','chorizo','tocineta'] },
+      { key: 'golosina', label: 'Golosinas',      emoji: '🍫', words: ['chocolate','chocolatina','galleta','dulce','caramelo','helado','torta','postre','brownie','barra','crunchy','bombon','gomita','chicle','ponque','cheesecake','mecato','paquete','chips','doritos','gaseosa','refresco'] },
+      { key: 'lacteo',   label: 'Lácteos',        emoji: '🥛', words: ['yogurt','yogur','leche','queso','kumis','cuajada','requeson','mantequilla'] },
+      { key: 'grasa',    label: 'Grasas',         emoji: '🥑', words: ['aguacate','almendra','mani','maní','nuez','aceite','oliva','coco','chia','linaza','semilla'] },
+      { key: 'proteina', label: 'Proteínas',      emoji: '🥩', words: ['pollo','pechuga','carne','res','cerdo','pescado','atun','salmon','huevo','clara','lomo','pavo','camaron','proteina','whey','lenteja','frijol','garbanzo','soya','tofu'] },
+      { key: 'verdura',  label: 'Verduras/fibra', emoji: '🥦', words: ['tomate','cebolla','lechuga','zanahoria','pepino','brocoli','espinaca','pimenton','zukini','zucchini','calabacin','apio','acelga','repollo','coliflor','champiñon','champinon','ensalada','remolacha','ahuyama','verdura','vegetal'] },
+      { key: 'fruta',    label: 'Frutas',         emoji: '🍎', words: ['banano','banana','piña','pina','fresa','arandano','mora','manzana','pera','mango','papaya','uva','naranja','mandarina','kiwi','durazno','melon','sandia','guayaba','maracuya','fruta'] },
+      { key: 'carbo',    label: 'Carbohidratos',  emoji: '🍚', words: ['arroz','pan','arepa','platano','papa','pasta','avena','yuca','maiz','tortilla','cereal','quinoa','patacon','bagel','tostada','galleta de arroz'] },
+    ];
+    const classify = (name) => {
+      const n = norm(name);
+      for (const c of CATS) if (c.words.some(w => n.includes(w.trim()) || n.includes(norm(w)))) return c.key;
+      return 'otros';
+    };
+
     // Frecuentes (todos los alimentos registrados)
     const freq = {};
     for (const r of logs) for (const it of itemsOf(r)) {
@@ -1015,6 +1035,23 @@ router.get('/clients/:id/eats-summary', async (req, res) => {
       if (n && n.length < 45) { const k = norm(n); if (!freq[k]) freq[k] = { name: n, count: 0 }; freq[k].count++; }
     }
     const frequentFoods = Object.values(freq).sort((a, b) => b.count - a.count).slice(0, 12);
+
+    // Perfil por tipo de alimento (columnas: proteínas, verduras, golosinas, etc.)
+    const catAgg = {};
+    for (const f of Object.values(freq)) {
+      const k = classify(f.name);
+      (catAgg[k] ||= { foods: [], total: 0 });
+      catAgg[k].foods.push({ name: f.name, count: f.count });
+      catAgg[k].total += f.count;
+    }
+    const byCategory = [...CATS, { key: 'otros', label: 'Otros', emoji: '🍽️' }]
+      .filter(c => catAgg[c.key])
+      .map(c => ({
+        key: c.key, label: c.label, emoji: c.emoji,
+        total: catAgg[c.key].total,
+        foods: catAgg[c.key].foods.sort((a, b) => b.count - a.count).slice(0, 6),
+      }))
+      .sort((a, b) => b.total - a.total);
 
     // Por momento (qué registra en cada tiempo de comida)
     const MOMENT = { breakfast: 'Desayuno', lunch: 'Almuerzo', dinner: 'Cena', snack: 'Merienda' };
@@ -1035,24 +1072,61 @@ router.get('/clients/:id/eats-summary', async (req, res) => {
     })).filter(x => x.foods.length);
 
     // Variantes: marcó la del plan pero registró otra cosa (del "comí algo distinto")
-    const [slotRows] = await db.query('SELECT id, name FROM client_meal_slots WHERE client_id=?', [uid]);
-    const slotName = {};
-    for (const s of slotRows) slotName[s.id] = s.name;
+    const [slotRows] = await db.query('SELECT id, name, description FROM client_meal_slots WHERE client_id=?', [uid]);
+    const slot = {};
+    for (const s of slotRows) slot[s.id] = s;
+
+    // Palabras que NO son ingredientes (conectores, cantidades, unidades)
+    const STOP = new Set(['de','del','la','el','los','las','un','una','unos','unas','y','o','con','mas','media','medio','mitad','trozo','trozos','porcion','scoop','scoops','cucharada','cucharadas','cda','cdas','taza','tazas','vaso','vasos','gr','gramos','ml','sin','al','a','en','que','para','poco','poca','pequeno','pequena','grande','cocido','cocida','asada','asado','frito','frita','rayado','rayada']);
+    // Ingredientes de un texto libre → set de palabras-ingrediente normalizadas
+    const ingredientsOf = (txt) => {
+      const n = norm(txt);
+      const set = new Set();
+      n.split(/[+\-–—,/()·]|\by\b|\bcon\b/).forEach(chunk => {
+        chunk.split(/\s+/).forEach(w => {
+          w = w.replace(/[^a-z0-9ñ]/g, '');
+          if (w.length >= 3 && !STOP.has(w) && !/^\d+$/.test(w)) set.add(w);
+        });
+      });
+      return set;
+    };
+    // Lo que el texto dice que NO lleva ("sin avena", "sin avena ni leche")
+    const negatedOf = (txt) => {
+      const set = new Set();
+      const n = norm(txt);
+      let m; const re = /\bsin\s+([a-zñ ]+?)(?=[+\-–—,/()·]|\bcon\b|$)/g;
+      while ((m = re.exec(n))) m[1].split(/\s+|\bni\b/).forEach(w => {
+        w = w.replace(/[^a-z0-9ñ]/g, '');
+        if (w.length >= 3 && !STOP.has(w)) set.add(w);
+      });
+      return set;
+    };
+
     const variants = {};
     for (const r of logs) {
       if (!r.input_text || !r.input_text.startsWith('plan:')) continue;
       const slotId = r.input_text.slice(5);
-      const planned = slotName[slotId];
+      const s = slot[slotId];
+      const planned = s?.name;
       const eaten = (itemsOf(r)[0] || {}).name;
       if (!planned || !eaten) continue;
       if (norm(planned) === norm(eaten)) continue; // comió lo del plan, no es variante
+
+      const planSet = ingredientsOf(`${planned} ${s.description || ''}`);
+      const eatSet = ingredientsOf(eaten);
+      const negated = negatedOf(eaten);
+      // Falta: lo que el plan pedía y no aparece (o que ella dijo "sin X")
+      const missing = [...planSet].filter(w => !eatSet.has(w) || negated.has(w));
+      // De más: lo que come que el plan no pedía (sin contar lo negado)
+      const added = [...eatSet].filter(w => !planSet.has(w) && !negated.has(w));
+
       const key = `${planned}||${eaten}`;
-      if (!variants[key]) variants[key] = { planned, eaten, times: 0 };
+      if (!variants[key]) variants[key] = { planned, eaten, times: 0, missing, added };
       variants[key].times++;
     }
     const variantList = Object.values(variants).sort((a, b) => b.times - a.times).slice(0, 10);
 
-    res.json({ frequentFoods, byMoment, variants: variantList, totalLogs: logs.length });
+    res.json({ frequentFoods, byCategory, byMoment, variants: variantList, totalLogs: logs.length });
   } catch (e) { res.serverError(e); }
 });
 

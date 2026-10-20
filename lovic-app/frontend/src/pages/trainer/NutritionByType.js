@@ -204,6 +204,16 @@ export default function NutritionByType({ clientId }) {
                         <span style={{ color: 'var(--muted)' }}>Plan:</span> <s style={{ color: '#8B6914' }}>{v.planned}</s><br />
                         <span style={{ color: 'var(--muted)' }}>Come:</span> <strong>{v.eaten}</strong>
                         {v.times > 1 && <span style={{ color: 'var(--muted)' }}> · {v.times}×</span>}
+                        {((v.missing && v.missing.length) || (v.added && v.added.length)) ? (
+                          <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                            {v.missing && v.missing.map((w, j) => (
+                              <span key={`m${j}`} style={{ fontSize: 11, fontWeight: 700, background: '#FDECEC', color: '#C0392B', borderRadius: 999, padding: '2px 8px' }}>➖ sin {w}</span>
+                            ))}
+                            {v.added && v.added.map((w, j) => (
+                              <span key={`a${j}`} style={{ fontSize: 11, fontWeight: 700, background: '#EAF6EE', color: '#2D9B5A', borderRadius: 999, padding: '2px 8px' }}>➕ {w}</span>
+                            ))}
+                          </div>
+                        ) : null}
                       </div>
                     ))}
                   </div>
@@ -224,13 +234,22 @@ export default function NutritionByType({ clientId }) {
                 </div>
               )}
 
-              {/* Frecuentes */}
-              {eats.frequentFoods && eats.frequentFoods.length > 0 && (
+              {/* Perfil por tipo de alimento (columnas) */}
+              {eats.byCategory && eats.byCategory.length > 0 && (
                 <div>
-                  <p style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--muted)', marginBottom: 6 }}>🔁 Lo que más registra</p>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    {eats.frequentFoods.map((f, i) => (
-                      <span key={i} style={{ fontSize: 12, fontWeight: 600, background: 'var(--coral-light)', color: 'var(--coral)', borderRadius: 999, padding: '3px 10px' }}>{f.name}{f.count > 1 ? ` ·${f.count}` : ''}</span>
+                  <p style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--muted)', marginBottom: 8 }}>🔁 Lo que más registra, por tipo</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {eats.byCategory.map((c, i) => (
+                      <div key={i}>
+                        <div style={{ fontSize: 12.5, fontWeight: 800, marginBottom: 4 }}>
+                          {c.emoji} {c.label} <span style={{ color: 'var(--muted)', fontWeight: 600 }}>· {c.total} registros</span>
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                          {c.foods.map((f, j) => (
+                            <span key={j} style={{ fontSize: 12, fontWeight: 600, background: 'var(--coral-light)', color: 'var(--coral)', borderRadius: 999, padding: '3px 10px' }}>{f.name}{f.count > 1 ? ` ·${f.count}` : ''}</span>
+                          ))}
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </div>
