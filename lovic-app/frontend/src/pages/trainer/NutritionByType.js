@@ -330,6 +330,25 @@ export default function NutritionByType({ clientId }) {
       </button>
       {saveMsg && <p style={{ textAlign: 'center', color: '#2D9B5A', fontWeight: 700, fontSize: 13, marginTop: 8 }}>{saveMsg}</p>}
 
+      {/* Exportar PDF de marca Lovic (para clientas que no usan la app) */}
+      {slots.length > 0 && (
+        <button
+          onClick={() => {
+            const base = process.env.REACT_APP_API_URL || '/api';
+            const t = localStorage.getItem('lovic_token') || '';
+            window.open(`${base}/meal-plan-print?c=${encodeURIComponent(clientId)}&t=${encodeURIComponent(t)}`, '_blank');
+          }}
+          style={{
+            width: '100%', marginTop: 10, padding: '12px', borderRadius: 12,
+            border: '2px solid var(--coral)', background: '#fff',
+            color: 'var(--coral)', fontWeight: 800, fontSize: 13.5, cursor: 'pointer',
+          }}
+        >📄 Descargar plan en PDF (Lovic)</button>
+      )}
+      <p style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 11, marginTop: 6 }}>
+        Guarda primero los cambios: el PDF usa lo último guardado.
+      </p>
+
       {/* Lista de mercado */}
       <div style={{ marginTop: 20, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
         {!showShopping ? (

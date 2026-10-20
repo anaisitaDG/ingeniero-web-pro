@@ -425,6 +425,206 @@ app.get('/progress-photos/img', async (req, res) => {
   res.sendFile(src, opts, err => { if (err && !res.headersSent) res.status(404).end(); });
 });
 
+// ===== FASE 2: Plan de comidas imprimible (PDF de marca Lovic) =====
+// HTML autocontenido con la identidad de Lovic, listo para "Imprimir → Guardar como PDF".
+// Se abre en pestaña nueva, por eso el token va como ?t= (igual que las imágenes).
+// Sin dependencias nuevas en el servidor: lo renderiza el navegador.
+app.get('/meal-plan-print', async (req, res) => {
+  let payload;
+  try { payload = _jwt.verify(String(req.query.t || ''), process.env.JWT_SECRET); }
+  catch { return res.status(403).send('Sesión no válida.'); }
+  if (payload.role !== 'trainer') return res.status(403).send('Solo la entrenadora puede generar el PDF.');
+
+  const clientId = String(req.query.c || '');
+  if (!clientId) return res.status(400).send('Falta la clienta.');
+
+  try {
+    const [[u]] = await db.query(
+      'SELECT name, calorie_target, protein_target_g, carbs_target_g, fat_target_g FROM users WHERE id=? AND role="client"', [clientId]);
+    if (!u) return res.status(404).send('Clienta no encontrada.');
+
+    const [slots] = await db.query(
+      `SELECT body_zone, meal_type, name, description, calories, protein_g, carbs_g, fat_g, sort_order
+       FROM client_meal_slots WHERE client_id=? AND week_no=1
+       ORDER BY FIELD(body_zone,'superior','inferior','descanso'),
+                FIELD(meal_type,'desayuno','almuerzo','merienda','cena'), sort_order`, [clientId]);
+    const [sups] = await db.query(
+      'SELECT moment, item, dose FROM client_supplements WHERE client_id=? ORDER BY sort_order, id', [clientId]);
+
+    res.set('Content-Type', 'text/html; charset=utf-8');
+    res.send(renderMealPlanHTML(u, slots, sups));
+  } catch (e) {
+    console.error('[meal-plan-print]', e);
+    res.status(500).send('No se pudo generar el plan.');
+  }
+});
+
+const ZONE_LABEL = { superior: 'Día de tren superior', inferior: 'Día de tren inferior', descanso: 'Día de descanso' };
+const ZONE_EMOJI = { superior: '💪', inferior: '🦵', descanso: '🌙' };
+const MEAL_LABEL = { desayuno: 'Desayuno', almuerzo: 'Almuerzo', merienda: 'Merienda', cena: 'Cena' };
+const MEAL_ORDER = ['desayuno', 'almuerzo', 'merienda', 'cena'];
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function renderMealPlanHTML(u, slots, sups) {
+  // Agrupar por zona → momento → opciones (carrusel = opciones del mismo momento)
+  const byZone = {};
+  for (const s of slots) {
+    (byZone[s.body_zone] ||= {});
+    (byZone[s.body_zone][s.meal_type] ||= []).push(s);
+  }
+  const zones = ['superior', 'inferior', 'descanso'].filter(z => byZone[z]);
+
+  const macroLine = (s) => {
+    const parts = [];
+    if (s.calories != null) parts.push(`${Math.round(s.calories)} kcal`);
+    if (s.protein_g != null) parts.push(`P ${Math.round(s.protein_g)}g`);
+    if (s.carbs_g != null) parts.push(`C ${Math.round(s.carbs_g)}g`);
+    if (s.fat_g != null) parts.push(`G ${Math.round(s.fat_g)}g`);
+    return parts.join(' · ');
+  };
+
+  const zoneSections = zones.map(z => {
+    const meals = MEAL_ORDER.filter(m => byZone[z][m]).map(m => {
+      const opts = byZone[z][m];
+      const optHtml = opts.map((s, i) => `
+        <div class="opt">
+          ${opts.length > 1 ? `<span class="opt-tag">Opción ${i + 1}</span>` : ''}
+          <div class="opt-name">${escapeHtml(s.name)}</div>
+          ${s.description ? `<div class="opt-desc">${escapeHtml(s.description)}</div>` : ''}
+          ${macroLine(s) ? `<div class="opt-macros">${escapeHtml(macroLine(s))}</div>` : ''}
+        </div>`).join('');
+      return `
+        <div class="meal">
+          <div class="meal-head">${escapeHtml(MEAL_LABEL[m] || m)}</div>
+          <div class="opts">${optHtml}</div>
+        </div>`;
+    }).join('');
+    return `
+      <section class="zone">
+        <h2 class="zone-title"><span class="zone-emoji">${ZONE_EMOJI[z] || ''}</span>${escapeHtml(ZONE_LABEL[z] || z)}</h2>
+        <div class="meals">${meals}</div>
+      </section>`;
+  }).join('');
+
+  const supsHtml = sups && sups.length ? `
+    <section class="zone sups">
+      <h2 class="zone-title"><span class="zone-emoji">💊</span>Suplementación e indicaciones</h2>
+      <ul class="sup-list">
+        ${sups.map(s => `<li>
+          ${s.moment ? `<span class="sup-moment">${escapeHtml(s.moment)}</span>` : ''}
+          <span class="sup-item">${escapeHtml(s.item)}</span>
+          ${s.dose ? `<span class="sup-dose">${escapeHtml(s.dose)}</span>` : ''}
+        </li>`).join('')}
+      </ul>
+    </section>` : '';
+
+  const targetBits = [];
+  if (u.calorie_target) targetBits.push(`${Math.round(u.calorie_target)} kcal`);
+  if (u.protein_target_g) targetBits.push(`${Math.round(u.protein_target_g)}g proteína`);
+  if (u.carbs_target_g) targetBits.push(`${Math.round(u.carbs_target_g)}g carbos`);
+  if (u.fat_target_g) targetBits.push(`${Math.round(u.fat_target_g)}g grasas`);
+  const targetLine = targetBits.length ? `<div class="hero-target">Objetivo diario: ${escapeHtml(targetBits.join(' · '))}</div>` : '';
+
+  const today = new Date().toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  const body = zones.length ? zoneSections + supsHtml
+    : `<section class="zone"><p class="empty">Aún no hay un plan de comidas configurado para esta clienta.</p></section>`;
+
+  return `<!doctype html>
+<html lang="es"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plan Lovic · ${escapeHtml(u.name)}</title>
+<style>
+  :root{
+    --coral:#FF6B6B; --coral2:#FF8E53; --ink:#1f2430; --muted:#6b7280;
+    --line:#efe4df; --card:#fff; --soft:#fff6f2;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink); background:#faf7f5; line-height:1.5;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .sheet{max-width:820px; margin:0 auto; padding:0 0 48px}
+  .hero{
+    background:linear-gradient(135deg,var(--coral) 0%,var(--coral2) 100%);
+    color:#fff; padding:40px 44px 34px; border-radius:0 0 28px 28px;
+  }
+  .brand{font-weight:800; letter-spacing:.14em; font-size:13px; opacity:.92; text-transform:uppercase}
+  .hero h1{margin:6px 0 2px; font-size:34px; font-weight:800; letter-spacing:-.02em}
+  .hero-sub{opacity:.95; font-size:15px}
+  .hero-target{
+    margin-top:16px; display:inline-block; background:rgba(255,255,255,.18);
+    border:1px solid rgba(255,255,255,.35); padding:8px 14px; border-radius:999px;
+    font-size:13px; font-weight:600;
+  }
+  .toolbar{max-width:820px; margin:16px auto 0; padding:0 20px; text-align:right}
+  .print-btn{
+    background:var(--coral); color:#fff; border:none; padding:11px 20px; border-radius:999px;
+    font-size:14px; font-weight:700; cursor:pointer; box-shadow:0 4px 14px rgba(255,107,107,.35);
+  }
+  .zone{margin:28px 20px 0; background:var(--card); border:1px solid var(--line);
+    border-radius:20px; padding:22px 24px; box-shadow:0 2px 10px rgba(31,36,48,.04)}
+  .zone-title{display:flex; align-items:center; gap:10px; margin:0 0 14px;
+    font-size:20px; font-weight:800; color:var(--ink)}
+  .zone-emoji{font-size:22px}
+  .meals{display:grid; gap:14px}
+  .meal{border:1px solid var(--line); border-radius:14px; overflow:hidden}
+  .meal-head{background:var(--soft); color:var(--coral); font-weight:800;
+    font-size:13px; letter-spacing:.06em; text-transform:uppercase; padding:9px 14px}
+  .opts{display:grid; gap:0}
+  .opt{padding:12px 14px; border-top:1px dashed var(--line)}
+  .opt:first-child{border-top:none}
+  .opt-tag{display:inline-block; font-size:11px; font-weight:700; color:var(--coral2);
+    background:var(--soft); padding:2px 8px; border-radius:999px; margin-bottom:5px}
+  .opt-name{font-weight:700; font-size:15.5px}
+  .opt-desc{color:var(--muted); font-size:13.5px; margin-top:2px}
+  .opt-macros{color:var(--coral); font-size:12.5px; font-weight:700; margin-top:5px;
+    font-variant-numeric:tabular-nums}
+  .sups .sup-list{list-style:none; margin:0; padding:0; display:grid; gap:8px}
+  .sups li{display:flex; flex-wrap:wrap; align-items:baseline; gap:8px;
+    padding:9px 12px; background:var(--soft); border-radius:10px}
+  .sup-moment{font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.05em;
+    color:var(--coral2); background:#fff; padding:2px 8px; border-radius:999px}
+  .sup-item{font-weight:700}
+  .sup-dose{color:var(--muted); font-size:13.5px}
+  .empty{color:var(--muted); text-align:center; padding:20px}
+  .foot{max-width:820px; margin:30px auto 0; padding:0 24px; color:var(--muted);
+    font-size:12px; text-align:center}
+  .foot strong{color:var(--coral)}
+  @media print{
+    .toolbar{display:none}
+    body{background:#fff}
+    .zone{break-inside:avoid; box-shadow:none}
+    .hero{border-radius:0}
+    .meal{break-inside:avoid}
+  }
+</style>
+</head><body>
+  <div class="toolbar"><button class="print-btn" onclick="window.print()">⬇ Descargar PDF</button></div>
+  <div class="sheet">
+    <div class="hero">
+      <div class="brand">Lovic Athletica</div>
+      <h1>Tu plan de comidas</h1>
+      <div class="hero-sub">Preparado para ${escapeHtml(u.name)} · ${escapeHtml(today)}</div>
+      ${targetLine}
+    </div>
+    ${body}
+    <div class="foot">
+      Las opciones de cada momento son intercambiables: elige <strong>una</strong> por comida.<br>
+      Hecho con cariño por tu entrenadora · <strong>Lovic Athletica</strong>
+    </div>
+  </div>
+</body></html>`;
+}
+
 // Límite estricto contra fuerza bruta en autenticación:
 // máx. 10 intentos de login/magic-link cada 15 min por IP.
 const authLimiter = rateLimit({
