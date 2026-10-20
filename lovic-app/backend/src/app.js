@@ -525,9 +525,6 @@ function renderMealPlanHTML(u, slots, sups) {
       </div>
     </section>` : '';
 
-  const targetLine = u.calorie_target
-    ? `<div class="hero-target">🎯 Objetivo: ${Math.round(u.calorie_target)} kcal al día</div>` : '';
-
   // ===== "¿Por qué este plan?" — explicación FIEL a los datos reales del plan =====
   // Estima las kcal de cada tipo de día (una opción por comida = promedio de opciones)
   // y describe el patrón real, adaptado al objetivo. Nunca afirma algo que el plan no haga.
@@ -540,6 +537,19 @@ function renderMealPlanHTML(u, slots, sups) {
     }
     if (has) zoneKcal[z] = Math.round(total);
   }
+
+  // El número del hero sale de la comida REAL del plan (no de un campo guardado que
+  // puede estar desactualizado). Así siempre cuadra con los platos que se muestran.
+  const kcalVals = Object.values(zoneKcal);
+  let targetLine = '';
+  if (kcalVals.length) {
+    const lo = Math.min(...kcalVals), hi = Math.max(...kcalVals);
+    const txt = (hi - lo) > 120
+      ? `~${lo}–${hi} kcal al día`   // varía por tipo de día
+      : `~${Math.round(kcalVals.reduce((a, b) => a + b, 0) / kcalVals.length)} kcal al día`;
+    targetLine = `<div class="hero-target">🍽️ Tu plan aporta ${txt}</div>`;
+  }
+
   const Z = { superior: 'tren superior', inferior: 'tren inferior', descanso: 'descanso' };
   function planRationale() {
     const goal = u.fitness_goal;
