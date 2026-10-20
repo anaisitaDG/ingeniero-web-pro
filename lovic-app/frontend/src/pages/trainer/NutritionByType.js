@@ -355,7 +355,14 @@ export default function NutritionByType({ clientId }) {
           onClick={() => {
             const base = process.env.REACT_APP_API_URL || '/api';
             const t = localStorage.getItem('lovic_token') || '';
-            window.open(`${base}/meal-plan-print?c=${encodeURIComponent(clientId)}&t=${encodeURIComponent(t)}`, '_blank');
+            const url = `${base}/meal-plan-print?c=${encodeURIComponent(clientId)}&t=${encodeURIComponent(t)}`;
+            // Clic de enlace real: abre en pestaña nueva de forma fiable (Safari/PWA
+            // bloquean window.open). Si el navegador igual lo bloquea, navegamos ahí.
+            const a = document.createElement('a');
+            a.href = url; a.target = '_blank'; a.rel = 'noopener';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
           }}
           style={{
             width: '100%', marginTop: 10, padding: '12px', borderRadius: 12,

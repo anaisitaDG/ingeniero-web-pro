@@ -468,9 +468,10 @@ app.get('/meal-plan-print', async (req, res) => {
   }
 });
 
-const ZONE_LABEL = { superior: 'Día de tren superior', inferior: 'Día de tren inferior', descanso: 'Día de descanso' };
+const ZONE_LABEL = { superior: 'Tren superior', inferior: 'Tren inferior', descanso: 'Descanso' };
 const ZONE_EMOJI = { superior: '💪', inferior: '🦵', descanso: '🌙' };
 const MEAL_LABEL = { desayuno: 'Desayuno', almuerzo: 'Almuerzo', merienda: 'Merienda', cena: 'Cena' };
+const MEAL_EMOJI = { desayuno: '🌅', almuerzo: '☀️', merienda: '🍎', cena: '🌙' };
 const MEAL_ORDER = ['desayuno', 'almuerzo', 'merienda', 'cena'];
 
 function escapeHtml(s) {
@@ -488,61 +489,48 @@ function renderMealPlanHTML(u, slots, sups) {
   }
   const zones = ['superior', 'inferior', 'descanso'].filter(z => byZone[z]);
 
-  const macroLine = (s) => {
-    const parts = [];
-    if (s.calories != null) parts.push(`${Math.round(s.calories)} kcal`);
-    if (s.protein_g != null) parts.push(`P ${Math.round(s.protein_g)}g`);
-    if (s.carbs_g != null) parts.push(`C ${Math.round(s.carbs_g)}g`);
-    if (s.fat_g != null) parts.push(`G ${Math.round(s.fat_g)}g`);
-    return parts.join(' · ');
-  };
-
   const zoneSections = zones.map(z => {
     const meals = MEAL_ORDER.filter(m => byZone[z][m]).map(m => {
       const opts = byZone[z][m];
+      // Opciones separadas por un "o" claro; sin sopa de macros, solo kcal discretas.
       const optHtml = opts.map((s, i) => `
+        ${i > 0 ? '<div class="or"><span>o</span></div>' : ''}
         <div class="opt">
-          ${opts.length > 1 ? `<span class="opt-tag">Opción ${i + 1}</span>` : ''}
-          <div class="opt-name">${escapeHtml(s.name)}</div>
+          <div class="opt-name">${escapeHtml(s.name)}${s.calories != null ? `<span class="kcal">${Math.round(s.calories)} kcal</span>` : ''}</div>
           ${s.description ? `<div class="opt-desc">${escapeHtml(s.description)}</div>` : ''}
-          ${macroLine(s) ? `<div class="opt-macros">${escapeHtml(macroLine(s))}</div>` : ''}
         </div>`).join('');
       return `
         <div class="meal">
-          <div class="meal-head">${escapeHtml(MEAL_LABEL[m] || m)}</div>
+          <div class="meal-head"><span class="meal-emoji">${MEAL_EMOJI[m] || ''}</span>${escapeHtml(MEAL_LABEL[m] || m)}</div>
           <div class="opts">${optHtml}</div>
         </div>`;
     }).join('');
     return `
-      <section class="zone">
-        <h2 class="zone-title"><span class="zone-emoji">${ZONE_EMOJI[z] || ''}</span>${escapeHtml(ZONE_LABEL[z] || z)}</h2>
+      <section class="day">
+        <div class="day-chip"><span>${ZONE_EMOJI[z] || ''}</span>${escapeHtml(ZONE_LABEL[z] || z)}</div>
         <div class="meals">${meals}</div>
       </section>`;
   }).join('');
 
   const supsHtml = sups && sups.length ? `
-    <section class="zone sups">
-      <h2 class="zone-title"><span class="zone-emoji">💊</span>Suplementación e indicaciones</h2>
-      <ul class="sup-list">
-        ${sups.map(s => `<li>
+    <section class="day sups">
+      <div class="day-chip alt"><span>💊</span>Suplementación e indicaciones</div>
+      <div class="sup-grid">
+        ${sups.map(s => `<div class="sup">
           ${s.moment ? `<span class="sup-moment">${escapeHtml(s.moment)}</span>` : ''}
           <span class="sup-item">${escapeHtml(s.item)}</span>
           ${s.dose ? `<span class="sup-dose">${escapeHtml(s.dose)}</span>` : ''}
-        </li>`).join('')}
-      </ul>
+        </div>`).join('')}
+      </div>
     </section>` : '';
 
-  const targetBits = [];
-  if (u.calorie_target) targetBits.push(`${Math.round(u.calorie_target)} kcal`);
-  if (u.protein_target_g) targetBits.push(`${Math.round(u.protein_target_g)}g proteína`);
-  if (u.carbs_target_g) targetBits.push(`${Math.round(u.carbs_target_g)}g carbos`);
-  if (u.fat_target_g) targetBits.push(`${Math.round(u.fat_target_g)}g grasas`);
-  const targetLine = targetBits.length ? `<div class="hero-target">Objetivo diario: ${escapeHtml(targetBits.join(' · '))}</div>` : '';
+  const targetLine = u.calorie_target
+    ? `<div class="hero-target">🎯 Objetivo: ${Math.round(u.calorie_target)} kcal al día</div>` : '';
 
   const today = new Date().toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' });
 
   const body = zones.length ? zoneSections + supsHtml
-    : `<section class="zone"><p class="empty">Aún no hay un plan de comidas configurado para esta clienta.</p></section>`;
+    : `<section class="day"><p class="empty">Aún no hay un plan de comidas configurado.</p></section>`;
 
   return `<!doctype html>
 <html lang="es"><head>
@@ -551,85 +539,94 @@ function renderMealPlanHTML(u, slots, sups) {
 <title>Plan Lovic · ${escapeHtml(u.name)}</title>
 <style>
   :root{
-    --coral:#FF6B6B; --coral2:#FF8E53; --ink:#1f2430; --muted:#6b7280;
-    --line:#efe4df; --card:#fff; --soft:#fff6f2;
+    --coral:#FF6B6B; --coral2:#FF8E53; --ink:#2a2a33; --muted:#8a8a96;
+    --line:#f0e6e0; --card:#fff; --soft:#fff1ec;
   }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0}
   body{
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    color:var(--ink); background:#faf7f5; line-height:1.5;
+    color:var(--ink); background:#fbf8f6; line-height:1.4;
     -webkit-print-color-adjust:exact; print-color-adjust:exact;
   }
-  .sheet{max-width:820px; margin:0 auto; padding:0 0 48px}
+  .sheet{max-width:840px; margin:0 auto; padding:0 0 36px}
   .hero{
     background:linear-gradient(135deg,var(--coral) 0%,var(--coral2) 100%);
-    color:#fff; padding:40px 44px 34px; border-radius:0 0 28px 28px;
+    color:#fff; padding:30px 40px 26px; border-radius:0 0 26px 26px; text-align:center;
   }
-  .brand{font-weight:800; letter-spacing:.14em; font-size:13px; opacity:.92; text-transform:uppercase}
-  .hero h1{margin:6px 0 2px; font-size:34px; font-weight:800; letter-spacing:-.02em}
-  .hero-sub{opacity:.95; font-size:15px}
+  .brand{font-weight:800; letter-spacing:.18em; font-size:12px; opacity:.92; text-transform:uppercase}
+  .hero h1{margin:5px 0 2px; font-size:28px; font-weight:800; letter-spacing:-.02em}
+  .hero-sub{opacity:.95; font-size:14px}
   .hero-target{
-    margin-top:16px; display:inline-block; background:rgba(255,255,255,.18);
-    border:1px solid rgba(255,255,255,.35); padding:8px 14px; border-radius:999px;
-    font-size:13px; font-weight:600;
+    margin-top:14px; display:inline-block; background:rgba(255,255,255,.2);
+    border:1px solid rgba(255,255,255,.4); padding:7px 16px; border-radius:999px;
+    font-size:14px; font-weight:700;
   }
-  .toolbar{max-width:820px; margin:16px auto 0; padding:0 20px; text-align:right}
+  .hint{max-width:840px; margin:14px auto 0; padding:0 20px; text-align:center;
+    color:var(--muted); font-size:12.5px}
+  .toolbar{max-width:840px; margin:14px auto 0; padding:0 20px; text-align:center}
   .print-btn{
-    background:var(--coral); color:#fff; border:none; padding:11px 20px; border-radius:999px;
-    font-size:14px; font-weight:700; cursor:pointer; box-shadow:0 4px 14px rgba(255,107,107,.35);
+    background:var(--coral); color:#fff; border:none; padding:12px 24px; border-radius:999px;
+    font-size:15px; font-weight:800; cursor:pointer; box-shadow:0 5px 16px rgba(255,107,107,.4);
   }
-  .zone{margin:28px 20px 0; background:var(--card); border:1px solid var(--line);
-    border-radius:20px; padding:22px 24px; box-shadow:0 2px 10px rgba(31,36,48,.04)}
-  .zone-title{display:flex; align-items:center; gap:10px; margin:0 0 14px;
-    font-size:20px; font-weight:800; color:var(--ink)}
-  .zone-emoji{font-size:22px}
-  .meals{display:grid; gap:14px}
-  .meal{border:1px solid var(--line); border-radius:14px; overflow:hidden}
-  .meal-head{background:var(--soft); color:var(--coral); font-weight:800;
-    font-size:13px; letter-spacing:.06em; text-transform:uppercase; padding:9px 14px}
-  .opts{display:grid; gap:0}
-  .opt{padding:12px 14px; border-top:1px dashed var(--line)}
-  .opt:first-child{border-top:none}
-  .opt-tag{display:inline-block; font-size:11px; font-weight:700; color:var(--coral2);
-    background:var(--soft); padding:2px 8px; border-radius:999px; margin-bottom:5px}
-  .opt-name{font-weight:700; font-size:15.5px}
-  .opt-desc{color:var(--muted); font-size:13.5px; margin-top:2px}
-  .opt-macros{color:var(--coral); font-size:12.5px; font-weight:700; margin-top:5px;
-    font-variant-numeric:tabular-nums}
-  .sups .sup-list{list-style:none; margin:0; padding:0; display:grid; gap:8px}
-  .sups li{display:flex; flex-wrap:wrap; align-items:baseline; gap:8px;
-    padding:9px 12px; background:var(--soft); border-radius:10px}
-  .sup-moment{font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.05em;
-    color:var(--coral2); background:#fff; padding:2px 8px; border-radius:999px}
-  .sup-item{font-weight:700}
-  .sup-dose{color:var(--muted); font-size:13.5px}
+  .day{margin:22px 20px 0}
+  .day-chip{display:inline-flex; align-items:center; gap:8px;
+    background:var(--ink); color:#fff; font-weight:800; font-size:15px;
+    padding:8px 16px; border-radius:999px; margin-bottom:14px}
+  .day-chip.alt{background:linear-gradient(135deg,var(--coral),var(--coral2))}
+  .day-chip span{font-size:17px}
+  .meals{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  .meal{background:var(--card); border:1px solid var(--line); border-radius:16px;
+    overflow:hidden; box-shadow:0 2px 8px rgba(42,42,51,.04)}
+  .meal-head{display:flex; align-items:center; gap:7px; background:var(--soft);
+    color:var(--coral); font-weight:800; font-size:13px; letter-spacing:.04em;
+    text-transform:uppercase; padding:10px 15px}
+  .meal-emoji{font-size:15px}
+  .opts{padding:6px 15px 13px}
+  .opt{padding:8px 0 2px}
+  .opt-name{font-weight:700; font-size:14.5px; display:flex; justify-content:space-between;
+    align-items:baseline; gap:8px}
+  .kcal{flex-shrink:0; font-size:11px; font-weight:700; color:var(--coral2);
+    background:var(--soft); padding:2px 8px; border-radius:999px; font-variant-numeric:tabular-nums}
+  .opt-desc{color:var(--muted); font-size:13px; margin-top:2px; line-height:1.35}
+  .or{display:flex; align-items:center; gap:8px; margin:9px 0 2px; color:var(--muted)}
+  .or::before,.or::after{content:""; flex:1; height:1px; background:var(--line)}
+  .or span{font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; color:var(--coral2)}
+  .sup-grid{display:grid; grid-template-columns:1fr 1fr; gap:9px}
+  .sup{display:flex; flex-wrap:wrap; align-items:baseline; gap:7px;
+    background:var(--card); border:1px solid var(--line); border-radius:12px; padding:10px 13px}
+  .sup-moment{font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:.05em;
+    color:#fff; background:var(--coral2); padding:2px 8px; border-radius:999px}
+  .sup-item{font-weight:700; font-size:14px}
+  .sup-dose{color:var(--muted); font-size:13px}
   .empty{color:var(--muted); text-align:center; padding:20px}
-  .foot{max-width:820px; margin:30px auto 0; padding:0 24px; color:var(--muted);
+  .foot{max-width:840px; margin:26px auto 0; padding:0 24px; color:var(--muted);
     font-size:12px; text-align:center}
   .foot strong{color:var(--coral)}
   @media print{
-    .toolbar{display:none}
+    .toolbar,.hint{display:none}
     body{background:#fff}
-    .zone{break-inside:avoid; box-shadow:none}
     .hero{border-radius:0}
+    .day{break-inside:avoid}
     .meal{break-inside:avoid}
+  }
+  @media (max-width:560px){
+    .meals,.sup-grid{grid-template-columns:1fr}
+    .hero{padding:26px 22px 22px}
   }
 </style>
 </head><body>
-  <div class="toolbar"><button class="print-btn" onclick="window.print()">⬇ Descargar PDF</button></div>
   <div class="sheet">
     <div class="hero">
       <div class="brand">Lovic Athletica</div>
       <h1>Tu plan de comidas</h1>
-      <div class="hero-sub">Preparado para ${escapeHtml(u.name)} · ${escapeHtml(today)}</div>
+      <div class="hero-sub">Para ${escapeHtml(u.name)} · ${escapeHtml(today)}</div>
       ${targetLine}
     </div>
+    <div class="toolbar"><button class="print-btn" onclick="window.print()">⬇ Guardar como PDF</button></div>
+    <div class="hint">Cada comida tiene opciones: elige <strong>una</strong>.</div>
     ${body}
-    <div class="foot">
-      Las opciones de cada momento son intercambiables: elige <strong>una</strong> por comida.<br>
-      Hecho con cariño por tu entrenadora · <strong>Lovic Athletica</strong>
-    </div>
+    <div class="foot">Hecho con cariño por tu entrenadora · <strong>Lovic Athletica</strong></div>
   </div>
 </body></html>`;
 }
