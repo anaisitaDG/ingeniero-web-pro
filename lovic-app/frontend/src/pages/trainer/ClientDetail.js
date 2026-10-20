@@ -67,9 +67,6 @@ export default function ClientDetail() {
   // Nutrition (text) state
   const [manualNutrition, setManualNutrition] = useState('');
   const [savingNutrition, setSavingNutrition] = useState(false);
-  const [nutritionMode, setNutritionMode]     = useState('manual');
-  const [genNutritionLoading, setGenNutritionLoading] = useState(false);
-  const [aiPrompt, setAiPrompt] = useState('');
   const [genRoutineLoading, setGenRoutineLoading] = useState(false);
   const [routinePrompt, setRoutinePrompt]         = useState('');
   const [sendingSummary, setSendingSummary]       = useState(false);
@@ -277,17 +274,6 @@ export default function ClientDetail() {
     try { await api.trainer.saveNutrition(id, manualNutrition); await load(); setSaveMsg('✅ Plan guardado'); setTimeout(() => setSaveMsg(''), 3000); }
     catch (e) { setSaveMsg('❌ ' + e.message); setTimeout(() => setSaveMsg(''), 4000); }
     finally { setSavingNutrition(false); }
-  }
-
-  async function genNutrition() {
-    setGenNutritionLoading(true);
-    try {
-      await api.trainer.genNutrition(id, aiPrompt || undefined);
-      const d = await api.trainer.client(id);
-      if (d.nutrition_plan?.content) setManualNutrition(d.nutrition_plan.content);
-      setNutritionMode('manual');
-    } catch (e) { alert(e.message); }
-    finally { setGenNutritionLoading(false); }
   }
 
   async function genRoutine() {
@@ -1015,7 +1001,13 @@ export default function ClientDetail() {
             <NutritionInsights data={nutritionInsights} />
             {/* Sub-tab switcher */}
             <div style={{ display: 'flex', gap: 8, marginBottom: 16, background: 'var(--border)', padding: 4, borderRadius: 12 }}>
-              {[['planner', '🍽️ Por tipo'], ['adherence', '📊 Cómo va'], ['text', '📝 Texto'], ['ai', '✨ IA']].map(([k, l]) => (
+              {[
+                ['planner', '🍽️ Por tipo'],
+                ['adherence', '📊 Cómo va'],
+                // "Texto" (plan viejo) solo aparece si esta clienta todavía tiene uno,
+                // para poder migrarlo o editarlo; para las que ya están en "Por tipo", se oculta.
+                ...(nutrition_plan?.content ? [['text', '📝 Texto']] : []),
+              ].map(([k, l]) => (
                 <button key={k} onClick={() => setNutritionSubTab(k)} style={{
                   flex: 1, padding: '8px 4px', borderRadius: 10, fontWeight: 700, fontSize: 12, border: 'none', cursor: 'pointer',
                   background: nutritionSubTab === k ? 'var(--gold)' : 'transparent',
@@ -1051,21 +1043,6 @@ export default function ClientDetail() {
               </div>
             )}
 
-            {nutritionSubTab === 'ai' && (
-              <div className="card">
-                <p style={{ fontWeight: 700, marginBottom: 10 }}>✨ Generar plan nutricional con IA</p>
-                <textarea className="input" rows={2} placeholder="Instrucciones adicionales (opcional)..." value={aiPrompt} onChange={e => setAiPrompt(e.target.value)} style={{ marginBottom: 10, resize: 'vertical' }} />
-                <button className="btn-primary" onClick={genNutrition} disabled={genNutritionLoading} style={{ width: '100%', justifyContent: 'center', background: 'var(--gold)' }}>
-                  {genNutritionLoading ? <><span className="spinner" /> Generando…</> : '✨ Generar plan nutricional'}
-                </button>
-                {nutrition_plan && (
-                  <div style={{ marginTop: 16 }}>
-                    <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: 13, lineHeight: 1.7 }}>{nutrition_plan.content}</pre>
-                    <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 8 }}>Guardado: {new Date(nutrition_plan.created_at).toLocaleDateString('es')}</p>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         );
       })()}
