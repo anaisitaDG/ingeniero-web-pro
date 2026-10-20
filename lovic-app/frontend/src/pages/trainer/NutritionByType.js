@@ -31,6 +31,8 @@ export default function NutritionByType({ clientId }) {
   const [showShopping, setShowShopping] = useState(false);
   const [gen, setGen]         = useState(false);   // generando borrador con IA
   const [genCtx, setGenCtx]   = useState(null);    // resumen de con qué se armó
+  const [eats, setEats]       = useState(null);    // lo que de verdad come
+  const [showEats, setShowEats] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -46,6 +48,7 @@ export default function NutritionByType({ clientId }) {
     finally { setLoading(false); }
   }, [clientId]);
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { api.trainer.getEatsSummary(clientId).then(setEats).catch(() => {}); }, [clientId]);
 
   async function changeMode(newMode) {
     if (newMode === mode) return;
@@ -177,6 +180,65 @@ export default function NutritionByType({ clientId }) {
           </div>
         )}
       </div>
+
+      {/* Lo que de verdad come — plan vs realidad, para ajustar con criterio */}
+      {eats && eats.totalLogs > 0 && (
+        <div className="card" style={{ marginBottom: 14, padding: 14 }}>
+          <button onClick={() => setShowEats(v => !v)} style={{
+            width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            background: 'none', border: 'none', cursor: 'pointer', padding: 0, font: 'inherit', textAlign: 'left',
+          }}>
+            <span style={{ fontWeight: 800, fontSize: 14 }}>👀 Lo que de verdad come esta clienta</span>
+            <span style={{ color: 'var(--muted)', fontSize: 16 }}>{showEats ? '▲' : '▼'}</span>
+          </button>
+
+          {showEats && (
+            <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {/* Variantes: el oro (plan vs realidad) */}
+              {eats.variants && eats.variants.length > 0 && (
+                <div>
+                  <p style={{ fontSize: 12.5, fontWeight: 800, color: '#C99A1E', marginBottom: 6 }}>⚠️ Cambia estas comidas del plan:</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                    {eats.variants.map((v, i) => (
+                      <div key={i} style={{ fontSize: 13, background: '#FFF8E8', borderRadius: 9, padding: '8px 11px' }}>
+                        <span style={{ color: 'var(--muted)' }}>Plan:</span> <s style={{ color: '#8B6914' }}>{v.planned}</s><br />
+                        <span style={{ color: 'var(--muted)' }}>Come:</span> <strong>{v.eaten}</strong>
+                        {v.times > 1 && <span style={{ color: 'var(--muted)' }}> · {v.times}×</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Qué registra por momento */}
+              {eats.byMoment && eats.byMoment.length > 0 && (
+                <div>
+                  <p style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--muted)', marginBottom: 6 }}>🍽️ Qué come en cada momento</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                    {eats.byMoment.map((m, i) => (
+                      <div key={i} style={{ fontSize: 13 }}>
+                        <strong>{m.moment}:</strong> <span style={{ color: 'var(--muted)' }}>{m.foods.map(f => f.name).join(', ')}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Frecuentes */}
+              {eats.frequentFoods && eats.frequentFoods.length > 0 && (
+                <div>
+                  <p style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--muted)', marginBottom: 6 }}>🔁 Lo que más registra</p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {eats.frequentFoods.map((f, i) => (
+                      <span key={i} style={{ fontSize: 12, fontWeight: 600, background: 'var(--coral-light)', color: 'var(--coral)', borderRadius: 999, padding: '3px 10px' }}>{f.name}{f.count > 1 ? ` ·${f.count}` : ''}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Modo */}
       <div className="card" style={{ marginBottom: 14, padding: 14 }}>

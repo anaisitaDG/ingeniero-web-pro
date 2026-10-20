@@ -997,6 +997,65 @@ router.post('/clients/:id/generate-meal-plan', async (req, res) => {
   } catch (e) { res.serverError(e); }
 });
 
+// GET /trainer/clients/:id/eats-summary — lo que la clienta REALMENTE come (frecuentes, por momento, variantes vs plan)
+router.get('/clients/:id/eats-summary', async (req, res) => {
+  try {
+    const uid = req.params.id;
+    const [logs] = await db.query(
+      `SELECT meal_type, input_text, parsed_items FROM food_logs
+       WHERE user_id=? AND logged_at >= DATE_SUB(CURDATE(), INTERVAL 60 DAY) ORDER BY logged_at DESC LIMIT 600`, [uid]);
+
+    const norm = s => String(s || '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    const itemsOf = r => { try { const a = typeof r.parsed_items === 'string' ? JSON.parse(r.parsed_items) : (r.parsed_items || []); return Array.isArray(a) ? a : []; } catch { return []; } };
+
+    // Frecuentes (todos los alimentos registrados)
+    const freq = {};
+    for (const r of logs) for (const it of itemsOf(r)) {
+      const n = String(it.name || '').trim();
+      if (n && n.length < 45) { const k = norm(n); if (!freq[k]) freq[k] = { name: n, count: 0 }; freq[k].count++; }
+    }
+    const frequentFoods = Object.values(freq).sort((a, b) => b.count - a.count).slice(0, 12);
+
+    // Por momento (qué registra en cada tiempo de comida)
+    const MOMENT = { breakfast: 'Desayuno', lunch: 'Almuerzo', dinner: 'Cena', snack: 'Merienda' };
+    const byMomentRaw = {};
+    for (const r of logs) {
+      const m = MOMENT[r.meal_type] || 'Otro';
+      const first = itemsOf(r)[0];
+      const name = first && String(first.name || '').trim();
+      if (!name || name.length > 60) continue;
+      byMomentRaw[m] = byMomentRaw[m] || {};
+      const k = norm(name);
+      if (!byMomentRaw[m][k]) byMomentRaw[m][k] = { name, count: 0 };
+      byMomentRaw[m][k].count++;
+    }
+    const byMoment = ['Desayuno', 'Almuerzo', 'Merienda', 'Cena'].map(m => ({
+      moment: m,
+      foods: Object.values(byMomentRaw[m] || {}).sort((a, b) => b.count - a.count).slice(0, 3),
+    })).filter(x => x.foods.length);
+
+    // Variantes: marcó la del plan pero registró otra cosa (del "comí algo distinto")
+    const [slotRows] = await db.query('SELECT id, name FROM client_meal_slots WHERE client_id=?', [uid]);
+    const slotName = {};
+    for (const s of slotRows) slotName[s.id] = s.name;
+    const variants = {};
+    for (const r of logs) {
+      if (!r.input_text || !r.input_text.startsWith('plan:')) continue;
+      const slotId = r.input_text.slice(5);
+      const planned = slotName[slotId];
+      const eaten = (itemsOf(r)[0] || {}).name;
+      if (!planned || !eaten) continue;
+      if (norm(planned) === norm(eaten)) continue; // comió lo del plan, no es variante
+      const key = `${planned}||${eaten}`;
+      if (!variants[key]) variants[key] = { planned, eaten, times: 0 };
+      variants[key].times++;
+    }
+    const variantList = Object.values(variants).sort((a, b) => b.times - a.times).slice(0, 10);
+
+    res.json({ frequentFoods, byMoment, variants: variantList, totalLogs: logs.length });
+  } catch (e) { res.serverError(e); }
+});
+
 // GET/PUT /trainer/clients/:id/notes — notas privadas del entrenador
 router.get('/clients/:id/notes', async (req, res) => {
   try {
