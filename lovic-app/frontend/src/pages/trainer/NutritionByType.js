@@ -395,13 +395,27 @@ export default function NutritionByType({ clientId }) {
             const base = process.env.REACT_APP_API_URL || '/api';
             const t = localStorage.getItem('lovic_token') || '';
             const url = `${base}/meal-plan-print?c=${encodeURIComponent(clientId)}&t=${encodeURIComponent(t)}`;
-            // Clic de enlace real: abre en pestaña nueva de forma fiable (Safari/PWA
-            // bloquean window.open). Si el navegador igual lo bloquea, navegamos ahí.
-            const a = document.createElement('a');
-            a.href = url; a.target = '_blank'; a.rel = 'noopener';
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
+            // Abrimos la pestaña YA (dentro del clic, para que el navegador no la bloquee)
+            // y luego la llenamos con el HTML del plan. Si falla, mostramos el error exacto.
+            const w = window.open('', '_blank');
+            fetch(url)
+              .then(r => (r.ok ? r.text() : Promise.reject(r.status)))
+              .then(html => {
+                if (w && !w.closed) { w.document.open(); w.document.write(html); w.document.close(); }
+                else {
+                  // Popup bloqueado → descargamos el plan como archivo para abrir a mano
+                  const blob = new Blob([html], { type: 'text/html' });
+                  const a = document.createElement('a');
+                  a.href = URL.createObjectURL(blob); a.download = 'plan-lovic.html';
+                  document.body.appendChild(a); a.click(); a.remove();
+                }
+              })
+              .catch(status => {
+                if (w && !w.closed) w.close();
+                alert(typeof status === 'number'
+                  ? `No se pudo abrir el plan (error ${status}). Dime ese número y lo reviso.`
+                  : 'No se pudo abrir el plan. Revisa tu conexión e inténtalo de nuevo.');
+              });
           }}
           style={{
             width: '100%', marginTop: 10, padding: '12px', borderRadius: 12,
