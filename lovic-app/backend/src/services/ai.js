@@ -2,6 +2,29 @@ const Anthropic = require('@anthropic-ai/sdk');
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+// Prepara una imagen para enviarla a la IA de visión:
+// la redimensiona al lado largo recomendado por Anthropic (1568px) y la
+// recomprime, para no superar el límite por imagen (~5MB) ni gastar tokens
+// de más. Si sharp no está disponible o algo falla, usa el archivo original.
+// Devuelve { data: base64, mediaType }.
+async function imageToBase64(imagePath) {
+  const fs = require('fs');
+  const ext = String(imagePath).split('.').pop().toLowerCase();
+  const rawType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+  try {
+    const sharp = require('sharp');
+    const buf = await sharp(imagePath)
+      .rotate()
+      .resize({ width: 1568, height: 1568, fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 88 })
+      .toBuffer();
+    return { data: buf.toString('base64'), mediaType: 'image/jpeg' };
+  } catch {
+    // Sin sharp o imagen ilegible por sharp: usar el archivo original tal cual.
+    return { data: fs.readFileSync(imagePath).toString('base64'), mediaType: rawType };
+  }
+}
+
 async function parseFood(inputText, fitnessGoal = 'maintenance') {
   const message = await client.messages.create({
     model: 'claude-haiku-4-5-20251001',
@@ -44,11 +67,7 @@ Reglas:
 
 // Analiza una FOTO de un plato y estima alimentos + calorías + macros.
 async function parseFoodImage(imagePath, fitnessGoal = 'maintenance') {
-  const fs = require('fs');
-  const imageData = fs.readFileSync(imagePath);
-  const base64 = imageData.toString('base64');
-  const ext = imagePath.split('.').pop().toLowerCase();
-  const mediaType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+  const { data: base64, mediaType } = await imageToBase64(imagePath);
 
   const message = await client.messages.create({
     model: 'claude-haiku-4-5-20251001',
@@ -169,11 +188,7 @@ Incluye: objetivo calórico diario, distribución de macros, ejemplos de comidas
 }
 
 async function parseBioimpedance(imagePath) {
-  const fs = require('fs');
-  const imageData = fs.readFileSync(imagePath);
-  const base64 = imageData.toString('base64');
-  const ext = imagePath.split('.').pop().toLowerCase();
-  const mediaType = ext === 'png' ? 'image/png' : ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 'image/png';
+  const { data: base64, mediaType } = await imageToBase64(imagePath);
 
   const message = await client.messages.create({
     model: 'claude-haiku-4-5-20251001',
@@ -254,19 +269,16 @@ Responde directamente el resumen, sin título ni encabezado.`,
 // Compara dos registros de fotos de progreso (varios ángulos) y devuelve un
 // análisis cálido, motivador y respetuoso de los cambios visibles.
 async function comparePhotos(pairs, dateBefore, dateAfter, note) {
-  const fs = require('fs');
-  const mediaFor = (p) => {
-    const ext = p.split('.').pop().toLowerCase();
-    return ext === 'png' ? 'image/png' : 'image/jpeg';
-  };
   const angleLabels = { frente: 'Frente', espalda: 'Espalda', perfil: 'Perfil' };
 
   const content = [];
   for (const { angle, beforePath, afterPath } of pairs) {
+    const before = await imageToBase64(beforePath);
+    const after = await imageToBase64(afterPath);
     content.push({ type: 'text', text: `Ángulo: ${angleLabels[angle] || angle} — ANTES (${dateBefore}):` });
-    content.push({ type: 'image', source: { type: 'base64', media_type: mediaFor(beforePath), data: fs.readFileSync(beforePath).toString('base64') } });
+    content.push({ type: 'image', source: { type: 'base64', media_type: before.mediaType, data: before.data } });
     content.push({ type: 'text', text: `Ángulo: ${angleLabels[angle] || angle} — DESPUÉS (${dateAfter}):` });
-    content.push({ type: 'image', source: { type: 'base64', media_type: mediaFor(afterPath), data: fs.readFileSync(afterPath).toString('base64') } });
+    content.push({ type: 'image', source: { type: 'base64', media_type: after.mediaType, data: after.data } });
   }
 
   content.push({
