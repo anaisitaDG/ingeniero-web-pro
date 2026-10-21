@@ -233,6 +233,29 @@ export default function PhotoCompareView({ a, b, onClose, userId, embedded }) {
   const beforeSrc = older.photos[activeAngle] ? imgUrl(older.photos[activeAngle].image_url, 800) : null;
   const afterSrc  = newer.photos[activeAngle] ? imgUrl(newer.photos[activeAngle].image_url, 800) : null;
 
+  // Compartir antes/después (solo la clienta sobre sus propias fotos, no la entrenadora)
+  const shareRef = useRef(null);
+  const [sharing, setSharing] = useState(false);
+  const weeks = Math.max(1, Math.round((new Date(String(newer.date).slice(0, 10)) - new Date(String(older.date).slice(0, 10))) / (7 * 86400000)));
+  const wB = bio?.bioBefore?.weight_kg, wA = bio?.bioAfter?.weight_kg;
+  const wDelta = (wB != null && wA != null && wB !== '' && wA !== '') ? +(Number(wA) - Number(wB)).toFixed(1) : null;
+
+  async function shareProgress() {
+    if (!shareRef.current) return;
+    setSharing(true);
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      const canvas = await html2canvas(shareRef.current, { backgroundColor: null, scale: 3, useCORS: true, allowTaint: true });
+      canvas.toBlob(async blob => {
+        const file = new File([blob], 'lovic-progreso.png', { type: 'image/png' });
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], text: '#LovicGym #MiProgreso' });
+        }
+        setSharing(false);
+      }, 'image/png');
+    } catch (_) { setSharing(false); }
+  }
+
   const wrapStyle = embedded
     ? {}
     : { position: 'fixed', inset: 0, background: 'var(--bg)', zIndex: 1000, overflowY: 'auto', padding: '16px 16px 40px' };
@@ -340,6 +363,13 @@ export default function PhotoCompareView({ a, b, onClose, userId, embedded }) {
         <div style={{ marginBottom: 8 }}>
           <BeforeAfterSlider before={beforeSrc} after={afterSrc} dateBefore={formatDate(older.date)} dateAfter={formatDate(newer.date)} />
           <p style={{ fontSize: 11, color: 'var(--muted)', textAlign: 'center', marginTop: 6 }}>Desliza para ver el antes y el después</p>
+          {!userId && (
+            <button onClick={shareProgress} disabled={sharing} style={{
+              width: '100%', marginTop: 10, padding: '13px', borderRadius: 14, border: 'none', cursor: 'pointer',
+              fontWeight: 800, fontSize: 15, background: 'var(--coral)', color: '#fff',
+              boxShadow: '0 4px 18px rgba(255,107,74,0.35)',
+            }}>{sharing ? 'Preparando…' : '📲 Compartir mi antes/después'}</button>
+          )}
         </div>
       ) : (
         <p style={{ fontSize: 12, color: 'var(--muted)', textAlign: 'center', marginBottom: 8 }}>
@@ -386,6 +416,52 @@ export default function PhotoCompareView({ a, b, onClose, userId, embedded }) {
           </div>
         </div>
       ))}
+
+      {/* Tarjeta de marca para compartir (fuera de pantalla; la captura html2canvas) */}
+      {beforeSrc && afterSrc && !userId && (
+        <div style={{ position: 'fixed', left: '-9999px', top: 0, pointerEvents: 'none' }} aria-hidden>
+          <div ref={shareRef} style={{
+            width: 360, height: 640, background: 'linear-gradient(160deg,#FF6B6B 0%,#FF8E53 100%)',
+            color: '#fff', padding: '40px 28px 34px', display: 'flex', flexDirection: 'column',
+            fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.18em', textTransform: 'uppercase', opacity: .9 }}>Mi progreso</span>
+              <span style={{ fontSize: 11, fontWeight: 700, fontStyle: 'italic', opacity: .95 }}>Constancia.</span>
+            </div>
+
+            <div style={{ margin: 'auto 0' }}>
+              <div style={{ fontSize: 38, fontWeight: 800, letterSpacing: '-.02em', lineHeight: 1.02, margin: '10px 0 4px' }}>
+                {weeks} semana{weeks > 1 ? 's' : ''} de cambio
+              </div>
+              <div style={{ fontSize: 12.5, fontWeight: 500, opacity: .9, marginBottom: 18, textTransform: 'capitalize' }}>
+                {formatDate(older.date)} → {formatDate(newer.date)}
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                {[['Antes', beforeSrc], ['Después', afterSrc]].map(([lbl, src], i) => (
+                  <div key={i} style={{ position: 'relative', borderRadius: 16, overflow: 'hidden', aspectRatio: '3/4', background: 'rgba(255,255,255,.15)' }}>
+                    <img src={src} alt={lbl} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                    <span style={{ position: 'absolute', top: 8, left: 8, background: 'rgba(0,0,0,.5)', color: '#fff', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999 }}>{lbl}</span>
+                  </div>
+                ))}
+              </div>
+
+              {wDelta != null && wDelta !== 0 && (
+                <div style={{ marginTop: 14, textAlign: 'center' }}>
+                  <span style={{ display: 'inline-block', background: 'rgba(255,255,255,.2)', border: '1px solid rgba(255,255,255,.4)', borderRadius: 999, padding: '7px 16px', fontSize: 15, fontWeight: 800 }}>
+                    {wDelta > 0 ? '+' : ''}{wDelta} kg
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div style={{ borderTop: '1px solid rgba(255,255,255,.3)', paddingTop: 16, display: 'flex', justifyContent: 'center' }}>
+              <img src="/brand/lovic-logo-white.png" alt="Lovic Athletica" style={{ height: 46, width: 'auto', opacity: .96 }} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
