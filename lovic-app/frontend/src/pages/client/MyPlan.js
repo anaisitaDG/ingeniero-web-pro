@@ -1769,47 +1769,57 @@ const SHARE_THEMES = {
 function LovicShareCard({ data }) {
   const T = SHARE_THEMES[data.design] || SHARE_THEMES.dark;
   const recs = Array.isArray(data.records) ? data.records : [];
+  // Formato historia completa (9:16): el fondo Lovic llena toda la pantalla,
+  // así Instagram no deja barras negras alrededor.
   return (
-    <div style={{ width: 360, background: T.bg, color: T.fg, borderRadius: 22, padding: '26px 22px',
+    <div style={{ width: 360, height: 640, background: T.bg, color: T.fg,
+      padding: '44px 30px 40px', display: 'flex', flexDirection: 'column',
       fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-        <span style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: '.18em', color: T.muted, textTransform: 'uppercase' }}>Entreno completado</span>
-        <span style={{ fontSize: 10, fontWeight: 700, fontStyle: 'italic', color: T.accent }}>{data.phrase}</span>
+
+      {/* Bloque superior: encabezado, rutina */}
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.18em', color: T.muted, textTransform: 'uppercase' }}>Entreno completado</span>
+          <span style={{ fontSize: 10.5, fontWeight: 700, fontStyle: 'italic', color: T.accent }}>{data.phrase}</span>
+        </div>
+        {data.zone && (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: T.pill, color: T.pillFg,
+            fontSize: 11, fontWeight: 800, padding: '6px 13px', borderRadius: 999, marginTop: 16 }}>{data.zoneEmoji} {data.zone}</span>
+        )}
+        <div style={{ fontSize: 40, fontWeight: 800, letterSpacing: '-.02em', lineHeight: 1, margin: '12px 0 6px' }}>{data.routine}</div>
+        {data.when && <div style={{ fontSize: 12, color: T.muted, fontWeight: 500, textTransform: 'capitalize' }}>{data.when}</div>}
       </div>
-      {data.zone && (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: T.pill, color: T.pillFg,
-          fontSize: 10.5, fontWeight: 800, padding: '5px 11px', borderRadius: 999, marginTop: 10 }}>{data.zoneEmoji} {data.zone}</span>
-      )}
-      <div style={{ fontSize: 35, fontWeight: 800, letterSpacing: '-.02em', lineHeight: 1, margin: '9px 0 5px' }}>{data.routine}</div>
-      {data.when && <div style={{ fontSize: 11, color: T.muted, fontWeight: 500, marginBottom: 18, textTransform: 'capitalize' }}>{data.when}</div>}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 14 }}>
-        {[[data.exercises, 'Ejercicios'], [data.sets, 'Series'], ['≈' + data.kcal, 'kcal · estim.']].map(([v, l], i) => (
-          <div key={i} style={{ background: T.tile, borderRadius: 14, padding: '14px 10px' }}>
-            <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-.02em', lineHeight: 1 }}>{v}</div>
-            <div style={{ fontSize: 9.5, color: T.muted, fontWeight: 600, marginTop: 5 }}>{l}</div>
-          </div>
-        ))}
-      </div>
-      {recs.length > 0 && (
-        <>
-          <div style={{ height: 1, background: T.line, margin: '2px 0 14px' }} />
-          <div style={{ display: 'grid', gridTemplateColumns: recs.length > 1 ? '1fr 1fr' : '1fr', gap: 8, marginBottom: 18 }}>
+
+      {/* Bloque central: stats + récords (centrado vertical en el espacio libre) */}
+      <div style={{ margin: 'auto 0' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 9, marginBottom: recs.length ? 14 : 0 }}>
+          {[[data.exercises, 'Ejercicios'], [data.sets, 'Series'], ['≈' + data.kcal, 'kcal · estim.']].map(([v, l], i) => (
+            <div key={i} style={{ background: T.tile, borderRadius: 16, padding: '18px 12px' }}>
+              <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: '-.02em', lineHeight: 1 }}>{v}</div>
+              <div style={{ fontSize: 10, color: T.muted, fontWeight: 600, marginTop: 6 }}>{l}</div>
+            </div>
+          ))}
+        </div>
+        {recs.length > 0 && (
+          <div style={{ display: 'grid', gridTemplateColumns: recs.length > 1 ? '1fr 1fr' : '1fr', gap: 9 }}>
             {recs.map((r, i) => (
-              <div key={i} style={{ background: T.recBg, borderRadius: 14, padding: '13px', display: 'flex', gap: 9, alignItems: 'flex-start' }}>
-                <span style={{ fontSize: 20, lineHeight: 1 }}>{r.ic}</span>
+              <div key={i} style={{ background: T.recBg, borderRadius: 16, padding: '15px', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                <span style={{ fontSize: 22, lineHeight: 1 }}>{r.ic}</span>
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 20, fontWeight: 800, color: T.accent, letterSpacing: '-.02em', lineHeight: 1 }}>{r.big}</div>
-                  <div style={{ fontSize: 12, fontWeight: 700, marginTop: 5 }}>{r.name}</div>
-                  <div style={{ fontSize: 9.5, color: T.muted, fontWeight: 500, marginTop: 2 }}>{r.note}</div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: T.accent, letterSpacing: '-.02em', lineHeight: 1 }}>{r.big}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, marginTop: 6 }}>{r.name}</div>
+                  <div style={{ fontSize: 10, color: T.muted, fontWeight: 500, marginTop: 2 }}>{r.note}</div>
                 </div>
               </div>
             ))}
           </div>
-        </>
-      )}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: recs.length ? 0 : 16 }}>
-        <div style={{ fontSize: 13, fontWeight: 800 }}><span style={{ color: T.accent }}>🔥 {data.streak} días</span> de racha</div>
-        <img src={`/brand/lovic-logo-${T.logo}.png`} alt="Lovic Athletica" style={{ height: 46, width: 'auto', display: 'block', opacity: .96 }} />
+        )}
+      </div>
+
+      {/* Bloque inferior: racha + logo */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ fontSize: 14, fontWeight: 800 }}><span style={{ color: T.accent }}>🔥 {data.streak} días</span> de racha</div>
+        <img src={`/brand/lovic-logo-${T.logo}.png`} alt="Lovic Athletica" style={{ height: 50, width: 'auto', display: 'block', opacity: .96 }} />
       </div>
     </div>
   );

@@ -392,8 +392,6 @@ router.get('/share/:dayId', async (req, res) => {
 
     // Récords del día: por ejercicio, mejor peso o más reps de hoy vs su histórico anterior.
     const records = [];
-    let volume = 0; // kg totales levantados hoy (peso × reps)
-    for (const l of logs) volume += (Number(l.weight_kg) || 0) * (Number(l.reps_done) || 0);
     for (const exId of new Set(logs.map(l => l.exercise_id))) {
       const t = logs.filter(l => l.exercise_id === exId);
       const maxW = Math.max(...t.map(l => Number(l.weight_kg) || 0));
@@ -409,12 +407,7 @@ router.get('/share/:dayId', async (req, res) => {
       }
     }
     records.sort((a, b) => b._s - a._s);
-    let topRecords = records.slice(0, 2).map(({ _s, ...r }) => r);
-    // Si no hubo récord, mostramos un highlight que siempre existe: volumen o series.
-    if (topRecords.length === 0) {
-      if (volume > 0) topRecords = [{ ic: '💪', big: `${Math.round(volume).toLocaleString('es-CO')} kg`, name: 'Levantados hoy', note: 'Volumen total' }];
-      else if (sets > 0) topRecords = [{ ic: '🔥', big: `${sets}`, name: 'Series completas', note: 'Puro trabajo' }];
-    }
+    const topRecords = records.slice(0, 2).map(({ _s, ...r }) => r);
 
     // Racha (misma lógica que el dashboard: 3 días de gracia mínimo)
     const [[quest]] = await db.query('SELECT training_days_week FROM questionnaire_data WHERE user_id=?', [uid]);
@@ -441,20 +434,9 @@ router.get('/share/:dayId', async (req, res) => {
     if (/(glute|pierna|cuadr|femoral|inferior|sentadilla|pantorrilla)/.test(dn)) { zone = 'Tren inferior'; zoneEmoji = '🦵'; }
     else if (/(pecho|espalda|brazo|hombro|bicep|tricep|superior|torso|dorsal)/.test(dn)) { zone = 'Tren superior'; zoneEmoji = '💪'; }
 
-    // Fecha + hora (en Colombia) para la línea "cuándo"
-    let when;
+    // Fecha (en Colombia) para la línea "cuándo" — sin hora
     const dObj = new Date(date + 'T12:00:00Z');
-    const fmtDate = dObj.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'short' });
-    if (logs.length) {
-      const first = Math.min(...logs.map(l => new Date(l.created_at).getTime()));
-      const h = new Date(first - 5 * 3600 * 1000); // Colombia
-      const hh = h.getUTCHours(), mm = String(h.getUTCMinutes()).padStart(2, '0');
-      const ampm = hh < 12 ? 'a. m.' : 'p. m.';
-      const h12 = ((hh + 11) % 12) + 1;
-      when = `${fmtDate} · ${h12}:${mm} ${ampm}`;
-    } else {
-      when = fmtDate;
-    }
+    const when = dObj.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' });
 
     // Frase: récord > racha larga > rotación
     let phrase;
