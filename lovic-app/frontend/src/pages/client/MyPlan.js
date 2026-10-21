@@ -1900,7 +1900,7 @@ function CelebrationModal({ dayId, dayName, kcal, streak, completedDate, complet
           borderRadius: 24,
           padding: '28px 24px',
         }}>
-          {share ? <LovicShareCard data={share} /> : <>
+          {share ? <LovicShareCard data={{ ...share, kcal: (kcal && kcal > 0) ? Math.round(kcal) : share.kcal }} /> : <>
           {/* Trofeo y título */}
           <div style={{ textAlign: 'center', marginBottom: 20 }}>
             <div style={{ fontSize: 60, lineHeight: 1, marginBottom: 10 }}>{milestone ? '🏅' : '🏆'}</div>
