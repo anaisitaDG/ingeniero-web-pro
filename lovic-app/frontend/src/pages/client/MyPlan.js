@@ -1773,35 +1773,34 @@ function LovicShareCard({ data }) {
   // así Instagram no deja barras negras alrededor.
   return (
     <div style={{ width: 360, height: 640, background: T.bg, color: T.fg,
-      padding: '44px 30px 40px', display: 'flex', flexDirection: 'column',
+      padding: '46px 30px 38px', display: 'flex', flexDirection: 'column',
       fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif' }}>
 
-      {/* Bloque superior: encabezado, rutina */}
-      <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.18em', color: T.muted, textTransform: 'uppercase' }}>Entreno completado</span>
-          <span style={{ fontSize: 10.5, fontWeight: 700, fontStyle: 'italic', color: T.accent }}>{data.phrase}</span>
-        </div>
-        {data.zone && (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: T.pill, color: T.pillFg,
-            fontSize: 11, fontWeight: 800, padding: '6px 13px', borderRadius: 999, marginTop: 16 }}>{data.zoneEmoji} {data.zone}</span>
-        )}
-        <div style={{ fontSize: 40, fontWeight: 800, letterSpacing: '-.02em', lineHeight: 1, margin: '12px 0 6px' }}>{data.routine}</div>
-        {data.when && <div style={{ fontSize: 12, color: T.muted, fontWeight: 500, textTransform: 'capitalize' }}>{data.when}</div>}
+      {/* Encabezado (arriba) */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.18em', color: T.muted, textTransform: 'uppercase' }}>Entreno completado</span>
+        <span style={{ fontSize: 10.5, fontWeight: 700, fontStyle: 'italic', color: T.accent }}>{data.phrase}</span>
       </div>
 
-      {/* Bloque central: stats + récords (centrado vertical en el espacio libre) */}
+      {/* Bloque principal cohesivo (centrado): rutina + stats + récords juntos */}
       <div style={{ margin: 'auto 0' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 9, marginBottom: recs.length ? 14 : 0 }}>
+        {data.zone && (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: T.pill, color: T.pillFg,
+            fontSize: 11, fontWeight: 800, padding: '6px 13px', borderRadius: 999 }}>{data.zoneEmoji} {data.zone}</span>
+        )}
+        <div style={{ fontSize: 42, fontWeight: 800, letterSpacing: '-.02em', lineHeight: 1.02, margin: '14px 0 6px' }}>{data.routine}</div>
+        {data.when && <div style={{ fontSize: 12.5, color: T.muted, fontWeight: 500, textTransform: 'capitalize', marginBottom: 26 }}>{data.when}</div>}
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: recs.length ? 10 : 0 }}>
           {[[data.exercises, 'Ejercicios'], [data.sets, 'Series'], ['≈' + data.kcal, 'kcal · estim.']].map(([v, l], i) => (
-            <div key={i} style={{ background: T.tile, borderRadius: 16, padding: '18px 12px' }}>
-              <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: '-.02em', lineHeight: 1 }}>{v}</div>
-              <div style={{ fontSize: 10, color: T.muted, fontWeight: 600, marginTop: 6 }}>{l}</div>
+            <div key={i} style={{ background: T.tile, borderRadius: 16, padding: '20px 12px' }}>
+              <div style={{ fontSize: 32, fontWeight: 800, letterSpacing: '-.02em', lineHeight: 1 }}>{v}</div>
+              <div style={{ fontSize: 10, color: T.muted, fontWeight: 600, marginTop: 7 }}>{l}</div>
             </div>
           ))}
         </div>
         {recs.length > 0 && (
-          <div style={{ display: 'grid', gridTemplateColumns: recs.length > 1 ? '1fr 1fr' : '1fr', gap: 9 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: recs.length > 1 ? '1fr 1fr' : '1fr', gap: 10 }}>
             {recs.map((r, i) => (
               <div key={i} style={{ background: T.recBg, borderRadius: 16, padding: '15px', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                 <span style={{ fontSize: 22, lineHeight: 1 }}>{r.ic}</span>
@@ -1816,10 +1815,10 @@ function LovicShareCard({ data }) {
         )}
       </div>
 
-      {/* Bloque inferior: racha + logo */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      {/* Marca (abajo), con una línea fina que la ancla */}
+      <div style={{ borderTop: `1px solid ${T.line}`, paddingTop: 18, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ fontSize: 14, fontWeight: 800 }}><span style={{ color: T.accent }}>🔥 {data.streak} días</span> de racha</div>
-        <img src={`/brand/lovic-logo-${T.logo}.png`} alt="Lovic Athletica" style={{ height: 50, width: 'auto', display: 'block', opacity: .96 }} />
+        <img src={`/brand/lovic-logo-${T.logo}.png`} alt="Lovic Athletica" style={{ height: 48, width: 'auto', display: 'block', opacity: .96 }} />
       </div>
     </div>
   );

@@ -367,8 +367,9 @@ router.get('/share/:dayId', async (req, res) => {
        WHERE wd.id=? AND wp.user_id=?`, [dayId, uid]);
     if (!day) return res.status(404).json({ error: 'Día no encontrado' });
 
-    const [exRows] = await db.query('SELECT id, name FROM workout_exercises WHERE day_id=?', [dayId]);
-    const exName = {}; exRows.forEach(e => { exName[e.id] = e.name; });
+    const [exRows] = await db.query('SELECT id, name, sets, reps FROM workout_exercises WHERE day_id=?', [dayId]);
+    const exName = {}, exPlan = {};
+    exRows.forEach(e => { exName[e.id] = e.name; exPlan[e.id] = { sets: Number(e.sets) || 0, reps: (String(e.reps || '').match(/\d+/) || [0])[0] | 0 }; });
     const exIds = exRows.map(e => e.id);
 
     let logs = [];
@@ -390,24 +391,48 @@ router.get('/share/:dayId', async (req, res) => {
     durMin = Math.min(Math.max(durMin, 20), 120);
     const kcal = Math.round(durMin * 6 / 5) * 5; // redondeado a 5
 
-    // Récords del día: por ejercicio, mejor peso o más reps de hoy vs su histórico anterior.
-    const records = [];
+    // Logros del día (siempre hay algo que destacar). Prioridad por _s descendente:
+    // récord de peso > récord de reps > más reps que el plan > series extra >
+    // ejercicio adicional > cardio/calentamiento > (respaldo) series completadas.
+    const H = [];
     for (const exId of new Set(logs.map(l => l.exercise_id))) {
       const t = logs.filter(l => l.exercise_id === exId);
       const maxW = Math.max(...t.map(l => Number(l.weight_kg) || 0));
       const maxR = Math.max(...t.map(l => Number(l.reps_done) || 0));
+      const doneSets = t.length;
+      const plan = exPlan[exId] || { sets: 0, reps: 0 };
       const [[prev]] = await db.query(
         'SELECT MAX(weight_kg) AS w, MAX(reps_done) AS r FROM workout_logs WHERE user_id=? AND exercise_id=? AND logged_date < ?',
         [uid, exId, date]);
       const prevW = Number(prev?.w) || 0, prevR = Number(prev?.r) || 0;
       if (maxW > 0 && prevW > 0 && maxW > prevW) {
-        records.push({ ic: '🏅', big: `+${Math.round((maxW - prevW) * 10) / 10} kg`, name: exName[exId], note: 'Récord de peso', _s: 1000 + maxW });
+        H.push({ ic: '🏅', big: `+${Math.round((maxW - prevW) * 10) / 10} kg`, name: exName[exId], note: 'Récord de peso', _s: 1000 + maxW });
       } else if (maxR > 0 && prevR > 0 && maxR > prevR) {
-        records.push({ ic: '⚡', big: `+${maxR - prevR} reps`, name: exName[exId], note: 'Récord de reps', _s: maxR });
+        H.push({ ic: '⚡', big: `+${maxR - prevR} reps`, name: exName[exId], note: 'Récord de reps', _s: 900 + maxR });
+      } else if (plan.reps > 0 && maxR > plan.reps) {
+        H.push({ ic: '💪', big: `${maxR} reps`, name: exName[exId], note: `Tu plan pedía ${plan.reps}`, _s: 700 + (maxR - plan.reps) });
+      } else if (plan.sets > 0 && doneSets > plan.sets) {
+        H.push({ ic: '🔁', big: `+${doneSets - plan.sets} series`, name: exName[exId], note: 'Series extra', _s: 600 + doneSets });
       }
     }
-    records.sort((a, b) => b._s - a._s);
-    const topRecords = records.slice(0, 2).map(({ _s, ...r }) => r);
+    // Ejercicios adicionales de ese día
+    const [extras] = await db.query(
+      'SELECT name FROM session_extra_exercises WHERE user_id=? AND day_id=? AND session_date=?', [uid, dayId, date]);
+    if (extras.length) {
+      H.push({ ic: '➕', big: `+${extras.length}`, name: extras.length > 1 ? 'Ejercicios extra' : 'Ejercicio extra', note: extras.map(e => e.name).slice(0, 2).join(', '), _s: 500 });
+    }
+    // Cardio / calentamiento
+    const [acts] = await db.query(
+      'SELECT type, duration_mins FROM workout_activity_logs WHERE user_id=? AND day_id=? AND session_date=?', [uid, dayId, date]);
+    const cardioMin = acts.filter(a => a.type === 'cardio' || a.type === 'cardio_inicio').reduce((s, a) => s + (Number(a.duration_mins) || 0), 0);
+    const warmMin = acts.filter(a => a.type === 'warmup').reduce((s, a) => s + (Number(a.duration_mins) || 0), 0);
+    if (cardioMin > 0) H.push({ ic: '🏃', big: `${cardioMin} min`, name: 'Cardio', note: 'Sumaste cardio hoy', _s: 400 });
+    if (warmMin > 0) H.push({ ic: '🔥', big: `${warmMin} min`, name: 'Calentamiento', note: 'Entraste en calor', _s: 300 });
+    // Respaldo: si no hubo nada de lo anterior pero sí entrenó
+    if (H.length === 0 && sets > 0) H.push({ ic: '✅', big: `${sets}`, name: 'Series completas', note: 'Diste todo hoy', _s: 1 });
+
+    H.sort((a, b) => b._s - a._s);
+    const topRecords = H.slice(0, 2).map(({ _s, ...r }) => r);
 
     // Racha (misma lógica que el dashboard: 3 días de gracia mínimo)
     const [[quest]] = await db.query('SELECT training_days_week FROM questionnaire_data WHERE user_id=?', [uid]);
