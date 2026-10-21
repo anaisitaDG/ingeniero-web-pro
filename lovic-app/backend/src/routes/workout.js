@@ -390,22 +390,31 @@ router.get('/share/:dayId', async (req, res) => {
     durMin = Math.min(Math.max(durMin, 20), 120);
     const kcal = Math.round(durMin * 6 / 5) * 5; // redondeado a 5
 
-    // Récords del día: mejor peso de hoy vs mejor histórico anterior, por ejercicio
+    // Récords del día: por ejercicio, mejor peso o más reps de hoy vs su histórico anterior.
     const records = [];
+    let volume = 0; // kg totales levantados hoy (peso × reps)
+    for (const l of logs) volume += (Number(l.weight_kg) || 0) * (Number(l.reps_done) || 0);
     for (const exId of new Set(logs.map(l => l.exercise_id))) {
       const t = logs.filter(l => l.exercise_id === exId);
       const maxW = Math.max(...t.map(l => Number(l.weight_kg) || 0));
-      if (maxW <= 0) continue;
+      const maxR = Math.max(...t.map(l => Number(l.reps_done) || 0));
       const [[prev]] = await db.query(
-        'SELECT MAX(weight_kg) AS w FROM workout_logs WHERE user_id=? AND exercise_id=? AND logged_date < ?',
+        'SELECT MAX(weight_kg) AS w, MAX(reps_done) AS r FROM workout_logs WHERE user_id=? AND exercise_id=? AND logged_date < ?',
         [uid, exId, date]);
-      const prevW = Number(prev?.w) || 0;
-      if (prevW > 0 && maxW > prevW) {
-        records.push({ ic: '🏅', big: `+${Math.round((maxW - prevW) * 10) / 10} kg`, name: exName[exId], note: 'Récord de peso', _w: maxW });
+      const prevW = Number(prev?.w) || 0, prevR = Number(prev?.r) || 0;
+      if (maxW > 0 && prevW > 0 && maxW > prevW) {
+        records.push({ ic: '🏅', big: `+${Math.round((maxW - prevW) * 10) / 10} kg`, name: exName[exId], note: 'Récord de peso', _s: 1000 + maxW });
+      } else if (maxR > 0 && prevR > 0 && maxR > prevR) {
+        records.push({ ic: '⚡', big: `+${maxR - prevR} reps`, name: exName[exId], note: 'Récord de reps', _s: maxR });
       }
     }
-    records.sort((a, b) => b._w - a._w);
-    const topRecords = records.slice(0, 2).map(({ _w, ...r }) => r);
+    records.sort((a, b) => b._s - a._s);
+    let topRecords = records.slice(0, 2).map(({ _s, ...r }) => r);
+    // Si no hubo récord, mostramos un highlight que siempre existe: volumen o series.
+    if (topRecords.length === 0) {
+      if (volume > 0) topRecords = [{ ic: '💪', big: `${Math.round(volume).toLocaleString('es-CO')} kg`, name: 'Levantados hoy', note: 'Volumen total' }];
+      else if (sets > 0) topRecords = [{ ic: '🔥', big: `${sets}`, name: 'Series completas', note: 'Puro trabajo' }];
+    }
 
     // Racha (misma lógica que el dashboard: 3 días de gracia mínimo)
     const [[quest]] = await db.query('SELECT training_days_week FROM questionnaire_data WHERE user_id=?', [uid]);
