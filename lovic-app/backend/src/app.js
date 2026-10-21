@@ -981,7 +981,10 @@ async function sendWeeklySummaryJob() {
         expected -= 86400000;
       }
 
-      return { name: c.name, workout_days: track.workout_days, diet_days: diet.diet_days, streak, last_trained: lastT.last_trained };
+      const daysInactive = lastT.last_trained
+        ? Math.floor((new Date(todayStr) - new Date(String(lastT.last_trained).slice(0, 10))) / 86400000)
+        : null;
+      return { name: c.name, workout_days: track.workout_days, diet_days: diet.diet_days, streak, last_trained: lastT.last_trained, days_inactive: daysInactive };
     }));
 
     await sendWeeklySummary(trainer.email, trainer.name, clientStats);

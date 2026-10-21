@@ -169,6 +169,13 @@ async function sendWeeklySummary(trainerEmail, trainerName, clients) {
   // clients = [{ name, workout_days, diet_days, streak, last_trained }]
   const activeClients = clients.filter(c => c.workout_days > 0 || c.diet_days > 0);
   const inactiveClients = clients.filter(c => c.workout_days === 0 && c.diet_days === 0);
+  // "Enfriándose": estaban activas y llevan 7–30 días sin entrenar (re-enganchables).
+  const coolingClients = clients
+    .filter(c => c.days_inactive != null && c.days_inactive >= 7 && c.days_inactive <= 30)
+    .sort((a, b) => a.days_inactive - b.days_inactive);
+  const inactiveLabel = (c) => c.days_inactive == null
+    ? 'sin registro aún'
+    : c.days_inactive === 0 ? 'hoy' : `hace ${c.days_inactive} día${c.days_inactive > 1 ? 's' : ''}`;
 
   const clientRow = (c) => `
     <tr style="border-bottom:1px solid #f0f0f0">
@@ -213,10 +220,17 @@ async function sendWeeklySummary(trainerEmail, trainerName, clients) {
             <tbody>${activeClients.map(clientRow).join('')}</tbody>
           </table>` : ''}
 
+          ${coolingClients.length > 0 ? `
+          <h3 style="color:#ca8a04;margin:0 0 1rem;font-size:1rem">🧊 Se están enfriando (${coolingClients.length})</h3>
+          <p style="color:#777;margin:0 0 .75rem;font-size:13px">Estaban activas y llevan varios días sin entrenar. Un mensaje tuyo ahora las puede re-enganchar antes de que se pierdan.</p>
+          <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:1rem;margin-bottom:1.5rem">
+            ${coolingClients.map(c => `<p style="margin:4px 0;color:#555;font-size:14px">• <strong>${c.name}</strong> — ${inactiveLabel(c)}</p>`).join('')}
+          </div>` : ''}
+
           ${inactiveClients.length > 0 ? `
           <h3 style="color:#dc2626;margin:0 0 1rem;font-size:1rem">⚠️ Sin actividad esta semana (${inactiveClients.length})</h3>
           <div style="background:#fff5f5;border-radius:8px;padding:1rem;margin-bottom:1.5rem">
-            ${inactiveClients.map(c => `<p style="margin:4px 0;color:#555;font-size:14px">• ${c.name}</p>`).join('')}
+            ${inactiveClients.map(c => `<p style="margin:4px 0;color:#555;font-size:14px">• ${c.name} — <span style="color:#999">${inactiveLabel(c)}</span></p>`).join('')}
           </div>` : ''}
 
           <div style="background:#f8f8f8;border-radius:8px;padding:1rem;text-align:center">
