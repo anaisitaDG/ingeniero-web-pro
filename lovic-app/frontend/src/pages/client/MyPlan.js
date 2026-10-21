@@ -1849,19 +1849,6 @@ function CelebrationModal({ dayId, dayName, kcal, streak, completedDate, complet
     api.workout.shareCard(dayId, refDateStr).then(setShare).catch(() => {});
   }, [dayId, refDateStr]);
 
-  async function handleSave() {
-    try {
-      const html2canvas = (await import('html2canvas')).default;
-      const canvas = await html2canvas(shareRef.current, { backgroundColor: share ? null : '#1a1a1a', scale: 3, useCORS: true, allowTaint: true });
-      canvas.toBlob(blob => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = url; a.download = 'lovic-entrenamiento.png';
-        document.body.appendChild(a); a.click(); a.remove();
-        URL.revokeObjectURL(url);
-      }, 'image/png');
-    } catch (_) { /* ignore */ }
-  }
-
   async function handleShare() {
     try {
       const html2canvas = (await import('html2canvas')).default;
@@ -1977,12 +1964,6 @@ function CelebrationModal({ dayId, dayName, kcal, streak, completedDate, complet
           boxShadow: '0 4px 20px rgba(255,107,74,0.4)',
         }}>
           📤 Compartir en redes
-        </button>
-        <button onClick={handleSave} style={{
-          background: 'transparent', color: '#fff', border: '1.5px solid rgba(255,255,255,0.3)',
-          borderRadius: 16, padding: '13px', fontSize: 14, fontWeight: 700, cursor: 'pointer',
-        }}>
-          ⬇️ Guardar imagen
         </button>
         <button onClick={onClose} style={{
           background: 'transparent', color: '#666', border: 'none',
