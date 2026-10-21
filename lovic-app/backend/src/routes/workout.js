@@ -421,13 +421,19 @@ router.get('/share/:dayId', async (req, res) => {
     if (extras.length) {
       H.push({ ic: '➕', big: `+${extras.length}`, name: extras.length > 1 ? 'Ejercicios extra' : 'Ejercicio extra', note: extras.map(e => e.name).slice(0, 2).join(', '), _s: 500 });
     }
-    // Cardio / calentamiento
+    // Cardio (incluye calentamiento y cardio de inicio; para la clienta es lo mismo)
     const [acts] = await db.query(
-      'SELECT type, duration_mins FROM workout_activity_logs WHERE user_id=? AND day_id=? AND session_date=?', [uid, dayId, date]);
-    const cardioMin = acts.filter(a => a.type === 'cardio' || a.type === 'cardio_inicio').reduce((s, a) => s + (Number(a.duration_mins) || 0), 0);
-    const warmMin = acts.filter(a => a.type === 'warmup').reduce((s, a) => s + (Number(a.duration_mins) || 0), 0);
+      'SELECT duration_mins FROM workout_activity_logs WHERE user_id=? AND day_id=? AND session_date=?', [uid, dayId, date]);
+    const cardioMin = acts.reduce((s, a) => s + (Number(a.duration_mins) || 0), 0);
     if (cardioMin > 0) H.push({ ic: '🏃', big: `${cardioMin} min`, name: 'Cardio', note: 'Sumaste cardio hoy', _s: 400 });
-    if (warmMin > 0) H.push({ ic: '🔥', big: `${warmMin} min`, name: 'Calentamiento', note: 'Entraste en calor', _s: 300 });
+
+    // Bienestar (prioridad baja): sueño > 7h y meta de agua cumplida
+    const [[dt]] = await db.query('SELECT water_glasses, sleep_hours FROM daily_tracking WHERE user_id=? AND tracked_date=?', [uid, date]);
+    const sleepH = Number(dt?.sleep_hours) || 0;
+    const water = Number(dt?.water_glasses) || 0;
+    if (sleepH > 7) H.push({ ic: '😴', big: `${sleepH} h`, name: 'Dormiste bien', note: 'Más de 7 horas', _s: 250 });
+    if (water >= 8) H.push({ ic: '💧', big: `${water}`, name: 'Vasos de agua', note: 'Meta cumplida', _s: 200 });
+
     // Respaldo: si no hubo nada de lo anterior pero sí entrenó
     if (H.length === 0 && sets > 0) H.push({ ic: '✅', big: `${sets}`, name: 'Series completas', note: 'Diste todo hoy', _s: 1 });
 
