@@ -439,8 +439,9 @@ router.get('/share/:dayId', async (req, res) => {
     // Respaldo: si no hubo nada de lo anterior pero sí entrenó
     if (H.length === 0 && sets > 0) H.push({ ic: '✅', big: `${sets}`, name: 'Series completas', note: 'Diste todo hoy', _s: 1 });
 
+    // Un solo logro, el de mayor prioridad (nombres largos no caben bien en 2 columnas)
     H.sort((a, b) => b._s - a._s);
-    const topRecords = H.slice(0, 2).map(({ _s, ...r }) => r);
+    const topRecords = H.slice(0, 1).map(({ _s, ...r }) => r);
 
     // Racha (misma lógica que el dashboard: 3 días de gracia mínimo)
     const [[quest]] = await db.query('SELECT training_days_week FROM questionnaire_data WHERE user_id=?', [uid]);
