@@ -163,6 +163,10 @@ const CARDIO_INICIO_KCAL = { 'Caminata': 5, 'Trote suave': 7, 'Cuerda': 12, 'Jum
 const CARDIO_DEFAULT_RATE = 8;
 const WARMUP_DEFAULT_RATE = 5;
 const WARMUP_KCAL = { 'Movilidad articular': 2.5, 'Estiramiento dinámico': 2 };
+// Movilidad / estiramiento (enfriamiento). Gasto bajo pero cuenta como logro.
+const MOVILIDAD_OPTIONS = ['Estiramiento', 'Movilidad articular', 'Foam roller', 'Yoga', 'Otro'];
+const MOVILIDAD_KCAL = { 'Estiramiento': 2.5, 'Movilidad articular': 2.5, 'Foam roller': 3, 'Yoga': 3 };
+const MOVILIDAD_DEFAULT_RATE = 3;
 
 // Soporta una actividad o varias combinadas ("A + B"): usa el promedio de sus tasas.
 // Actividades personalizadas o "Otro" con texto usan la tasa por defecto.
@@ -975,6 +979,9 @@ function DayCard({ day, onLogged, completedDate, onToggleComplete, weightFactor 
   const [cardioChoice, setCardioChoice] = useState('');
   const [cardioMins, setCardioMins]     = useState(day.cardio_duration || '');
   const [cardioDone, setCardioDone]     = useState(false);
+  const [movChoice, setMovChoice]       = useState('');
+  const [movMins, setMovMins]           = useState('');
+  const [movDone, setMovDone]           = useState(false);
   const [activityLoaded, setActivityLoaded] = useState(false);
   const [allActivities, setAllActivities] = useState([]);
   const [confirmingDate, setConfirmingDate] = useState(false);
@@ -997,9 +1004,11 @@ function DayCard({ day, onLogged, completedDate, onToggleComplete, weightFactor 
       const w = acts.find(a => a.type === 'warmup' && isToday(a));
       const ci = acts.find(a => a.type === 'cardio_inicio' && isToday(a));
       const c = acts.find(a => a.type === 'cardio' && isToday(a));
+      const m = acts.find(a => a.type === 'movilidad' && isToday(a));
       if (w) { setWarmupChoice(w.activity_name); setWarmupMins(w.duration_mins || ''); setWarmupDone(true); }
       if (ci) { setCiChoice(ci.activity_name); setCiMins(ci.duration_mins || ''); setCiDone(true); }
       if (c) { setCardioChoice(c.activity_name); setCardioMins(c.duration_mins || ''); setCardioDone(true); }
+      if (m) { setMovChoice(m.activity_name); setMovMins(m.duration_mins || ''); setMovDone(true); }
       setActivityLoaded(true);
     }).catch(err => { console.error('Activity load error:', err); setActivityLoaded(true); });
   }, [day.id, open]); // eslint-disable-line
@@ -1032,6 +1041,15 @@ function DayCard({ day, onLogged, completedDate, onToggleComplete, weightFactor 
       api.workout.deleteActivity(day.id, 'cardio').catch(() => {});
     }
   }, [cardioChoice, cardioMins, cardioDone, activityLoaded, day.id]); // eslint-disable-line
+
+  useEffect(() => {
+    if (!activityLoaded) return;
+    if (movChoice && movChoice !== 'Otro') {
+      api.workout.saveActivity(day.id, 'movilidad', movChoice, Number(movMins) || null).catch(() => {});
+    } else if (!movChoice) {
+      api.workout.deleteActivity(day.id, 'movilidad').catch(() => {});
+    }
+  }, [movChoice, movMins, movDone, activityLoaded, day.id]); // eslint-disable-line
   // kcal per exercise keyed by ex.id, updated by ExerciseCard
   const [exKcal, setExKcal] = useState({});
   const [extraKcal, setExtraKcal] = useState(0); // kcal de ejercicios extra del día
@@ -1039,8 +1057,9 @@ function DayCard({ day, onLogged, completedDate, onToggleComplete, weightFactor 
   const warmupKcal = calcKcal(WARMUP_KCAL, warmupChoice, Number(warmupMins), WARMUP_DEFAULT_RATE, weightFactor) || 0;
   const ciKcal     = calcKcal(CARDIO_INICIO_KCAL, ciChoice, Number(ciMins), CARDIO_DEFAULT_RATE, weightFactor) || 0;
   const cardioKcal = calcKcal(CARDIO_INICIO_KCAL, cardioChoice, Number(cardioMins), CARDIO_DEFAULT_RATE, weightFactor) || 0;
+  const movKcal    = calcKcal(MOVILIDAD_KCAL, movChoice, Number(movMins), MOVILIDAD_DEFAULT_RATE, weightFactor) || 0;
   const strengthKcal = Object.values(exKcal).reduce((a, b) => a + b, 0) + extraKcal;
-  const totalKcal = warmupKcal + ciKcal + strengthKcal + cardioKcal;
+  const totalKcal = warmupKcal + ciKcal + strengthKcal + cardioKcal + movKcal;
 
   // Last session date = most recent exercise log in this day
   const lastSessionDate = day.exercises
@@ -1105,11 +1124,15 @@ function DayCard({ day, onLogged, completedDate, onToggleComplete, weightFactor 
             defaultDuration={day.cardio_duration} choice={cardioChoice} setChoice={setCardioChoice}
             mins={cardioMins} setMins={setCardioMins} done={cardioDone} setDone={setCardioDone}
             history={allActivities.filter(a => a.type === 'cardio')} />
+          <ActivityBlock emoji="🧘" label="Movilidad" options={MOVILIDAD_OPTIONS} kcalTable={MOVILIDAD_KCAL} defaultRate={MOVILIDAD_DEFAULT_RATE} multi weightFactor={weightFactor}
+            choice={movChoice} setChoice={setMovChoice}
+            mins={movMins} setMins={setMovMins} done={movDone} setDone={setMovDone}
+            history={allActivities.filter(a => a.type === 'movilidad')} />
           <div style={{ background: 'var(--coral-light)', borderRadius: 12, padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <p style={{ fontWeight: 700, fontSize: 13, color: 'var(--coral)' }}>🔥 Total estimado del día</p>
               <p style={{ fontSize: 11, color: 'var(--coral)', marginTop: 2 }}>
-                {warmupKcal > 0 && `Calent. ${warmupKcal} + `}{ciKcal > 0 && `Cardio ini. ${ciKcal} + `}Fuerza {strengthKcal}{cardioKcal > 0 && ` + Cardio ${cardioKcal}`} kcal
+                {warmupKcal > 0 && `Calent. ${warmupKcal} + `}{ciKcal > 0 && `Cardio ini. ${ciKcal} + `}Fuerza {strengthKcal}{cardioKcal > 0 && ` + Cardio ${cardioKcal}`}{movKcal > 0 && ` + Movilidad ${movKcal}`} kcal
               </p>
             </div>
             <p style={{ fontSize: 28, fontWeight: 900, color: 'var(--coral)' }}>~{totalKcal}</p>

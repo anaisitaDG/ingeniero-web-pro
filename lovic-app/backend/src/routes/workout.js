@@ -426,8 +426,10 @@ router.get('/share/:dayId', async (req, res) => {
       'SELECT type, duration_mins FROM workout_activity_logs WHERE user_id=? AND day_id=? AND session_date=?', [uid, dayId, date]);
     const cardioMin = acts.filter(a => a.type === 'cardio' || a.type === 'cardio_inicio').reduce((s, a) => s + (Number(a.duration_mins) || 0), 0);
     const warmMin = acts.filter(a => a.type === 'warmup').reduce((s, a) => s + (Number(a.duration_mins) || 0), 0);
+    const movMin = acts.filter(a => a.type === 'movilidad').reduce((s, a) => s + (Number(a.duration_mins) || 0), 0);
     if (cardioMin > 0) H.push({ ic: '🏃', big: `${cardioMin} min`, name: 'Cardio', note: 'Sumaste cardio hoy', _s: 400 });
     if (warmMin > 0) H.push({ ic: '🔥', big: `${warmMin} min`, name: 'Calentamiento', note: 'Entraste en calor', _s: 350 });
+    if (movMin > 0) H.push({ ic: '🧘', big: `${movMin} min`, name: 'Movilidad', note: 'Cuidaste tu cuerpo', _s: 320 });
 
     // Bienestar (prioridad baja): sueño > 7h y meta de agua cumplida
     const [[dt]] = await db.query('SELECT water_glasses, sleep_hours FROM daily_tracking WHERE user_id=? AND tracked_date=?', [uid, date]);
