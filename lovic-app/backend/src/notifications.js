@@ -317,6 +317,36 @@ function startCronJobs() {
     } catch (e) { console.error('[push] Error recordatorio pesaje:', e.message); }
   });
 
+  // 9am Colombia (14:00 UTC) — aviso a Lorena de pagos próximos o vencidos.
+  // Se le avisa a la ENTRENADORA (no a la clienta) para que ella decida cómo cobrar.
+  cron.schedule('0 14 * * *', async () => {
+    try {
+      const today = colombiaToday();
+      const [rows] = await db.query(
+        `SELECT u.name, cb.next_payment_date
+         FROM client_billing cb JOIN users u ON u.id = cb.client_id
+         WHERE cb.next_payment_date IS NOT NULL
+           AND cb.next_payment_date <= DATE_ADD(?, INTERVAL 3 DAY)
+         ORDER BY cb.next_payment_date ASC`, [today]);
+      if (!rows.length) return;
+      const [[trainer]] = await db.query(`SELECT id FROM users WHERE role='trainer' LIMIT 1`);
+      if (!trainer) return;
+
+      const dateOf = r => String(r.next_payment_date).slice(0, 10);
+      const overdue = rows.filter(r => dateOf(r) < today);
+      const soon = rows.filter(r => dateOf(r) >= today);
+      const parts = [];
+      if (overdue.length) parts.push(`${overdue.length} vencido${overdue.length > 1 ? 's' : ''}`);
+      if (soon.length) parts.push(`${soon.length} por vencer`);
+      const names = rows.slice(0, 4).map(r => r.name).join(', ');
+      await sendToUser(trainer.id, {
+        title: `💳 Pagos: ${parts.join(' · ')}`,
+        body: `${names}${rows.length > 4 ? '…' : ''}. Revisa la sección de cobros.`,
+        url: '/trainer/billing',
+      });
+    } catch (e) { console.error('[push] Error pagos:', e.message); }
+  });
+
   // 6pm Colombia (23:00 UTC) — aviso de racha en riesgo
   cron.schedule('0 23 * * *', async () => {
     try {
