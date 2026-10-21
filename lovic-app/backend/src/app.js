@@ -272,6 +272,14 @@ const db = require('./database/db');
     // Fibra en cada registro de comida (informativa, sin meta)
     await db.query(`ALTER TABLE food_logs ADD COLUMN IF NOT EXISTS fiber_g SMALLINT DEFAULT NULL`).catch(() => {});
 
+    // Enfriamiento del recordatorio de PESAJE (máx. 1 cada 3 días por clienta)
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS weigh_reminder_sent (
+        user_id   VARCHAR(36) PRIMARY KEY,
+        last_sent DATE NOT NULL
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
     // Dedupe del recordatorio de ENTRENO (dinámico: a la hora habitual de cada clienta)
     await db.query(`
       CREATE TABLE IF NOT EXISTS workout_reminder_sent (
