@@ -60,7 +60,7 @@ export default function MyPlan() {
       const dRes = await api.dashboard.get().catch(() => null);
       const newStreak = dRes?.streak ?? streak + 1;
       setStreak(newStreak);
-      setCelebration({ dayName, kcal, streak: newStreak, date: useDate });
+      setCelebration({ dayId, dayName, kcal, streak: newStreak, date: useDate });
     }
   }
 
@@ -100,6 +100,7 @@ export default function MyPlan() {
 
       {celebration && (
         <CelebrationModal
+          dayId={celebration.dayId}
           dayName={celebration.dayName}
           kcal={celebration.kcal}
           streak={celebration.streak}
@@ -1758,8 +1759,65 @@ function MiniVic({ size = 28 }) {
   );
 }
 
-function CelebrationModal({ dayName, kcal, streak, completedDate, completedDays, onClose }) {
+// Tarjeta de marca Lovic para compartir el entreno. 3 diseños que rotan (el backend
+// elige cuál por turnos). Se renderiza aquí y html2canvas la convierte en imagen.
+const SHARE_THEMES = {
+  dark:  { bg:'#0E0E10', fg:'#F4F1EE', muted:'#8f8880', accent:'#FF8E53', line:'rgba(255,255,255,.12)', tile:'rgba(255,255,255,.05)', recBg:'rgba(255,142,83,.12)', pill:'rgba(255,142,83,.16)', pillFg:'#FF8E53', logo:'white' },
+  coral: { bg:'linear-gradient(150deg,#FF6B6B 0%,#FF8E53 100%)', fg:'#ffffff', muted:'rgba(255,255,255,.85)', accent:'#ffffff', line:'rgba(255,255,255,.3)', tile:'rgba(255,255,255,.17)', recBg:'rgba(255,255,255,.17)', pill:'rgba(255,255,255,.24)', pillFg:'#ffffff', logo:'white' },
+  night: { bg:'linear-gradient(160deg,#241029 0%,#140a16 60%,#1d0f1a 100%)', fg:'#F4EFF2', muted:'#9a8c9a', accent:'#FF8E53', line:'rgba(255,255,255,.1)', tile:'rgba(255,255,255,.06)', recBg:'rgba(255,142,83,.14)', pill:'rgba(255,142,83,.18)', pillFg:'#FF9E6b', logo:'white' },
+};
+function LovicShareCard({ data }) {
+  const T = SHARE_THEMES[data.design] || SHARE_THEMES.dark;
+  const recs = Array.isArray(data.records) ? data.records : [];
+  return (
+    <div style={{ width: 360, background: T.bg, color: T.fg, borderRadius: 22, padding: '26px 22px',
+      fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+        <span style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: '.18em', color: T.muted, textTransform: 'uppercase' }}>Entreno completado</span>
+        <span style={{ fontSize: 10, fontWeight: 700, fontStyle: 'italic', color: T.accent }}>{data.phrase}</span>
+      </div>
+      {data.zone && (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: T.pill, color: T.pillFg,
+          fontSize: 10.5, fontWeight: 800, padding: '5px 11px', borderRadius: 999, marginTop: 10 }}>{data.zoneEmoji} {data.zone}</span>
+      )}
+      <div style={{ fontSize: 35, fontWeight: 800, letterSpacing: '-.02em', lineHeight: 1, margin: '9px 0 5px' }}>{data.routine}</div>
+      {data.when && <div style={{ fontSize: 11, color: T.muted, fontWeight: 500, marginBottom: 18, textTransform: 'capitalize' }}>{data.when}</div>}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 14 }}>
+        {[[data.exercises, 'Ejercicios'], [data.sets, 'Series'], ['≈' + data.kcal, 'kcal · estim.']].map(([v, l], i) => (
+          <div key={i} style={{ background: T.tile, borderRadius: 14, padding: '14px 10px' }}>
+            <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-.02em', lineHeight: 1 }}>{v}</div>
+            <div style={{ fontSize: 9.5, color: T.muted, fontWeight: 600, marginTop: 5 }}>{l}</div>
+          </div>
+        ))}
+      </div>
+      {recs.length > 0 && (
+        <>
+          <div style={{ height: 1, background: T.line, margin: '2px 0 14px' }} />
+          <div style={{ display: 'grid', gridTemplateColumns: recs.length > 1 ? '1fr 1fr' : '1fr', gap: 8, marginBottom: 18 }}>
+            {recs.map((r, i) => (
+              <div key={i} style={{ background: T.recBg, borderRadius: 14, padding: '13px', display: 'flex', gap: 9, alignItems: 'flex-start' }}>
+                <span style={{ fontSize: 20, lineHeight: 1 }}>{r.ic}</span>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: T.accent, letterSpacing: '-.02em', lineHeight: 1 }}>{r.big}</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, marginTop: 5 }}>{r.name}</div>
+                  <div style={{ fontSize: 9.5, color: T.muted, fontWeight: 500, marginTop: 2 }}>{r.note}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: recs.length ? 0 : 16 }}>
+        <div style={{ fontSize: 13, fontWeight: 800 }}><span style={{ color: T.accent }}>🔥 {data.streak} días</span> de racha</div>
+        <img src={`/brand/lovic-logo-${T.logo}.png`} alt="Lovic Athletica" style={{ height: 46, width: 'auto', display: 'block', opacity: .96 }} />
+      </div>
+    </div>
+  );
+}
+
+function CelebrationModal({ dayId, dayName, kcal, streak, completedDate, completedDays, onClose }) {
   const shareRef = useRef(null);
+  const [share, setShare] = useState(null); // datos de la tarjeta de marca (3 diseños)
   // Fecha de referencia = la del entrenamiento completado (no la de hoy). Así, si
   // registras el sábado un día domingo, la tarjeta muestra el sábado correctamente.
   const refDate = completedDate ? new Date(`${completedDate}T00:00:00`) : new Date();
@@ -1786,12 +1844,17 @@ function CelebrationModal({ dayName, kcal, streak, completedDate, completedDays,
     return { label: ['L','M','M','J','V','S','D'][i], date: d.getDate(), isToday, isDone };
   });
 
+  useEffect(() => {
+    if (!dayId) return;
+    api.workout.shareCard(dayId, refDateStr).then(setShare).catch(() => {});
+  }, [dayId, refDateStr]);
+
   async function handleShare() {
     try {
       const html2canvas = (await import('html2canvas')).default;
       const canvas = await html2canvas(shareRef.current, {
-        backgroundColor: '#1a1a1a',
-        scale: 2,
+        backgroundColor: share ? null : '#1a1a1a',
+        scale: 3,
         useCORS: true,
         allowTaint: true,
       });
@@ -1823,11 +1886,12 @@ function CelebrationModal({ dayName, kcal, streak, completedDate, completedDays,
       <div style={{ width: '100%', maxWidth: 380, display: 'flex', flexDirection: 'column', gap: 16 }}>
 
         {/* Todo lo que va en la imagen al compartir */}
-        <div ref={shareRef} style={{
+        <div ref={shareRef} style={share ? { display: 'flex', justifyContent: 'center' } : {
           background: '#1a1a1a',
           borderRadius: 24,
           padding: '28px 24px',
         }}>
+          {share ? <LovicShareCard data={share} /> : <>
           {/* Trofeo y título */}
           <div style={{ textAlign: 'center', marginBottom: 20 }}>
             <div style={{ fontSize: 60, lineHeight: 1, marginBottom: 10 }}>{milestone ? '🏅' : '🏆'}</div>
@@ -1891,6 +1955,7 @@ function CelebrationModal({ dayName, kcal, streak, completedDate, completedDays,
               <span style={{ fontSize: 14, fontWeight: 900, color: '#ffffff' }}>LOVIC</span>
             </div>
           </div>
+          </>}
         </div>
 
         <button onClick={handleShare} style={{

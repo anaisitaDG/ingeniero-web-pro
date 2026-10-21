@@ -343,4 +343,128 @@ router.delete('/extra-exercise/:id', async (req, res) => {
   } catch (e) { res.serverError(e); }
 });
 
+// GET /workout/share/:dayId?date=YYYY-MM-DD
+// Datos para la tarjeta "Entreno completado" que la clienta comparte en redes.
+// La imagen se arma en el celular (no en el servidor); aquí solo van los datos.
+const SHARE_PHRASES = [
+  'Lo hiciste.', 'Sin excusas.', 'Una más.', 'Imparable.', 'Puro carácter.',
+  'Hoy sí.', 'De postergarlo a hacerlo.', 'Esto es constancia.',
+  'Nadie te lo regaló.', 'Tu mejor versión.', 'Esto se siente bien.', 'Fuerte y constante.',
+];
+const SHARE_DESIGNS = ['dark', 'coral', 'night'];
+function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
+
+router.get('/share/:dayId', async (req, res) => {
+  try {
+    const uid = req.user.id;
+    const dayId = req.params.dayId;
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : colombiaToday();
+
+    // El día debe pertenecer al plan de esta clienta
+    const [[day]] = await db.query(
+      `SELECT wd.id, wd.day_name
+       FROM workout_days wd JOIN workout_plans wp ON wp.id = wd.plan_id
+       WHERE wd.id=? AND wp.user_id=?`, [dayId, uid]);
+    if (!day) return res.status(404).json({ error: 'Día no encontrado' });
+
+    const [exRows] = await db.query('SELECT id, name FROM workout_exercises WHERE day_id=?', [dayId]);
+    const exName = {}; exRows.forEach(e => { exName[e.id] = e.name; });
+    const exIds = exRows.map(e => e.id);
+
+    let logs = [];
+    if (exIds.length) {
+      [logs] = await db.query(
+        `SELECT exercise_id, weight_kg, reps_done, created_at
+         FROM workout_logs WHERE user_id=? AND logged_date=? AND exercise_id IN (?)`,
+        [uid, date, exIds]);
+    }
+    const sets = logs.length;
+    const exercisesDone = new Set(logs.map(l => l.exercise_id)).size || exRows.length;
+
+    // Duración estimada por el lapso entre el primer y último registro; kcal simple para fuerza
+    let durMin = 0;
+    if (logs.length >= 2) {
+      const ts = logs.map(l => new Date(l.created_at).getTime());
+      durMin = Math.round((Math.max(...ts) - Math.min(...ts)) / 60000);
+    }
+    durMin = Math.min(Math.max(durMin, 20), 120);
+    const kcal = Math.round(durMin * 6 / 5) * 5; // redondeado a 5
+
+    // Récords del día: mejor peso de hoy vs mejor histórico anterior, por ejercicio
+    const records = [];
+    for (const exId of new Set(logs.map(l => l.exercise_id))) {
+      const t = logs.filter(l => l.exercise_id === exId);
+      const maxW = Math.max(...t.map(l => Number(l.weight_kg) || 0));
+      if (maxW <= 0) continue;
+      const [[prev]] = await db.query(
+        'SELECT MAX(weight_kg) AS w FROM workout_logs WHERE user_id=? AND exercise_id=? AND logged_date < ?',
+        [uid, exId, date]);
+      const prevW = Number(prev?.w) || 0;
+      if (prevW > 0 && maxW > prevW) {
+        records.push({ ic: '🏅', big: `+${Math.round((maxW - prevW) * 10) / 10} kg`, name: exName[exId], note: 'Récord de peso', _w: maxW });
+      }
+    }
+    records.sort((a, b) => b._w - a._w);
+    const topRecords = records.slice(0, 2).map(({ _w, ...r }) => r);
+
+    // Racha (misma lógica que el dashboard: 3 días de gracia mínimo)
+    const [[quest]] = await db.query('SELECT training_days_week FROM questionnaire_data WHERE user_id=?', [uid]);
+    const [logDays] = await db.query(
+      `SELECT DISTINCT DATE_FORMAT(logged_date,'%Y-%m-%d') d FROM workout_logs WHERE user_id=? AND logged_date<=? ORDER BY d DESC LIMIT 730`, [uid, date]);
+    const [trackDays] = await db.query(
+      `SELECT DATE_FORMAT(tracked_date,'%Y-%m-%d') d FROM daily_tracking WHERE user_id=? AND (workout_done=1 OR diet_followed=1) AND tracked_date<=? ORDER BY d DESC LIMIT 730`, [uid, date]);
+    const active = new Set([...logDays.map(r => r.d), ...trackDays.map(r => r.d)]);
+    const perWeek = Math.min(Math.max(parseInt(quest?.training_days_week) || 5, 1), 6);
+    const maxRest = Math.max(7 - perWeek, 3);
+    let streak = 0, rest = 0, first = true, t = new Date(date).getTime();
+    while (true) {
+      const ds = new Date(t).toISOString().slice(0, 10);
+      if (active.has(ds)) { streak++; rest = 0; }
+      else if (first) { /* hoy aún cuenta */ }
+      else { rest++; if (rest > maxRest) break; }
+      first = false; t -= 86400000;
+      if (streak > 730) break;
+    }
+
+    // Zona (etiqueta) deducida del nombre de la rutina; si no se reconoce, no se muestra
+    const dn = String(day.day_name || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    let zone = null, zoneEmoji = null;
+    if (/(glute|pierna|cuadr|femoral|inferior|sentadilla|pantorrilla)/.test(dn)) { zone = 'Tren inferior'; zoneEmoji = '🦵'; }
+    else if (/(pecho|espalda|brazo|hombro|bicep|tricep|superior|torso|dorsal)/.test(dn)) { zone = 'Tren superior'; zoneEmoji = '💪'; }
+
+    // Fecha + hora (en Colombia) para la línea "cuándo"
+    let when;
+    const dObj = new Date(date + 'T12:00:00Z');
+    const fmtDate = dObj.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'short' });
+    if (logs.length) {
+      const first = Math.min(...logs.map(l => new Date(l.created_at).getTime()));
+      const h = new Date(first - 5 * 3600 * 1000); // Colombia
+      const hh = h.getUTCHours(), mm = String(h.getUTCMinutes()).padStart(2, '0');
+      const ampm = hh < 12 ? 'a. m.' : 'p. m.';
+      const h12 = ((hh + 11) % 12) + 1;
+      when = `${fmtDate} · ${h12}:${mm} ${ampm}`;
+    } else {
+      when = fmtDate;
+    }
+
+    // Frase: récord > racha larga > rotación
+    let phrase;
+    if (topRecords.length) phrase = pick(['¡Récord nuevo!', 'Más fuerte que ayer.']);
+    else if (streak >= 7) phrase = `${streak} días imparable.`;
+    else phrase = pick(SHARE_PHRASES);
+
+    // Diseño por turnos (rota en cada compartir)
+    const [[u]] = await db.query('SELECT COALESCE(share_card_count,0) AS n FROM users WHERE id=?', [uid]);
+    const design = SHARE_DESIGNS[(u.n || 0) % SHARE_DESIGNS.length];
+    await db.query('UPDATE users SET share_card_count = COALESCE(share_card_count,0)+1 WHERE id=?', [uid]);
+
+    res.json({
+      routine: day.day_name || 'Mi entreno',
+      zone, zoneEmoji, when,
+      exercises: exercisesDone, sets, kcal,
+      streak, records: topRecords, phrase, design,
+    });
+  } catch (e) { res.serverError(e); }
+});
+
 module.exports = router;
