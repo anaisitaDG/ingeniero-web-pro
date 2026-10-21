@@ -459,19 +459,21 @@ app.get('/meal-plan-print', async (req, res) => {
 
   try {
     const [[u]] = await db.query(
-      'SELECT name, fitness_goal, calorie_target, protein_target_g, carbs_target_g, fat_target_g, meal_plan_note FROM users WHERE id=? AND role="client"', [clientId]);
+      'SELECT name, fitness_goal, calorie_target, protein_target_g, carbs_target_g, fat_target_g, meal_plan_note, nutrition_mode FROM users WHERE id=? AND role="client"', [clientId]);
     if (!u) return res.status(404).send('Clienta no encontrada.');
 
+    const rotativo = u.nutrition_mode === 'rotativo';
+    // Simple: solo semana 1. Rotativo: todas las semanas (1–4).
     const [slots] = await db.query(
-      `SELECT body_zone, meal_type, name, description, calories, protein_g, carbs_g, fat_g, sort_order
-       FROM client_meal_slots WHERE client_id=? AND week_no=1
-       ORDER BY FIELD(body_zone,'superior','inferior','descanso'),
+      `SELECT week_no, body_zone, meal_type, name, description, calories, protein_g, carbs_g, fat_g, sort_order
+       FROM client_meal_slots WHERE client_id=?${rotativo ? '' : ' AND week_no=1'}
+       ORDER BY week_no, FIELD(body_zone,'superior','inferior','descanso'),
                 FIELD(meal_type,'desayuno','almuerzo','merienda','cena'), sort_order`, [clientId]);
     const [sups] = await db.query(
       'SELECT moment, item, dose FROM client_supplements WHERE client_id=? ORDER BY sort_order, id', [clientId]);
 
     res.set('Content-Type', 'text/html; charset=utf-8');
-    res.send(renderMealPlanHTML(u, slots, sups));
+    res.send(renderMealPlanHTML(u, slots, sups, rotativo));
   } catch (e) {
     console.error('[meal-plan-print]', e);
     res.status(500).send('No se pudo generar el plan.');
@@ -490,45 +492,63 @@ function escapeHtml(s) {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-function renderMealPlanHTML(u, slots, sups) {
-  // Agrupar por zona → momento → opciones (carrusel = opciones del mismo momento)
+function renderMealPlanHTML(u, slots, sups, rotativo) {
+  const macroStr = (s) => {
+    const p = [];
+    if (s.protein_g != null) p.push(`P ${Math.round(s.protein_g)}g`);
+    if (s.carbs_g != null) p.push(`C ${Math.round(s.carbs_g)}g`);
+    if (s.fat_g != null) p.push(`G ${Math.round(s.fat_g)}g`);
+    return p.join(' · ');
+  };
+
+  // Secciones de día (tren superior/inferior/descanso) para un conjunto de slots.
+  function zoneSectionsFor(ws) {
+    const bz = {};
+    for (const s of ws) { (bz[s.body_zone] ||= {}); (bz[s.body_zone][s.meal_type] ||= []).push(s); }
+    const zs = ['superior', 'inferior', 'descanso'].filter(z => bz[z]);
+    return zs.map(z => {
+      const meals = MEAL_ORDER.filter(m => bz[z][m]).map(m => {
+        const opts = bz[z][m];
+        const optHtml = opts.map((s, i) => `
+          ${i > 0 ? '<div class="or"><span>o</span></div>' : ''}
+          <div class="opt">
+            <div class="opt-name">${escapeHtml(s.name)}${s.calories != null ? `<span class="kcal">${Math.round(s.calories)} kcal</span>` : ''}</div>
+            ${s.description ? `<div class="opt-desc">${escapeHtml(s.description)}</div>` : ''}
+            ${macroStr(s) ? `<div class="opt-macros">${macroStr(s)}</div>` : ''}
+          </div>`).join('');
+        return `
+          <div class="meal">
+            <div class="meal-head"><span class="meal-emoji">${MEAL_EMOJI[m] || ''}</span>${escapeHtml(MEAL_LABEL[m] || m)}</div>
+            <div class="opts">${optHtml}</div>
+          </div>`;
+      }).join('');
+      return `
+        <section class="day">
+          <div class="day-chip"><span>${ZONE_EMOJI[z] || ''}</span>${escapeHtml(ZONE_LABEL[z] || z)}</div>
+          <div class="meals">${meals}</div>
+        </section>`;
+    }).join('');
+  }
+
+  // Cuerpo: rotativo → una sección por semana (1–4); simple → directo.
+  let zoneSections;
+  if (rotativo) {
+    const weeks = [...new Set(slots.map(s => s.week_no))].sort((a, b) => a - b);
+    zoneSections = weeks.map(wn => {
+      const ws = slots.filter(s => s.week_no === wn);
+      return ws.length ? `<div class="week-chip">📅 Semana ${wn}</div>${zoneSectionsFor(ws)}` : '';
+    }).join('');
+  } else {
+    zoneSections = zoneSectionsFor(slots);
+  }
+
+  // Agregado (todas las semanas) para el hero y el "¿por qué?"
   const byZone = {};
   for (const s of slots) {
     (byZone[s.body_zone] ||= {});
     (byZone[s.body_zone][s.meal_type] ||= []).push(s);
   }
   const zones = ['superior', 'inferior', 'descanso'].filter(z => byZone[z]);
-
-  const zoneSections = zones.map(z => {
-    const meals = MEAL_ORDER.filter(m => byZone[z][m]).map(m => {
-      const opts = byZone[z][m];
-      // Opciones separadas por un "o" claro; sin sopa de macros, solo kcal discretas.
-      const macroStr = (s) => {
-        const p = [];
-        if (s.protein_g != null) p.push(`P ${Math.round(s.protein_g)}g`);
-        if (s.carbs_g != null) p.push(`C ${Math.round(s.carbs_g)}g`);
-        if (s.fat_g != null) p.push(`G ${Math.round(s.fat_g)}g`);
-        return p.join(' · ');
-      };
-      const optHtml = opts.map((s, i) => `
-        ${i > 0 ? '<div class="or"><span>o</span></div>' : ''}
-        <div class="opt">
-          <div class="opt-name">${escapeHtml(s.name)}${s.calories != null ? `<span class="kcal">${Math.round(s.calories)} kcal</span>` : ''}</div>
-          ${s.description ? `<div class="opt-desc">${escapeHtml(s.description)}</div>` : ''}
-          ${macroStr(s) ? `<div class="opt-macros">${macroStr(s)}</div>` : ''}
-        </div>`).join('');
-      return `
-        <div class="meal">
-          <div class="meal-head"><span class="meal-emoji">${MEAL_EMOJI[m] || ''}</span>${escapeHtml(MEAL_LABEL[m] || m)}</div>
-          <div class="opts">${optHtml}</div>
-        </div>`;
-    }).join('');
-    return `
-      <section class="day">
-        <div class="day-chip"><span>${ZONE_EMOJI[z] || ''}</span>${escapeHtml(ZONE_LABEL[z] || z)}</div>
-        <div class="meals">${meals}</div>
-      </section>`;
-  }).join('');
 
   const supsHtml = sups && sups.length ? `
     <section class="day sups">
@@ -653,6 +673,9 @@ function renderMealPlanHTML(u, slots, sups) {
     font-size:15px; font-weight:800; cursor:pointer; box-shadow:0 5px 16px rgba(255,107,107,.4);
   }
   .day{margin:22px 20px 0}
+  .week-chip{margin:30px 20px 4px; padding-top:18px; border-top:2px solid var(--line);
+    font-size:21px; font-weight:800; color:var(--coral); letter-spacing:-.01em}
+  .week-chip:first-child{border-top:none; padding-top:0; margin-top:22px}
   .day-chip{display:inline-flex; align-items:center; gap:8px;
     background:var(--ink); color:#fff; font-weight:800; font-size:15px;
     padding:8px 16px; border-radius:999px; margin-bottom:14px}
