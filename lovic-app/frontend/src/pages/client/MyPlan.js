@@ -1967,27 +1967,6 @@ function CelebrationModal({ dayId, dayName, kcal, streak, completedDate, complet
           </>}
         </div>
 
-        {/* Tu semana: sesiones completadas en verde (fuera de la imagen que se comparte) */}
-        {share && (
-          <div style={{ background: 'var(--card)', borderRadius: 16, padding: '14px 16px' }}>
-            <p style={{ fontSize: 12, fontWeight: 800, color: 'var(--muted)', textAlign: 'center', marginBottom: 10 }}>Tu semana</p>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              {weekDays.map((d, i) => (
-                <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
-                  <span style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600 }}>{d.label}</span>
-                  <div style={{
-                    width: 34, height: 34, borderRadius: '50%',
-                    background: d.isDone ? '#16a34a' : 'var(--border)',
-                    color: d.isDone ? '#fff' : 'var(--muted)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13,
-                    border: d.isToday ? '2px solid var(--coral)' : 'none',
-                  }}>{d.isDone ? '✓' : d.date}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
         <button onClick={handleShare} style={{
           background: '#FF6B4A', color: '#fff', border: 'none', borderRadius: 16,
           padding: '16px', fontSize: 16, fontWeight: 800, cursor: 'pointer',
