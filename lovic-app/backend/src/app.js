@@ -989,10 +989,10 @@ async function sendWeeklySummaryJob() {
       );
       // streak
       const [logDays] = await db.query(
-        `SELECT DISTINCT DATE_FORMAT(logged_date,'%Y-%m-%d') as d FROM workout_logs WHERE user_id=? ORDER BY d DESC LIMIT 60`, [c.id]
+        `SELECT DISTINCT DATE_FORMAT(logged_date,'%Y-%m-%d') as d FROM workout_logs WHERE user_id=? ORDER BY d DESC LIMIT 730`, [c.id]
       );
       const [trackDays] = await db.query(
-        `SELECT DATE_FORMAT(tracked_date,'%Y-%m-%d') as d FROM daily_tracking WHERE user_id=? AND workout_done=1 ORDER BY d DESC LIMIT 60`, [c.id]
+        `SELECT DATE_FORMAT(tracked_date,'%Y-%m-%d') as d FROM daily_tracking WHERE user_id=? AND workout_done=1 ORDER BY d DESC LIMIT 730`, [c.id]
       );
       const allDates = new Set([...logDays.map(r=>r.d), ...trackDays.map(r=>r.d)]);
       const todayStr = new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString().slice(0,10);

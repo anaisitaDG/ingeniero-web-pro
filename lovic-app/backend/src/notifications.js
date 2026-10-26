@@ -356,11 +356,11 @@ function startCronJobs() {
       for (const { user_id } of subs) {
         try {
           const [logDays] = await db.query(
-            `SELECT DISTINCT DATE_FORMAT(logged_date,'%Y-%m-%d') as d FROM workout_logs WHERE user_id=? AND logged_date <= ? ORDER BY d DESC LIMIT 60`,
+            `SELECT DISTINCT DATE_FORMAT(logged_date,'%Y-%m-%d') as d FROM workout_logs WHERE user_id=? AND logged_date <= ? ORDER BY d DESC LIMIT 730`,
             [user_id, today]
           );
           const [trackDays] = await db.query(
-            `SELECT DATE_FORMAT(tracked_date,'%Y-%m-%d') as d FROM daily_tracking WHERE user_id=? AND (workout_done=1 OR diet_followed=1) AND tracked_date <= ? ORDER BY d DESC LIMIT 60`,
+            `SELECT DATE_FORMAT(tracked_date,'%Y-%m-%d') as d FROM daily_tracking WHERE user_id=? AND (workout_done=1 OR diet_followed=1) AND tracked_date <= ? ORDER BY d DESC LIMIT 730`,
             [user_id, today]
           );
           const active = new Set([...logDays.map(r => r.d), ...trackDays.map(r => r.d)]);
