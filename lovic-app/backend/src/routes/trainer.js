@@ -916,6 +916,7 @@ router.get('/clients/:id/nutrition-insights', async (req, res) => {
 router.post('/clients/:id/generate-meal-plan', async (req, res) => {
   try {
     const uid = req.params.id;
+    const week = [1, 2, 3, 4].includes(Number(req.body.week)) ? Number(req.body.week) : 1;
     const [[u]] = await db.query(
       'SELECT name, fitness_goal, calorie_target, protein_target_g, carbs_target_g, fat_target_g FROM users WHERE id=? AND role="client"', [uid]);
     if (!u) return res.status(404).json({ error: 'Cliente no encontrado' });
@@ -977,7 +978,7 @@ router.post('/clients/:id/generate-meal-plan', async (req, res) => {
       const k = `${s.body_zone}|${s.meal_type}`;
       order[k] = order[k] || 0;
       slots.push({
-        week_no: 1, body_zone: s.body_zone, meal_type: s.meal_type,
+        week_no: week, body_zone: s.body_zone, meal_type: s.meal_type,
         name: String(s.name).slice(0, 200),
         description: s.description ? String(s.description).slice(0, 500) : null,
         calories: numOrNull(s.calories), protein_g: numOrNull(s.protein_g),

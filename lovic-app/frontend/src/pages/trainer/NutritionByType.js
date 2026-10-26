@@ -145,13 +145,21 @@ export default function NutritionByType({ clientId }) {
 
   // Genera un borrador con IA y lo carga en pantalla (NO guarda hasta que Lorena presione Guardar)
   async function generateDraft() {
-    if (slots.length && !window.confirm('Esto reemplaza en pantalla las comidas actuales con un borrador nuevo de la IA. No se guarda hasta que presiones "Guardar nutrición". ¿Continuar?')) return;
+    const existingThisWeek = slots.some(s => s.week_no === effWeek);
+    const msg = mode === 'rotativo'
+      ? `Esto arma un borrador con IA para la Semana ${effWeek}${existingThisWeek ? ' (reemplaza en pantalla lo que haya en esa semana)' : ''}. Las demás semanas no se tocan. No se guarda hasta "Guardar nutrición". ¿Continuar?`
+      : 'Esto reemplaza en pantalla las comidas actuales con un borrador nuevo de la IA. No se guarda hasta que presiones "Guardar nutrición". ¿Continuar?';
+    if ((existingThisWeek || mode === 'simple') && slots.length && !window.confirm(msg)) return;
     setGen(true); setSaveMsg('');
     try {
-      const res = await api.trainer.generateMealPlan(clientId);
-      setSlots((res.slots || []).map(s => ({ ...s, _key: Math.random() })));
+      const res = await api.trainer.generateMealPlan(clientId, effWeek);
+      const fresh = (res.slots || []).map(s => ({ ...s, _key: Math.random() }));
+      // Rotativo: reemplaza solo la semana generada, conserva las demás. Simple: reemplaza todo.
+      setSlots(prev => mode === 'rotativo'
+        ? [...prev.filter(s => s.week_no !== effWeek), ...fresh]
+        : fresh);
       setGenCtx(res.context || null);
-      setSaveMsg('✨ Borrador listo — revísalo y guarda');
+      setSaveMsg(mode === 'rotativo' ? `✨ Semana ${effWeek} lista — revísala y guarda` : '✨ Borrador listo — revísalo y guarda');
       setTimeout(() => setSaveMsg(''), 6000);
     } catch (e) { alert(e.message); }
     setGen(false);
@@ -173,13 +181,13 @@ export default function NutritionByType({ clientId }) {
       <div className="card" style={{ marginBottom: 14, padding: 14, borderLeft: '4px solid var(--gold)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <div style={{ minWidth: 0 }}>
-            <p style={{ fontWeight: 800, fontSize: 14 }}>✨ Generar borrador con IA</p>
-            <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>Arma las comidas por tipo de día según el perfil y los datos de la clienta. Tú revisas, ajustas y guardas.</p>
+            <p style={{ fontWeight: 800, fontSize: 14 }}>✨ Generar borrador con IA{mode === 'rotativo' ? ` · Semana ${effWeek}` : ''}</p>
+            <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>Arma las comidas por tipo de día según el perfil y los datos de la clienta. Tú revisas, ajustas y guardas.{mode === 'rotativo' ? ' Genera cada semana por separado para variarlas.' : ''}</p>
           </div>
           <button onClick={generateDraft} disabled={gen} style={{
             padding: '10px 16px', borderRadius: 10, border: 'none', cursor: gen ? 'default' : 'pointer', fontWeight: 800, fontSize: 13,
             background: 'var(--gold)', color: '#fff', flexShrink: 0, opacity: gen ? 0.6 : 1,
-          }}>{gen ? 'Generando…' : 'Generar'}</button>
+          }}>{gen ? 'Generando…' : (mode === 'rotativo' ? `Generar S${effWeek}` : 'Generar')}</button>
         </div>
         {genCtx && (
           <div style={{ marginTop: 12, borderTop: '1px solid var(--border)', paddingTop: 10, fontSize: 12, color: 'var(--muted)', lineHeight: 1.7 }}>
