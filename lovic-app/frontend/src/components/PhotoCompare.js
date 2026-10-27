@@ -233,6 +233,26 @@ export default function PhotoCompareView({ a, b, onClose, userId, embedded }) {
   const beforeSrc = older.photos[activeAngle] ? imgUrl(older.photos[activeAngle].image_url, 800) : null;
   const afterSrc  = newer.photos[activeAngle] ? imgUrl(newer.photos[activeAngle].image_url, 800) : null;
 
+  // Compartir antes/después: la imagen la arma el servidor (sharp) y la clienta la comparte.
+  const [sharing, setSharing] = useState(false);
+  async function shareProgress() {
+    setSharing(true);
+    try {
+      const t = localStorage.getItem('lovic_token') || '';
+      const url = `${BASE}/progress-share?b=${encodeURIComponent(older.id)}&a=${encodeURIComponent(newer.id)}&angle=${activeAngle}&t=${encodeURIComponent(t)}`;
+      const r = await fetch(url);
+      if (!r.ok) { alert('No se pudo generar la imagen. Intenta de nuevo.'); setSharing(false); return; }
+      const blob = await r.blob();
+      const file = new File([blob], 'lovic-progreso.png', { type: 'image/png' });
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], text: '#LovicGym #MiProgreso' });
+      } else {
+        window.open(URL.createObjectURL(blob), '_blank');
+      }
+    } catch (_) { /* cancelado o sin soporte */ }
+    setSharing(false);
+  }
+
   const wrapStyle = embedded
     ? {}
     : { position: 'fixed', inset: 0, background: 'var(--bg)', zIndex: 1000, overflowY: 'auto', padding: '16px 16px 40px' };
@@ -340,6 +360,13 @@ export default function PhotoCompareView({ a, b, onClose, userId, embedded }) {
         <div style={{ marginBottom: 8 }}>
           <BeforeAfterSlider before={beforeSrc} after={afterSrc} dateBefore={formatDate(older.date)} dateAfter={formatDate(newer.date)} />
           <p style={{ fontSize: 11, color: 'var(--muted)', textAlign: 'center', marginTop: 6 }}>Desliza para ver el antes y el después</p>
+          {!userId && (
+            <button onClick={shareProgress} disabled={sharing} style={{
+              width: '100%', marginTop: 10, padding: '13px', borderRadius: 14, border: 'none', cursor: 'pointer',
+              fontWeight: 800, fontSize: 15, background: 'var(--coral)', color: '#fff',
+              boxShadow: '0 4px 18px rgba(255,107,74,0.35)', opacity: sharing ? 0.6 : 1,
+            }}>{sharing ? 'Preparando…' : '📲 Compartir mi antes/después'}</button>
+          )}
         </div>
       ) : (
         <p style={{ fontSize: 12, color: 'var(--muted)', textAlign: 'center', marginBottom: 8 }}>

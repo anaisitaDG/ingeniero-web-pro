@@ -480,6 +480,123 @@ app.get('/meal-plan-print', async (req, res) => {
   }
 });
 
+// ===== Tarjeta "Antes y después" de marca Lovic (imagen compuesta en el servidor) =====
+// Devuelve un PNG 1080x1920 con las dos fotos del ángulo pedido + marca Lovic.
+// La arma sharp (sin navegador), así que es robusto; la clienta la comparte directo.
+app.get('/progress-share', async (req, res) => {
+  let payload;
+  try { payload = _jwt.verify(String(req.query.t || ''), process.env.JWT_SECRET); }
+  catch { return res.status(403).send('Sesión no válida.'); }
+  const uid = payload.sub;
+  const angle = ['frente', 'espalda', 'perfil'].includes(req.query.angle) ? req.query.angle : 'frente';
+  const bId = String(req.query.b || ''), aId = String(req.query.a || '');
+  if (!bId || !aId) return res.status(400).send('Faltan registros.');
+  if (!_sharp) return res.status(500).send('Generador de imagen no disponible.');
+
+  try {
+    const [regs] = await db.query(
+      'SELECT id, date FROM progress_registers WHERE id IN (?, ?) AND user_id=?', [bId, aId, uid]);
+    if (regs.length < 2) return res.status(404).send('Registros no encontrados.');
+    const [older, newer] = regs.sort((x, y) => String(x.date).localeCompare(String(y.date)));
+
+    const [photos] = await db.query(
+      'SELECT register_id, image_url FROM progress_photos WHERE register_id IN (?, ?) AND user_id=? AND angle=?',
+      [bId, aId, uid, angle]);
+    const fileOf = (rid) => {
+      const p = photos.find(x => x.register_id === rid);
+      return p ? path.resolve(uploadPath, path.basename(p.image_url)) : null;
+    };
+    const beforeFile = fileOf(older.id), afterFile = fileOf(newer.id);
+    if (!beforeFile || !afterFile) return res.status(404).send(`Falta la foto de ${angle} en uno de los registros.`);
+
+    // Semanas entre fechas y delta de peso (medida más cercana a cada fecha)
+    const weeks = Math.max(1, Math.round((new Date(String(newer.date).slice(0, 10)) - new Date(String(older.date).slice(0, 10))) / (7 * 86400000)));
+    const nearWeight = async (d) => {
+      const [[r]] = await db.query(
+        'SELECT weight_kg FROM measurements WHERE user_id=? AND weight_kg IS NOT NULL ORDER BY ABS(DATEDIFF(logged_at, ?)) ASC LIMIT 1', [uid, String(d).slice(0, 10)]);
+      return r ? Number(r.weight_kg) : null;
+    };
+    const wB = await nearWeight(older.date), wA = await nearWeight(newer.date);
+    const wDelta = (wB != null && wA != null) ? +(wA - wB).toFixed(1) : null;
+
+    const png = await buildProgressCard({ beforeFile, afterFile, older, newer, weeks, wDelta });
+    res.set('Content-Type', 'image/png');
+    res.set('Cache-Control', 'no-store');
+    res.send(png);
+  } catch (e) {
+    console.error('[progress-share]', e);
+    res.status(500).send('No se pudo generar la imagen.');
+  }
+});
+
+function fmtShareDate(d) {
+  return new Date(String(d).slice(0, 10) + 'T12:00:00Z').toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+async function buildProgressCard({ beforeFile, afterFile, older, newer, weeks, wDelta }) {
+  const W = 1080, H = 1920, pad = 72, gap = 24;
+  const pw = Math.round((W - pad * 2 - gap) / 2); // ancho de cada foto
+  const ph = Math.round(pw * 1.45);               // un poco más altas para llenar la historia
+  const photoY = 470;
+  const xL = pad, xR = pad + pw + gap;
+
+  // Foto con esquinas redondeadas
+  const rounded = async (file) => {
+    const mask = Buffer.from(`<svg width="${pw}" height="${ph}"><rect width="${pw}" height="${ph}" rx="28" ry="28"/></svg>`);
+    return _sharp(file).rotate().resize(pw, ph, { fit: 'cover' })
+      .composite([{ input: mask, blend: 'dest-in' }]).png().toBuffer();
+  };
+  const beforeBuf = await rounded(beforeFile);
+  const afterBuf = await rounded(afterFile);
+
+  const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const FONT = 'font-family="DejaVu Sans, Helvetica, Arial, sans-serif"';
+
+  // Fondo: gradiente coral + textos superiores + línea del pie
+  const bg = Buffer.from(`<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FF6B6B"/><stop offset="1" stop-color="#FF8E53"/></linearGradient></defs>
+    <rect width="${W}" height="${H}" fill="url(#g)"/>
+    <text x="${pad}" y="135" ${FONT} font-size="28" font-weight="bold" fill="#ffffff" opacity="0.92" letter-spacing="5">MI PROGRESO</text>
+    <text x="${W - pad}" y="135" ${FONT} font-size="30" font-style="italic" font-weight="bold" fill="#ffffff" opacity="0.95" text-anchor="end">Constancia.</text>
+    <text x="${pad}" y="300" ${FONT} font-size="96" font-weight="bold" fill="#ffffff" letter-spacing="-2">${weeks} semana${weeks > 1 ? 's' : ''}</text>
+    <text x="${pad}" y="392" ${FONT} font-size="54" font-weight="bold" fill="#ffffff" opacity="0.95">de cambio</text>
+    <text x="${pad}" y="${photoY - 26}" ${FONT} font-size="30" fill="#ffffff" opacity="0.9">${esc(fmtShareDate(older.date))}  →  ${esc(fmtShareDate(newer.date))}</text>
+    <line x1="${pad}" y1="1620" x2="${W - pad}" y2="1620" stroke="#ffffff" stroke-opacity="0.35" stroke-width="2"/>
+  </svg>`);
+
+  // Overlay: etiquetas Antes/Después + chip de delta de peso
+  const badge = (x, label) => `
+    <rect x="${x + 18}" y="${photoY + 18}" rx="22" ry="22" width="${20 + label.length * 20}" height="52" fill="#000000" opacity="0.5"/>
+    <text x="${x + 38}" y="${photoY + 53}" ${FONT} font-size="30" font-weight="bold" fill="#ffffff">${label}</text>`;
+  const deltaChip = wDelta != null && wDelta !== 0 ? (() => {
+    const txt = `${wDelta > 0 ? '+' : '−'}${Math.abs(wDelta)} kg`;
+    const cw = 120 + txt.length * 26, cx = W / 2 - cw / 2, cy = photoY + ph + 50;
+    return `<rect x="${cx}" y="${cy}" rx="44" ry="44" width="${cw}" height="88" fill="#ffffff" opacity="0.18" stroke="#ffffff" stroke-opacity="0.4" stroke-width="2"/>
+      <text x="${W / 2}" y="${cy + 58}" ${FONT} font-size="44" font-weight="bold" fill="#ffffff" text-anchor="middle">${txt}</text>`;
+  })() : '';
+  const overlay = Buffer.from(`<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
+    ${badge(xL, 'Antes')}${badge(xR, 'Después')}${deltaChip}</svg>`);
+
+  // Logo (blanco) centrado en el pie
+  let logoLayer = [];
+  try {
+    const logoPath = path.resolve(__dirname, '../../frontend/public/brand/lovic-logo-white.png');
+    const logoBuf = await _sharp(logoPath).resize({ height: 150 }).png().toBuffer();
+    const meta = await _sharp(logoBuf).metadata();
+    logoLayer = [{ input: logoBuf, top: 1660, left: Math.round(W / 2 - (meta.width || 150) / 2) }];
+  } catch { /* si falta el logo, igual sale la tarjeta */ }
+
+  return _sharp(bg)
+    .composite([
+      { input: beforeBuf, top: photoY, left: xL },
+      { input: afterBuf, top: photoY, left: xR },
+      { input: overlay, top: 0, left: 0 },
+      ...logoLayer,
+    ])
+    .png().toBuffer();
+}
+
 const ZONE_LABEL = { superior: 'Tren superior', inferior: 'Tren inferior', descanso: 'Descanso' };
 const ZONE_EMOJI = { superior: '💪', inferior: '🦵', descanso: '🌙' };
 const MEAL_LABEL = { desayuno: 'Desayuno', almuerzo: 'Almuerzo', merienda: 'Merienda', cena: 'Cena' };
